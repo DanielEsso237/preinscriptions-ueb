@@ -1,10 +1,3 @@
-/**
- * form-preinscription.js  v3
- * - Filières dynamiques par faculté + type de formation
- * - Séries du bac dynamiques par faculté
- * - Validation numérique téléphone
- * - Navigation multi-étapes, récapitulatif
- */
 (function () {
     'use strict';
 
@@ -18,7 +11,6 @@
 
     /* ================================================================
        DONNÉES : SÉRIES PAR FACULTÉ + DIPLÔME
-       Clé : SERIES[faculte][diplome]  ('bac' | 'gce_ol')
        ================================================================ */
     const SERIES = {
         FS: {
@@ -147,7 +139,7 @@
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.textContent = (!fac || !diplome)
-            ? '— Choisir d'abord la faculté et le diplôme —'
+            ? "— Choisir d'abord la faculté et le diplôme —"
             : '— Choisir la série —';
         serieSelect.appendChild(placeholder);
 

@@ -17,14 +17,18 @@
 /* ── Reset de base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
-/*PAGE WRAPPER*/
+/* ============================================================
+   PAGE WRAPPER
+   ============================================================ */
 .preinscription-page {
     background: var(--ueb-fond);
     min-height: 100vh;
     padding-bottom: 60px;
 }
 
-/*HERO  (mobile-first : compact)*/
+/* ============================================================
+   HERO  (mobile-first : compact)
+   ============================================================ */
 .preinscription-hero {
     background: var(--ueb-vert);
     padding: 40px 20px 56px;
@@ -72,7 +76,9 @@
     line-height: 1.5;
 }
 
-/*CONTAINER*/
+/* ============================================================
+   CONTAINER
+   ============================================================ */
 .preinscription-container {
     max-width: 760px;
     margin: -24px auto 0;
@@ -81,7 +87,9 @@
     z-index: 1;
 }
 
-/*STEPPER  — mobile : cercles seuls, labels cachés*/
+/* ============================================================
+   STEPPER  — mobile : cercles seuls, labels cachés
+   ============================================================ */
 .steps-nav {
     display: flex;
     align-items: center;
@@ -152,7 +160,9 @@
 
 .step-separator.done { background: var(--ueb-dore); }
 
-/*CARD FORMULAIRE*/
+/* ============================================================
+   CARD FORMULAIRE
+   ============================================================ */
 .form-card {
     background: var(--ueb-blanc);
     border-radius: var(--radius-card);
@@ -185,7 +195,9 @@
     margin-bottom: 4px;
 }
 
-/*GRILLE CHAMPS  — 1 colonne sur mobile*/
+/* ============================================================
+   GRILLE CHAMPS  — 1 colonne sur mobile
+   ============================================================ */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -218,7 +230,7 @@ textarea {
     padding: 13px 14px;
     border: 1.5px solid var(--ueb-bordure);
     border-radius: var(--radius-input);
-    font-size: 1rem;   
+    font-size: 1rem;          /* >= 16px évite le zoom auto iOS */
     color: var(--ueb-noir);
     background: var(--ueb-fond);
     transition: var(--transition);
@@ -264,6 +276,7 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     font-weight: 400;
     font-size: .95rem;
     color: var(--ueb-noir);
+    /* Zone de tap généreuse */
     min-height: 44px;
 }
 
@@ -311,7 +324,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     cursor: pointer;
 }
 
-/*NAVIGATION BOUTONS  — pleine largeur sur mobile*/
+/* ============================================================
+   NAVIGATION BOUTONS  — pleine largeur sur mobile
+   ============================================================ */
 .form-nav {
     display: flex;
     flex-direction: column;
@@ -328,6 +343,7 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     justify-content: center;
     gap: 8px;
     width: 100%;
+    /* Minimum 48px hauteur tactile */
     padding: 15px 24px;
     border-radius: 8px;
     font-size: .95rem;
@@ -342,7 +358,7 @@ input.error, select.error { border-color: var(--ueb-erreur); }
 .btn-primary {
     background: var(--ueb-dore);
     color: var(--ueb-blanc);
-    order: -1; 
+    order: -1; /* Suivant en premier sur mobile */
 }
 
 .btn-primary:active { background: var(--ueb-dore-hover); }
@@ -365,7 +381,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
 
 .btn-arrow { font-size: 1rem; line-height: 1; }
 
-
+/* ============================================================
+   RÉCAPITULATIF
+   ============================================================ */
 .recap-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -399,7 +417,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
 .recap-value { font-size: .92rem; color: var(--ueb-noir); font-weight: 500; }
 .recap-value:empty::after { content: '—'; color: var(--ueb-gris); font-style: italic; }
 
-/*BREAKPOINT 480px  —  labels stepper visibles*/
+/* ============================================================
+   BREAKPOINT 480px  —  labels stepper visibles
+   ============================================================ */
 @media (min-width: 480px) {
     .step-label { display: block; }
     .step-circle { width: 34px; height: 34px; }
@@ -410,7 +430,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     .form-card { padding: 32px 28px; }
 }
 
-/*BREAKPOINT 640px  —  grille 2 colonnes, boutons inline*/
+/* ============================================================
+   BREAKPOINT 640px  —  grille 2 colonnes, boutons inline
+   ============================================================ */
 @media (min-width: 640px) {
 
     .preinscription-hero { padding: 56px 24px 68px; }
@@ -437,6 +459,7 @@ input.error, select.error { border-color: var(--ueb-erreur); }
         order: 0;
     }
 
+    /* Remettre Suivant à droite */
     .btn-primary { order: 1; }
     .btn-submit  { order: 1; }
 
@@ -446,7 +469,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     .form-card { padding: 36px 40px; }
 }
 
-/*BREAKPOINT 760px  —  desktop complet*/
+/* ============================================================
+   BREAKPOINT 760px  —  desktop complet
+   ============================================================ */
 @media (min-width: 760px) {
     .preinscription-container { margin-top: -32px; }
     .steps-nav { padding: 16px 28px; margin-bottom: 24px; }
@@ -457,7 +482,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     .form-grid { gap: 22px; margin-bottom: 32px; }
 }
 
-/*ACCESSIBILITÉ*/
+/* ============================================================
+   ACCESSIBILITÉ
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; }
 }
@@ -471,7 +498,9 @@ select:focus-visible {
     outline-offset: 2px;
 }
 
-/*AJOUTS v2 — champs figés, téléphones multiples, hints*/
+/* ============================================================
+   AJOUTS v2 — champs figés, téléphones multiples, hints
+   ============================================================ */
 
 /* Champs en lecture seule (niveau LMD, type formation) */
 .field-locked {
@@ -571,4 +600,79 @@ select:focus-visible {
 
 .btn-add-field:hover span {
     background: var(--ueb-dore);
+}
+
+/* ============================================================
+   AJOUTS v2.1
+   ============================================================ */
+
+/* Bouton "+ Ajouter un numéro" — style amélioré */
+.btn-add-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+    padding: 11px 16px;
+    border: 2px dashed var(--ueb-vert);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ueb-vert);
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition);
+    letter-spacing: .01em;
+}
+
+.btn-add-field:hover {
+    background: #f0f7f3;
+    border-style: solid;
+}
+
+.btn-add-field span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--ueb-vert);
+    color: var(--ueb-blanc);
+    border-radius: 50%;
+    font-size: .9rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* Bouton Générer la fiche */
+.btn-submit {
+    background: var(--ueb-vert) !important;
+    color: var(--ueb-blanc) !important;
+    font-size: .95rem;
+    letter-spacing: .01em;
+}
+
+.btn-submit:hover, .btn-submit:active {
+    background: #0f2d1b !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(26,74,46,.25);
+}
+
+/* ============================================================
+   AJOUTS v3 — notice info, label optionnel
+   ============================================================ */
+
+.form-notice--info {
+    background: #fffbeb;
+    border-left-color: var(--ueb-dore);
+    color: #92400e;
+}
+
+.field-optional {
+    font-size: .75rem;
+    font-weight: 400;
+    color: var(--ueb-gris);
+    margin-left: 4px;
 }

@@ -22,7 +22,6 @@ get_header();
 
     <div class="preinscription-container">
 
-        <!-- Barre de progression -->
         <div class="steps-nav" role="navigation" aria-label="Étapes du formulaire">
             <div class="step-item active" data-step="1">
                 <div class="step-circle">1</div>
@@ -45,7 +44,6 @@ get_header();
             </div>
         </div>
 
-        <!-- Formulaire -->
         <div class="form-card">
             <?php
             $nonce_field = wp_nonce_field( 'preinscription_submit', 'preinscription_nonce', true, false );
@@ -53,8 +51,10 @@ get_header();
             <form id="form-preinscription" method="post" action="" novalidate>
                 <?php echo $nonce_field; ?>
                 <input type="hidden" name="action" value="preinscription_submit">
+                <!-- Champ caché pour la valeur de série (alimenté par le select JS) -->
+                <input type="hidden" id="serie_diplome" name="serie_diplome">
 
-                <!-- ===== ÉTAPE 1 : CHOIX DE FORMATION ===== -->
+                <!-- ===== ÉTAPE 1 : FORMATION ===== -->
                 <fieldset class="form-step active" data-step="1">
                     <legend class="step-heading">
                         <span class="step-num">Étape 1 / 4</span>
@@ -69,9 +69,9 @@ get_header();
                             <select id="faculte" name="faculte" required>
                                 <option value="">— Choisir —</option>
                                 <option value="FS">Faculté des Sciences (FS)</option>
-                                <option value="FASEG">Faculté des Sciences Économiques et de Gestion (FASEG)</option>
+                                <option value="FALSH">Faculté des Arts, Lettres et Sciences Humaines (FALSH)</option>
+                                <option value="FSEG">Faculté des Sciences Économiques et de Gestion (FSEG)</option>
                                 <option value="FSJP">Faculté des Sciences Juridiques et Politiques (FSJP)</option>
-                                <option value="FALSH">Faculté des Lettres et Sciences Humaines (FALSH)</option>
                             </select>
                         </div>
 
@@ -85,45 +85,31 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Série / Spécialité — préfixe "Série " prérempli -->
-                        <div class="form-group full">
-                            <label for="serie_diplome">Série / Spécialité du diplôme <span class="required">*</span></label>
-                            <input
-                                type="text"
-                                id="serie_diplome"
-                                name="serie_diplome"
-                                placeholder="Ex : Série C, Série D, Sciences Expérimentales…"
-                                value="Série "
-                                required
-                            >
-                            <span class="field-hint">Le curseur se positionne après "Série " — tape directement ta lettre ou spécialité.</span>
+                        <!-- Série / Spécialité — select dynamique par faculté -->
+                        <div class="form-group full" id="serie-container">
+                            <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span></label>
+                            <select id="serie_diplome_select" required disabled>
+                                <option value="">— Choisir d'abord une faculté —</option>
+                            </select>
+                            <span class="field-hint">La liste des séries s'adapte selon la faculté choisie.</span>
                         </div>
 
-                        <!-- Niveau LMD — figé sur L1 -->
-                        <div class="form-group">
-                            <label for="niveau_lmd">Niveau LMD</label>
-                            <input
-                                type="text"
-                                id="niveau_lmd"
-                                name="niveau_lmd"
-                                value="Licence 1"
-                                readonly
-                                class="field-locked"
-                            >
-                            <span class="field-hint">Les préinscriptions sont ouvertes en Licence 1 uniquement.</span>
+                        <!-- Type de formation — visible uniquement pour FS -->
+                        <div class="form-group full" id="type-formation-group" style="display:none;">
+                            <label for="type_formation">Type de formation <span class="required">*</span></label>
+                            <select id="type_formation" name="type_formation">
+                                <option value="classique">Formation Classique (étude de dossier)</option>
+                                <option value="pro">Formation Professionnelle — Licence Pro (LP)</option>
+                            </select>
+                            <span class="field-hint">La formation classique se fait sur étude de dossier. La Licence Pro est une filière professionnalisante.</span>
                         </div>
 
-                        <!-- Type de formation — figé sur Initiale -->
-                        <div class="form-group">
-                            <label for="type_formation">Type de formation</label>
-                            <input
-                                type="text"
-                                id="type_formation"
-                                name="type_formation"
-                                value="Formation Initiale"
-                                readonly
-                                class="field-locked"
-                            >
+                        <!-- Notice filières pro -->
+                        <div class="form-group full" id="pro-filiere-notice" style="display:none;">
+                            <p class="form-notice form-notice--info">
+                                En formation professionnelle, ton <strong>1er choix</strong> est une filière LP. 
+                                Tu peux indiquer en <strong>2e choix</strong> une filière classique que tu souhaites intégrer en parallèle par dossier, en attendant les résultats du concours LP.
+                            </p>
                         </div>
 
                         <!-- 1er choix de filière -->
@@ -136,10 +122,24 @@ get_header();
 
                         <!-- 2e choix de filière -->
                         <div class="form-group full">
-                            <label for="filiere_2">2e choix de filière</label>
+                            <label for="filiere_2">2e choix de filière <span class="field-optional">(optionnel)</span></label>
                             <select id="filiere_2" name="filiere_2" disabled>
-                                <option value="">— Choisir d'abord une faculté —</option>
+                                <option value="">— Aucun deuxième choix —</option>
                             </select>
+                        </div>
+
+                        <!-- Niveau LMD — figé L1 -->
+                        <div class="form-group full">
+                            <label for="niveau_lmd">Niveau LMD</label>
+                            <input
+                                type="text"
+                                id="niveau_lmd"
+                                name="niveau_lmd"
+                                value="Licence 1"
+                                readonly
+                                class="field-locked"
+                            >
+                            <span class="field-hint">Les préinscriptions sont ouvertes en Licence 1 uniquement.</span>
                         </div>
 
                         <!-- Année d'obtention -->
@@ -148,7 +148,7 @@ get_header();
                             <input type="number" id="annee_obtention" name="annee_obtention" min="1990" max="2025" placeholder="Ex : 2024" required>
                         </div>
 
-                    </div><!-- .form-grid -->
+                    </div>
 
                     <div class="form-nav">
                         <span></span>
@@ -202,12 +202,12 @@ get_header();
 
                         <div class="form-group">
                             <label for="nationalite">Nationalité <span class="required">*</span></label>
-                            <input type="text" id="nationalite" name="nationalite" placeholder="Ex : Camerounaise" value="Camerounaise" required>
+                            <input type="text" id="nationalite" name="nationalite" value="Camerounaise" required>
                         </div>
 
                         <div class="form-group full">
-                            <label for="situation_matrimoniale">Situation matrimoniale</label>
-                            <select id="situation_matrimoniale" name="situation_matrimoniale">
+                            <label for="situation_matrimoniale">Situation matrimoniale <span class="required">*</span></label>
+                            <select id="situation_matrimoniale" name="situation_matrimoniale" required>
                                 <option value="">— Choisir —</option>
                                 <option value="celibataire">Célibataire</option>
                                 <option value="marie">Marié(e)</option>
@@ -239,8 +239,6 @@ get_header();
                         Contact & origine
                     </legend>
 
-                    <p class="form-notice">Si tu n'es pas camerounais(e), ignore les champs Région, Département et Arrondissement d'origine.</p>
-
                     <div class="form-grid">
 
                         <div class="form-group full">
@@ -248,19 +246,12 @@ get_header();
                             <input type="email" id="email" name="email" placeholder="ton@email.com" required autocomplete="email">
                         </div>
 
-                        <!-- Téléphones multiples -->
+                        <!-- Téléphones multiples étudiant -->
                         <div class="form-group full">
                             <label>Téléphone(s) <span class="required">*</span></label>
                             <div id="telephones-container">
                                 <div class="tel-row">
-                                    <input
-                                        type="tel"
-                                        name="telephone[]"
-                                        placeholder="6X XX XX XX XX"
-                                        required
-                                        autocomplete="tel"
-                                        class="tel-input"
-                                    >
+                                    <input type="tel" name="telephone[]" placeholder="6X XX XX XX XX" required class="tel-input">
                                 </div>
                             </div>
                             <button type="button" id="btn-add-tel" class="btn-add-field">
@@ -274,8 +265,8 @@ get_header();
                         </div>
 
                         <div class="form-group">
-                            <label for="region_origine">Région d'origine</label>
-                            <select id="region_origine" name="region_origine">
+                            <label for="region_origine">Région d'origine <span class="required">*</span></label>
+                            <select id="region_origine" name="region_origine" required>
                                 <option value="">— Choisir —</option>
                                 <option value="adamaoua">Adamaoua</option>
                                 <option value="centre">Centre</option>
@@ -291,37 +282,31 @@ get_header();
                         </div>
 
                         <div class="form-group">
-                            <label for="departement_origine">Département d'origine</label>
-                            <input type="text" id="departement_origine" name="departement_origine" placeholder="Ex : Mfoundi, Wouri…">
+                            <label for="departement_origine">Département d'origine <span class="required">*</span></label>
+                            <input type="text" id="departement_origine" name="departement_origine" placeholder="Ex : Mfoundi, Wouri…" required>
                         </div>
 
                         <div class="form-group full">
-                            <label for="arrondissement_origine">Arrondissement d'origine</label>
-                            <input type="text" id="arrondissement_origine" name="arrondissement_origine" placeholder="Ex : Yaoundé 1er">
+                            <label for="arrondissement_origine">Arrondissement d'origine <span class="required">*</span></label>
+                            <input type="text" id="arrondissement_origine" name="arrondissement_origine" placeholder="Ex : Yaoundé 1er" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="nom_pere">Nom du père</label>
-                            <input type="text" id="nom_pere" name="nom_pere" placeholder="Nom complet">
+                            <label for="nom_pere">Nom du père <span class="required">*</span></label>
+                            <input type="text" id="nom_pere" name="nom_pere" placeholder="Nom complet" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="nom_mere">Nom de la mère</label>
-                            <input type="text" id="nom_mere" name="nom_mere" placeholder="Nom complet">
+                            <label for="nom_mere">Nom de la mère <span class="required">*</span></label>
+                            <input type="text" id="nom_mere" name="nom_mere" placeholder="Nom complet" required>
                         </div>
 
-                        <!-- Téléphone tuteur — multiples aussi -->
+                        <!-- Téléphone tuteur multiple -->
                         <div class="form-group full">
                             <label>Téléphone tuteur / parent <span class="required">*</span></label>
                             <div id="tel-tuteur-container">
                                 <div class="tel-row">
-                                    <input
-                                        type="tel"
-                                        name="tel_tuteur[]"
-                                        placeholder="6X XX XX XX XX"
-                                        required
-                                        class="tel-input"
-                                    >
+                                    <input type="tel" name="tel_tuteur[]" placeholder="6X XX XX XX XX" required class="tel-input">
                                 </div>
                             </div>
                             <button type="button" class="btn-add-field" data-target="tel-tuteur-container" data-name="tel_tuteur[]">
@@ -329,7 +314,7 @@ get_header();
                             </button>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group full">
                             <label for="profession_pere">Profession du père</label>
                             <input type="text" id="profession_pere" name="profession_pere" placeholder="Ex : Enseignant">
                         </div>
@@ -353,9 +338,7 @@ get_header();
                         Vérifie ta demande
                     </legend>
 
-                    <div id="recap-content" class="recap-grid">
-                        <!-- Rempli dynamiquement en JS -->
-                    </div>
+                    <div id="recap-content" class="recap-grid"></div>
 
                     <div class="form-group full consent-group">
                         <label class="checkbox-option">
@@ -368,8 +351,8 @@ get_header();
                         <button type="button" class="btn-prev btn-secondary" data-prev="3">
                             <span class="btn-arrow">←</span> Modifier
                         </button>
-<button type="button" class="btn-submit btn-primary" onclick="window.location.href='#'">
-                            Générer ma fiche de préinscription →
+                        <button type="button" class="btn-submit btn-primary" onclick="window.location.href='#'">
+                            📄 Générer ma fiche de préinscription
                         </button>
                     </div>
                 </fieldset>

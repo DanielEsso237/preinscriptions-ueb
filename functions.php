@@ -31,7 +31,7 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/js/form-preinscription.js',
             array(),
-            '2.0',
+            '3.1',
             true  // chargé en footer
         );
     }
