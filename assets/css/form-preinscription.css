@@ -1,0 +1,678 @@
+:root {
+    --ueb-vert:       #1a4a2e;
+    --ueb-dore:       #c9a227;
+    --ueb-dore-hover: #b08d1e;
+    --ueb-fond:       #f5f5f3;
+    --ueb-blanc:      #ffffff;
+    --ueb-noir:       #1a1a1a;
+    --ueb-gris:       #6b7280;
+    --ueb-bordure:    #e4e4e0;
+    --ueb-erreur:     #dc2626;
+    --radius-card:    14px;
+    --radius-input:   8px;
+    --shadow-card:    0 2px 20px rgba(26,74,46,.08);
+    --transition:     all .2s ease;
+}
+
+/* ── Reset de base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ============================================================
+   PAGE WRAPPER
+   ============================================================ */
+.preinscription-page {
+    background: var(--ueb-fond);
+    min-height: 100vh;
+    padding-bottom: 60px;
+}
+
+/* ============================================================
+   HERO  (mobile-first : compact)
+   ============================================================ */
+.preinscription-hero {
+    background: var(--ueb-vert);
+    padding: 40px 20px 56px;
+    text-align: center;
+    color: var(--ueb-blanc);
+    position: relative;
+    overflow: hidden;
+}
+
+.preinscription-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 36px;
+    background: var(--ueb-fond);
+    clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+.preinscription-eyebrow {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: var(--ueb-dore);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.preinscription-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 12px;
+    color: var(--ueb-blanc);
+}
+
+.preinscription-title .accent { color: var(--ueb-dore); }
+
+.preinscription-subtitle {
+    font-size: .9rem;
+    color: rgba(255,255,255,.78);
+    max-width: 340px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   CONTAINER
+   ============================================================ */
+.preinscription-container {
+    max-width: 760px;
+    margin: -24px auto 0;
+    padding: 0 12px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ============================================================
+   STEPPER  — mobile : cercles seuls, labels cachés
+   ============================================================ */
+.steps-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ueb-blanc);
+    border-radius: 50px;
+    padding: 12px 16px;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.step-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    font-weight: 700;
+    background: var(--ueb-bordure);
+    color: var(--ueb-gris);
+    transition: var(--transition);
+}
+
+.step-item.active .step-circle {
+    background: var(--ueb-vert);
+    color: var(--ueb-blanc);
+}
+
+.step-item.done .step-circle {
+    background: var(--ueb-dore);
+    color: var(--ueb-blanc);
+}
+
+.step-item.done .step-circle::before { content: '✓'; }
+
+/* Labels cachés sur mobile, visibles à partir de 480px */
+.step-label {
+    font-size: .62rem;
+    font-weight: 700;
+    color: var(--ueb-gris);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    display: none;
+}
+
+.step-item.active .step-label { color: var(--ueb-vert); }
+
+.step-separator {
+    flex: 1;
+    height: 2px;
+    background: var(--ueb-bordure);
+    margin: 0 6px 16px;
+    transition: background .3s;
+    min-width: 12px;
+}
+
+.step-separator.done { background: var(--ueb-dore); }
+
+/* ============================================================
+   CARD FORMULAIRE
+   ============================================================ */
+.form-card {
+    background: var(--ueb-blanc);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 24px 16px;
+}
+
+/* ── Étapes (visibilité) ── */
+.form-step        { display: none; border: none; padding: 0; margin: 0; }
+.form-step.active { display: block; }
+
+/* ── Titre d'étape ── */
+.step-heading {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--ueb-noir);
+    margin: 0 0 20px;
+    padding: 0;
+    display: block;
+    line-height: 1.2;
+}
+
+.step-heading .step-num {
+    display: block;
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--ueb-dore);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
+   GRILLE CHAMPS  — 1 colonne sur mobile
+   ============================================================ */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.form-group        { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full   { grid-column: 1; }
+
+/* ── Labels ── */
+label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--ueb-noir);
+}
+
+.required { color: var(--ueb-erreur); margin-left: 2px; }
+
+/* ── Inputs / selects ── */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    /* Minimum 44px pour le tactile */
+    padding: 13px 14px;
+    border: 1.5px solid var(--ueb-bordure);
+    border-radius: var(--radius-input);
+    font-size: 1rem;          /* >= 16px évite le zoom auto iOS */
+    color: var(--ueb-noir);
+    background: var(--ueb-fond);
+    transition: var(--transition);
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--ueb-vert);
+    background: var(--ueb-blanc);
+    box-shadow: 0 0 0 3px rgba(26,74,46,.1);
+}
+
+input.error, select.error { border-color: var(--ueb-erreur); }
+
+.field-error {
+    font-size: .78rem;
+    color: var(--ueb-erreur);
+    margin-top: 2px;
+}
+
+/* ── Radios ── */
+.radio-group {
+    display: flex;
+    gap: 20px;
+    padding-top: 4px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: .95rem;
+    color: var(--ueb-noir);
+    /* Zone de tap généreuse */
+    min-height: 44px;
+}
+
+.radio-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--ueb-vert);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ── Notice ── */
+.form-notice {
+    font-size: .82rem;
+    color: var(--ueb-gris);
+    background: #f0f7f3;
+    border-left: 3px solid var(--ueb-vert);
+    padding: 10px 12px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 20px;
+    margin-top: -4px;
+    line-height: 1.5;
+}
+
+/* ── Checkbox consentement ── */
+.consent-group { margin-bottom: 24px; }
+
+.checkbox-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: .88rem;
+    color: var(--ueb-noir);
+    line-height: 1.5;
+}
+
+.checkbox-option input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--ueb-vert);
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+/* ============================================================
+   NAVIGATION BOUTONS  — pleine largeur sur mobile
+   ============================================================ */
+.form-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1.5px solid var(--ueb-bordure);
+}
+
+.btn-primary,
+.btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    /* Minimum 48px hauteur tactile */
+    padding: 15px 24px;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    font-family: inherit;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--ueb-dore);
+    color: var(--ueb-blanc);
+    order: -1; /* Suivant en premier sur mobile */
+}
+
+.btn-primary:active { background: var(--ueb-dore-hover); }
+
+.btn-secondary {
+    background: transparent;
+    color: var(--ueb-vert);
+    border: 1.5px solid var(--ueb-bordure);
+}
+
+.btn-secondary:active { background: #f0f7f3; }
+
+.btn-submit {
+    background: var(--ueb-vert);
+    color: var(--ueb-blanc);
+    order: -1;
+}
+
+.btn-submit:active { background: #0f2d1b; }
+
+.btn-arrow { font-size: 1rem; line-height: 1; }
+
+/* ============================================================
+   RÉCAPITULATIF
+   ============================================================ */
+.recap-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.recap-section { grid-column: 1; margin-top: 6px; }
+
+.recap-section-title {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--ueb-vert);
+    margin-bottom: 10px;
+    padding-bottom: 7px;
+    border-bottom: 1.5px solid var(--ueb-bordure);
+}
+
+.recap-item { display: flex; flex-direction: column; gap: 2px; }
+
+.recap-label {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--ueb-gris);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.recap-value { font-size: .92rem; color: var(--ueb-noir); font-weight: 500; }
+.recap-value:empty::after { content: '—'; color: var(--ueb-gris); font-style: italic; }
+
+/* ============================================================
+   BREAKPOINT 480px  —  labels stepper visibles
+   ============================================================ */
+@media (min-width: 480px) {
+    .step-label { display: block; }
+    .step-circle { width: 34px; height: 34px; }
+    .steps-nav { padding: 14px 20px; }
+    .step-separator { margin-bottom: 20px; min-width: 16px; }
+
+    .preinscription-title { font-size: 2.2rem; }
+    .form-card { padding: 32px 28px; }
+}
+
+/* ============================================================
+   BREAKPOINT 640px  —  grille 2 colonnes, boutons inline
+   ============================================================ */
+@media (min-width: 640px) {
+
+    .preinscription-hero { padding: 56px 24px 68px; }
+    .preinscription-title { font-size: 2.6rem; }
+
+    .preinscription-container { padding: 0 16px; }
+
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    .form-nav {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-submit {
+        width: auto;
+        order: 0;
+    }
+
+    /* Remettre Suivant à droite */
+    .btn-primary { order: 1; }
+    .btn-submit  { order: 1; }
+
+    .recap-grid { grid-template-columns: 1fr 1fr; }
+    .recap-section { grid-column: 1 / -1; }
+
+    .form-card { padding: 36px 40px; }
+}
+
+/* ============================================================
+   BREAKPOINT 760px  —  desktop complet
+   ============================================================ */
+@media (min-width: 760px) {
+    .preinscription-container { margin-top: -32px; }
+    .steps-nav { padding: 16px 28px; margin-bottom: 24px; }
+    .step-circle { width: 36px; height: 36px; }
+    .step-separator { min-width: 24px; }
+    .form-card { padding: 40px 48px; }
+    .step-heading { font-size: 1.45rem; margin-bottom: 28px; }
+    .form-grid { gap: 22px; margin-bottom: 32px; }
+}
+
+/* ============================================================
+   ACCESSIBILITÉ
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+}
+
+/* Focus visible clavier */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid var(--ueb-dore);
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   AJOUTS v2 — champs figés, téléphones multiples, hints
+   ============================================================ */
+
+/* Champs en lecture seule (niveau LMD, type formation) */
+.field-locked {
+    background: #eef2ef !important;
+    color: var(--ueb-gris) !important;
+    border-color: var(--ueb-bordure) !important;
+    cursor: not-allowed;
+    font-style: italic;
+}
+
+/* Hint sous un champ */
+.field-hint {
+    font-size: .75rem;
+    color: var(--ueb-gris);
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+/* Ligne téléphone (input + bouton supprimer) */
+.tel-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.tel-row .tel-input { flex: 1; margin-bottom: 0; }
+
+.btn-remove-tel {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ueb-bordure);
+    background: var(--ueb-blanc);
+    color: var(--ueb-erreur);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.btn-remove-tel:hover {
+    background: #fef2f2;
+    border-color: var(--ueb-erreur);
+}
+
+/* Bouton "Ajouter un numéro" */
+.btn-add-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+    padding: 11px 16px;
+    border: 2px dashed var(--ueb-vert);
+    border-radius: 8px;
+    background: #f0f7f3;
+    color: var(--ueb-vert);
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition);
+    letter-spacing: .01em;
+}
+
+.btn-add-field:hover {
+    background: #dff0e6;
+    border-color: var(--ueb-dore);
+    color: var(--ueb-dore-hover);
+}
+
+.btn-add-field:active {
+    transform: scale(.98);
+}
+
+.btn-add-field span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ueb-vert);
+    color: var(--ueb-blanc);
+    font-size: .95rem;
+    line-height: 1;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: var(--transition);
+}
+
+.btn-add-field:hover span {
+    background: var(--ueb-dore);
+}
+
+/* ============================================================
+   AJOUTS v2.1
+   ============================================================ */
+
+/* Bouton "+ Ajouter un numéro" — style amélioré */
+.btn-add-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+    padding: 11px 16px;
+    border: 2px dashed var(--ueb-vert);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ueb-vert);
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition);
+    letter-spacing: .01em;
+}
+
+.btn-add-field:hover {
+    background: #f0f7f3;
+    border-style: solid;
+}
+
+.btn-add-field span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--ueb-vert);
+    color: var(--ueb-blanc);
+    border-radius: 50%;
+    font-size: .9rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* Bouton Générer la fiche */
+.btn-submit {
+    background: var(--ueb-vert) !important;
+    color: var(--ueb-blanc) !important;
+    font-size: .95rem;
+    letter-spacing: .01em;
+}
+
+.btn-submit:hover, .btn-submit:active {
+    background: #0f2d1b !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(26,74,46,.25);
+}
+
+/* ============================================================
+   AJOUTS v3 — notice info, label optionnel
+   ============================================================ */
+
+.form-notice--info {
+    background: #fffbeb;
+    border-left-color: var(--ueb-dore);
+    color: #92400e;
+}
+
+.field-optional {
+    font-size: .75rem;
+    font-weight: 400;
+    color: var(--ueb-gris);
+    margin-left: 4px;
+}
