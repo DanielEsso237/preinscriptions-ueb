@@ -288,7 +288,7 @@ get_header();
 
                         <div class="form-group full">
                             <label for="arrondissement_origine">Arrondissement d'origine <span class="required">*</span></label>
-                            <input type="text" id="arrondissement_origine" name="arrondissement_origine" placeholder="Ex : Yaoundé 1er" required>
+                            <input type="text" id="arrondissement_origine" name="arrondissement_origine" placeholder="Ex : Ebolowa 1er" required>
                         </div>
 
                         <div class="form-group">
@@ -352,7 +352,7 @@ get_header();
                             <span class="btn-arrow">←</span> Modifier
                         </button>
                         <button type="button" class="btn-submit btn-primary" onclick="window.location.href='#'">
-                            📄 Générer ma fiche de préinscription
+                            Générer ma fiche de préinscription
                         </button>
                     </div>
                 </fieldset>
