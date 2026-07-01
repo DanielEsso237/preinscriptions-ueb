@@ -7,10 +7,38 @@ Version: 1.0
 Text Domain: preinscriptions-ueb
 */
 
+/* =========================================================================
+   Identite visuelle UEB - variables de couleurs
+   Valeurs derivees du logo officiel (assets/images/logo-ueb.png).
+   Ajustables ici sans toucher au reste du code.
+   ========================================================================= */
+:root {
+    /* --- Couleurs de marque (fideles au logo) --- */
+    --ueb-green: #2e7d32;        /* Vert foret - couleur PRINCIPALE (sceau, arbres) */
+    --ueb-green-light: #61982b;  /* Feuillage du logo - variante claire / decorative */
+    --ueb-blue: #378db7;         /* Bleu - couleur SECONDAIRE (montagnes, ciel) */
+    --ueb-blue-dark: #1f6f94;    /* Bleu fonce - pour texte/liens sur fond clair (AA) */
+    --ueb-bordeaux: #6e2a2a;     /* Bordeaux - ACCENT (texte du cercle) */
+    --ueb-gold: #d4a017;         /* Or / jaune - ACCENT SECONDAIRE (sigle UEb, soleil) */
+
+    /* --- Neutres --- */
+    --ueb-white: #ffffff;
+    --ueb-bg: #f7f7f7;           /* Fond de page */
+    --ueb-text: #1a1a1a;         /* Texte de base (gris tres fonce / noir) */
+    --ueb-gray: #4a4a4a;         /* Texte secondaire */
+
+    /* --- Alias semantiques (reutilisables dans les composants) --- */
+    --color-primary: var(--ueb-green);
+    --color-secondary: var(--ueb-blue);
+    --color-accent: var(--ueb-gold);
+    --color-background: var(--ueb-bg);
+    --color-foreground: var(--ueb-text);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.6;
-    color: #1a1a1a;
-    background-color: #f7f7f7;
+    color: var(--ueb-text);
+    background-color: var(--ueb-bg);
     margin: 0;
 }
