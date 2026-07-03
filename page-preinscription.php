@@ -351,9 +351,10 @@ get_header();
                         <button type="button" class="btn-prev btn-secondary" data-prev="3">
                             <span class="btn-arrow">←</span> Modifier
                         </button>
-                        <button type="button" class="btn-submit btn-primary" onclick="window.location.href='#'">
-                            Générer ma fiche de préinscription
-                        </button>
+                        <input type="hidden" name="action" value="generate_pdf">
+<button type="submit" class="btn-submit btn-primary">
+    Générer ma fiche de préinscription
+</button>
                     </div>
                 </fieldset>
 

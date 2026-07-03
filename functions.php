@@ -145,3 +145,5 @@ function preinscriptions_handle_form() {
     exit;
 }
 add_action( 'template_redirect', 'preinscriptions_handle_form' );
+
+require_once( get_template_directory() . '/inc/pdf-functions.php' );
