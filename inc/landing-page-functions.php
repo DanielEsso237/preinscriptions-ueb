@@ -14,16 +14,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * URL de demarrage de la preinscription.
+ * URL de démarrage de la préinscription.
  *
- * Lien temporaire ('#') : le formulaire de preinscription est developpe
- * separement. A pointer vers la vraie page/applicatif une fois en place.
+ * Recherche automatiquement la page utilisant le template
+ * 'page-preinscription.php' et retourne son permalien. Si aucune page
+ * n'utilise ce template (ex. avant sa création), retourne '#' en repli.
  * Filtrable via 'preinscriptions_inscription_url'.
  *
  * @return string
  */
 function preinscriptions_inscription_url() {
-    return apply_filters( 'preinscriptions_inscription_url', '#' );
+    $url = '#';
+
+    $pages = get_posts( array(
+        'post_type'      => 'page',
+        'post_status'    => 'publish',
+        'meta_key'       => '_wp_page_template',
+        'meta_value'     => 'page-preinscription.php',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ) );
+
+    if ( ! empty( $pages ) ) {
+        $url = get_permalink( $pages[0] );
+    }
+
+    return apply_filters( 'preinscriptions_inscription_url', $url );
 }
 
 /**

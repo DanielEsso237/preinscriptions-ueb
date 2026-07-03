@@ -13,7 +13,9 @@
             <h4>Liens</h4>
             <ul>
                 <li><a href="#atouts">Pourquoi l'UEB</a></li>
-                <li><a href="#etapes">Préinscription</a></li>
+                <?php if ( ! is_page_template( 'page-preinscription.php' ) ) : ?>
+                    <li><a href="#etapes">Préinscription</a></li>
+                <?php endif; ?>
                 <li><a href="#facultes">Facultés</a></li>
                 <li><a href="#campus">Campus</a></li>
             </ul>
