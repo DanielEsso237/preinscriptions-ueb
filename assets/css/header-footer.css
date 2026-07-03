@@ -1,0 +1,62 @@
+/*
+ * Styles partagés du header (nav.bar) et du footer (site-footer).
+ * Charge sur TOUTES les pages via functions.php (contrairement à
+ * landing-page.css qui reste limité à la page d'accueil).
+ */
+:root{
+  --green:var(--ueb-green,#2e7d32);
+  --green-light:var(--ueb-green-light,#61982b);
+  --blue:var(--ueb-blue,#378db7);
+  --bordeaux:var(--ueb-bordeaux,#6e2a2a);
+  --gold:var(--ueb-gold,#d4a017);
+  --green-d:#13351a;
+  --green-soft:#e6f3e8; --ink:#15212b; --gray:#5d6b75;
+  --bg:#f4f8f6; --card:#fff; --line:#e3eae7;
+  --head:"Sora",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif; --maxw:1200px;
+}
+
+nav.bar, nav.bar *, .site-footer, .site-footer * { box-sizing: border-box; margin: 0; padding: 0; }
+nav.bar a, .site-footer a { color: inherit; text-decoration: none; }
+nav.bar img, .site-footer img { max-width: 100%; display: block; }
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+.btn{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--head);font-weight:600;font-size:1rem;padding:.95rem 1.8rem;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:transform .25s ease,box-shadow .25s ease,background .25s}
+.btn-primary{background:var(--gold);color:#2a1f00;box-shadow:0 12px 26px -12px rgba(212,160,23,.9)}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 18px 34px -12px rgba(212,160,23,1)}
+
+/* ── NAV ── */
+nav.bar{position:sticky;top:0;z-index:30;background:rgba(244,248,246,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+nav.bar .wrap{display:flex;align-items:center;justify-content:space-between;height:80px}
+nav.bar .brand{display:flex;align-items:center;gap:10px}nav.bar img{height:54px;width:auto}nav.bar .brand b{font-family:var(--head);font-weight:800;color:var(--green)}
+.links{display:flex;gap:28px;align-items:center}
+.links a{font-weight:500;font-size:.94rem;color:var(--gray)}
+.burger{display:none;flex-direction:column;justify-content:center;gap:5px;width:44px;height:44px;padding:0;border:none;background:transparent;cursor:pointer}
+.burger span{display:block;width:24px;height:2px;margin:0 auto;background:var(--ink);border-radius:2px;transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}
+.burger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.links a:hover{color:var(--green)}
+
+/* ── FOOTER ── */
+.site-footer{background:var(--green-d);color:rgba(255,255,255,.72);padding:56px 0 28px}
+.fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px;margin-bottom:32px}
+.site-footer h4{font-family:var(--head);color:#fff;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.site-footer ul{list-style:none}.site-footer li{margin-bottom:.5rem;font-size:.92rem}.site-footer a:hover{color:var(--gold)}
+.site-footer .brand{display:flex;align-items:center;gap:10px}.site-footer .brand img{height:42px;width:auto}.site-footer .brand b{font-family:var(--head);font-weight:800;font-size:1.2rem;color:#fff}
+
+/* ── RESPONSIVE ── */
+@media (max-width:860px){
+  nav.bar .wrap{position:relative}
+  .burger{display:flex}
+  .links{position:absolute;top:80px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);padding:8px 22px 18px;box-shadow:0 26px 40px -26px rgba(19,53,26,.45);transform:translateY(-14px);opacity:0;pointer-events:none;transition:opacity .3s ease,transform .3s cubic-bezier(.22,.61,.36,1)}
+  .links.open{opacity:1;transform:none;pointer-events:auto}
+  .links a{padding:15px 4px;border-bottom:1px solid var(--line);font-size:1rem;font-weight:600;color:var(--ink)}
+  .links a.btn{margin-top:14px;border-bottom:none;justify-content:center;padding:.85rem 1.3rem!important;color:#2a1f00}
+}
+@media (max-width:600px){
+  nav.bar .wrap{height:60px}
+  nav.bar img{height:42px}
+  .links{top:60px}
+  .fgrid{grid-template-columns:1fr 1fr;gap:22px}
+}

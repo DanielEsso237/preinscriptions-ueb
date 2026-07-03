@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.0' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.1' );
 }
 
 /**
@@ -41,6 +41,25 @@ function preinscriptions_theme_assets() {
         get_stylesheet_uri(),
         array( 'preinscriptions-fonts' ),
         PREINSCRIPTIONS_VERSION
+    );
+
+    // Header + footer : charges sur TOUTES les pages (nav.bar + site-footer).
+    $hf_css = get_template_directory() . '/assets/css/header-footer.css';
+    $hf_js  = get_template_directory() . '/assets/js/header-footer.js';
+
+    wp_enqueue_style(
+        'preinscriptions-header-footer',
+        get_template_directory_uri() . '/assets/css/header-footer.css',
+        array( 'preinscriptions-style' ),
+        file_exists( $hf_css ) ? filemtime( $hf_css ) : PREINSCRIPTIONS_VERSION
+    );
+
+    wp_enqueue_script(
+        'preinscriptions-header-footer',
+        get_template_directory_uri() . '/assets/js/header-footer.js',
+        array(),
+        file_exists( $hf_js ) ? filemtime( $hf_js ) : PREINSCRIPTIONS_VERSION,
+        true
     );
 
     // Assets specifiques a la landing page : charges uniquement sur la page d'accueil.

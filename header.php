@@ -21,7 +21,9 @@
         <a href="#etapes">Préinscription</a>
         <a href="#facultes">Facultés</a>
         <a href="#campus">Campus</a>
-        <a class="btn btn-primary" style="padding:.6rem 1.3rem" href="<?php echo esc_url( preinscriptions_inscription_url() ); ?>">Préinscription</a>
+        <?php if ( ! is_page_template( 'page-preinscription.php' ) ) : ?>
+            <a class="btn btn-primary" style="padding:.6rem 1.3rem" href="<?php echo esc_url( preinscriptions_inscription_url() ); ?>">Préinscription</a>
+        <?php endif; ?>
     </div>
 </div></nav>
 
