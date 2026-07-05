@@ -179,32 +179,37 @@ function ueb_handle_pdf_generation() {
 
     require_once get_template_directory() . '/lib/tcpdf/tcpdf.php';
 
-    $nom                    = sanitize_text_field( $_POST['nom'] ?? '' );
-    $prenom                 = sanitize_text_field( $_POST['prenom'] ?? '' );
-    $sexe                   = sanitize_text_field( $_POST['sexe'] ?? '' );
-    $date_naissance         = sanitize_text_field( $_POST['date_naissance'] ?? '' );
-    $lieu_naissance         = sanitize_text_field( $_POST['lieu_naissance'] ?? '' );
-    $nationalite            = sanitize_text_field( $_POST['nationalite'] ?? '' );
-    $situation_matrimoniale = sanitize_text_field( $_POST['situation_matrimoniale'] ?? '' );
-    $faculte                = sanitize_text_field( $_POST['faculte'] ?? '' );
-    $diplome_admission      = sanitize_text_field( $_POST['diplome_admission'] ?? '' );
-    $serie_diplome          = sanitize_text_field( $_POST['serie_diplome'] ?? '' );
-    $niveau_lmd             = sanitize_text_field( $_POST['niveau_lmd'] ?? '' );
-    $type_formation         = sanitize_text_field( $_POST['type_formation'] ?? 'classique' );
-    $filiere_1              = sanitize_text_field( $_POST['filiere_1'] ?? '' );
-    $filiere_2              = sanitize_text_field( $_POST['filiere_2'] ?? '' );
-    $annee_obtention        = absint( $_POST['annee_obtention'] ?? 0 );
-    $email                  = sanitize_email( $_POST['email'] ?? '' );
-    $adresse                = sanitize_text_field( $_POST['adresse'] ?? '' );
-    $region_origine         = sanitize_text_field( $_POST['region_origine'] ?? '' );
-    $departement_origine    = sanitize_text_field( $_POST['departement_origine'] ?? '' );
-    $arrondissement_origine = sanitize_text_field( $_POST['arrondissement_origine'] ?? '' );
-    $nom_pere               = sanitize_text_field( $_POST['nom_pere'] ?? '' );
-    $nom_mere               = sanitize_text_field( $_POST['nom_mere'] ?? '' );
-    $profession_pere        = sanitize_text_field( $_POST['profession_pere'] ?? '' );
+    // WordPress ajoute des antislashs devant les apostrophes dans $_POST
+    // (émulation historique des "magic quotes"). On les retire AVANT
+    // toute sanitisation, sinon des noms comme "Eto'o" deviennent "Eto\'o".
+    $posted = wp_unslash( $_POST );
 
-    $telephones  = isset( $_POST['telephone'] ) ? (array) $_POST['telephone'] : array();
-    $tels_tuteur = isset( $_POST['tel_tuteur'] ) ? (array) $_POST['tel_tuteur'] : array();
+    $nom                    = sanitize_text_field( $posted['nom'] ?? '' );
+    $prenom                 = sanitize_text_field( $posted['prenom'] ?? '' );
+    $sexe                   = sanitize_text_field( $posted['sexe'] ?? '' );
+    $date_naissance         = sanitize_text_field( $posted['date_naissance'] ?? '' );
+    $lieu_naissance         = sanitize_text_field( $posted['lieu_naissance'] ?? '' );
+    $nationalite            = sanitize_text_field( $posted['nationalite'] ?? '' );
+    $situation_matrimoniale = sanitize_text_field( $posted['situation_matrimoniale'] ?? '' );
+    $faculte                = sanitize_text_field( $posted['faculte'] ?? '' );
+    $diplome_admission      = sanitize_text_field( $posted['diplome_admission'] ?? '' );
+    $serie_diplome          = sanitize_text_field( $posted['serie_diplome'] ?? '' );
+    $niveau_lmd             = sanitize_text_field( $posted['niveau_lmd'] ?? '' );
+    $type_formation         = sanitize_text_field( $posted['type_formation'] ?? 'classique' );
+    $filiere_1              = sanitize_text_field( $posted['filiere_1'] ?? '' );
+    $filiere_2              = sanitize_text_field( $posted['filiere_2'] ?? '' );
+    $annee_obtention        = absint( $posted['annee_obtention'] ?? 0 );
+    $email                  = sanitize_email( $posted['email'] ?? '' );
+    $adresse                = sanitize_text_field( $posted['adresse'] ?? '' );
+    $region_origine         = sanitize_text_field( $posted['region_origine'] ?? '' );
+    $departement_origine    = sanitize_text_field( $posted['departement_origine'] ?? '' );
+    $arrondissement_origine = sanitize_text_field( $posted['arrondissement_origine'] ?? '' );
+    $nom_pere               = sanitize_text_field( $posted['nom_pere'] ?? '' );
+    $nom_mere               = sanitize_text_field( $posted['nom_mere'] ?? '' );
+    $profession_pere        = sanitize_text_field( $posted['profession_pere'] ?? '' );
+
+    $telephones  = isset( $posted['telephone'] ) ? (array) $posted['telephone'] : array();
+    $tels_tuteur = isset( $posted['tel_tuteur'] ) ? (array) $posted['tel_tuteur'] : array();
     $telephones  = array_map( 'sanitize_text_field', $telephones );
     $tels_tuteur = array_map( 'sanitize_text_field', $tels_tuteur );
     $telephone_str  = implode( ' / ', array_filter( $telephones ) );
@@ -348,7 +353,7 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
             </td>
             <td width="32%" align="center">
                 <img src="' . $logo_ueb . '" width="40" /><br/>
-                <div style="height:6px;"></div>';
+                <div style="height:14px;"></div>';
 
     if ( $fac_info['logo'] && file_exists( $fac_info['logo'] ) ) {
         $html .= '
