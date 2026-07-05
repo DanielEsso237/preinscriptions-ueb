@@ -229,7 +229,7 @@ function ueb_handle_pdf_generation() {
     $pdf->SetMargins( 18, 18, 18 );
     $pdf->SetAutoPageBreak( false, 10 ); // sécurité anti-débordement sur page 2
     $pdf->AddPage();
-    $pdf->SetFont( 'helvetica', '', 10 );
+    $pdf->SetFont( 'dejavusans', '', 9 );
 
     $html = ueb_pdf_html(
         $numero_dossier, $nom, $prenom, $sexe, $date_naissance, $lieu_naissance,
@@ -247,6 +247,16 @@ function ueb_handle_pdf_generation() {
     exit;
 }
 add_action( 'template_redirect', 'ueb_handle_pdf_generation' );
+
+
+/**
+ * Échappe les valeurs saisies par l'utilisateur avant insertion dans le HTML
+ * du PDF, pour un affichage correct des apostrophes, accents et esperluettes
+ * et pour éviter toute casse du balisage HTML.
+ */
+function ueb_e( $value ) {
+    return htmlspecialchars( (string) $value, ENT_QUOTES, 'UTF-8' );
+}
 
 
 function ueb_get_faculte_info( $code ) {
@@ -288,8 +298,8 @@ function ueb_get_faculte_info( $code ) {
  * pour diviser la hauteur par ~2 par rapport à une colonne unique.
  */
 function ueb_pdf_section_2col( $title, $fields, $vert, $fond ) {
-    $html = '<table width="100%" cellpadding="5" cellspacing="0" style="font-size:9.5px;">';
-    $html .= '<tr><td colspan="4" style="background-color:' . $vert . ';color:#ffffff;font-weight:bold;padding:5px 8px;font-size:10px;">' . $title . '</td></tr>';
+    $html = '<table width="100%" cellpadding="4.5" cellspacing="0" style="font-size:8.5px;">';
+    $html .= '<tr><td colspan="4" style="background-color:' . $vert . ';color:#ffffff;font-weight:bold;padding:4.5px 8px;font-size:9px;">' . $title . '</td></tr>';
 
     $pairs = array_chunk( $fields, 2, true );
     $i = 0;
@@ -330,16 +340,26 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
     $html = '
     <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-            <td width="38%" align="center" style="font-size:8.5px;line-height:1.7;">
+            <td width="34%" align="center" style="font-size:8.5px;line-height:1.7;">
                 <strong>RÉPUBLIQUE DU CAMEROUN</strong><br/>
                 <span style="font-style:italic;">Paix – Travail – Patrie</span><br/>
                 MINISTÈRE DE L\'ENSEIGNEMENT SUPÉRIEUR<br/>
                 <strong style="color:' . $vert . ';">UNIVERSITÉ D\'ÉBOLOWA</strong>
             </td>
-            <td width="24%" align="center">
-                <img src="' . $logo_ueb . '" width="42" />
+            <td width="32%" align="center">
+                <img src="' . $logo_ueb . '" width="40" /><br/>
+                <div style="height:6px;"></div>';
+
+    if ( $fac_info['logo'] && file_exists( $fac_info['logo'] ) ) {
+        $html .= '
+                <img src="' . $fac_info['logo'] . '" width="40" /><br/>';
+    }
+
+    $html .= '
+                <p style="margin:4px 0 0 0;font-size:10px;font-weight:bold;color:' . $vert . ';">' . $fac_info['fr'] . '</p>
+                <p style="margin:0;font-size:8px;font-style:italic;color:' . $gris . ';">' . $fac_info['en'] . '</p>
             </td>
-            <td width="38%" align="center" style="font-size:8.5px;line-height:1.7;">
+            <td width="34%" align="center" style="font-size:8.5px;line-height:1.7;">
                 <strong>REPUBLIC OF CAMEROON</strong><br/>
                 <span style="font-style:italic;">Peace – Work – Fatherland</span><br/>
                 MINISTRY OF HIGHER EDUCATION<br/>
@@ -348,39 +368,14 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
         </tr>
     </table>
 
-    <div style="height:2px;background-color:' . $or . ';margin-top:10px;margin-bottom:12px;"></div>
-
-    <!-- ===== BLOC FACULTÉ CHOISIE ===== -->
-    <table width="100%" cellpadding="7" style="background-color:' . $fond . ';">
-        <tr>';
-
-    if ( $fac_info['logo'] && file_exists( $fac_info['logo'] ) ) {
-        $html .= '
-            <td width="12%" align="center">
-                <img src="' . $fac_info['logo'] . '" width="34" />
-            </td>';
-    } else {
-        $html .= '<td width="12%"></td>';
-    }
-
-    $html .= '
-            <td width="68%">
-                <p style="margin:0;font-size:9px;color:' . $gris . ';">Faculté sélectionnée / Selected Faculty</p>
-                <p style="margin:0;font-size:12px;font-weight:bold;color:' . $vert . ';">' . $fac_info['fr'] . '</p>
-                <p style="margin:0;font-size:9px;font-style:italic;color:' . $gris . ';">' . $fac_info['en'] . '</p>
-            </td>
-            <td width="20%" align="right">
-                <p style="font-size:8.5px;color:' . $gris . ';margin:0;">N° Dossier</p>
-                <p style="font-size:12px;font-weight:bold;color:' . $or . ';margin:0;">' . $numero_dossier . '</p>
-            </td>
-        </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" style="margin-top:14px;margin-bottom:14px;">
+    <table width="100%" cellpadding="0" style="margin-top:16px;margin-bottom:14px;">
         <tr>
-            <td>
+            <td width="65%" style="vertical-align:middle;">
                 <h2 style="color:' . $vert . ';margin:0;font-size:17px;">FICHE DE PRÉINSCRIPTION</h2>
                 <p style="margin:2px 0 0 0;font-size:9px;color:' . $gris . ';">Année académique 2025–2027</p>
+            </td>
+            <td width="35%" align="right" style="vertical-align:middle;">
+                <p style="font-size:9.5px;color:' . $gris . ';margin:0;white-space:nowrap;">N&deg; Dossier : <strong style="color:' . $or . ';">' . $numero_dossier . '</strong></p>
             </td>
         </tr>
     </table>
@@ -388,40 +383,40 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
 
     /* ===== SECTIONS EN 2 COLONNES ===== */
     $html .= ueb_pdf_section_2col( 'FORMATION CHOISIE', array(
-        "Diplôme d'admission"  => $diplome_admission,
-        'Série / Spécialité'   => $serie_diplome,
-        "Année d'obtention"    => (string) $annee_obtention,
-        'Niveau LMD'           => $niveau_lmd,
-        'Type de formation'    => $type_formation,
-        '1er choix de filière' => $filiere_1,
-        '2e choix de filière'  => $filiere_2,
+        "Diplôme d'admission"  => ueb_e( $diplome_admission ),
+        'Série / Spécialité'   => ueb_e( $serie_diplome ),
+        "Année d'obtention"    => ueb_e( $annee_obtention ),
+        'Niveau LMD'           => ueb_e( $niveau_lmd ),
+        'Type de formation'    => ueb_e( $type_formation ),
+        '1er choix de filière' => ueb_e( $filiere_1 ),
+        '2e choix de filière'  => ueb_e( $filiere_2 ),
     ), $vert, $fond );
 
     $html .= '<div style="height:9px;"></div>';
 
     $html .= ueb_pdf_section_2col( 'ÉTAT CIVIL', array(
-        'Nom'                    => strtoupper( $nom ),
-        'Prénom(s)'               => $prenom,
+        'Nom'                    => ueb_e( strtoupper( $nom ) ),
+        'Prénom(s)'               => ueb_e( $prenom ),
         'Sexe'                    => ( $sexe === 'M' ? 'Masculin' : 'Féminin' ),
-        'Date de naissance'       => $date_naissance,
-        'Lieu de naissance'       => $lieu_naissance,
-        'Nationalité'             => $nationalite,
-        'Situation matrimoniale'  => $situation_matrimoniale,
+        'Date de naissance'       => ueb_e( $date_naissance ),
+        'Lieu de naissance'       => ueb_e( $lieu_naissance ),
+        'Nationalité'             => ueb_e( $nationalite ),
+        'Situation matrimoniale'  => ueb_e( $situation_matrimoniale ),
     ), $vert, $fond );
 
     $html .= '<div style="height:9px;"></div>';
 
     $html .= ueb_pdf_section_2col( 'CONTACT &amp; ORIGINE', array(
-        'Email'                    => $email,
-        'Téléphone(s)'             => $telephone_str,
-        'Adresse actuelle'         => $adresse,
-        "Région d'origine"         => $region_origine,
-        "Département d'origine"    => $departement_origine,
-        'Arrondissement'           => $arrondissement_origine,
-        'Nom du père'              => $nom_pere,
-        'Nom de la mère'           => $nom_mere,
-        'Tél. tuteur / parent'     => $tel_tuteur_str,
-        'Profession du père'       => $profession_pere,
+        'Email'                    => ueb_e( $email ),
+        'Téléphone(s)'             => ueb_e( $telephone_str ),
+        'Adresse actuelle'         => ueb_e( $adresse ),
+        "Région d'origine"         => ueb_e( $region_origine ),
+        "Département d'origine"    => ueb_e( $departement_origine ),
+        'Arrondissement'           => ueb_e( $arrondissement_origine ),
+        'Nom du père'              => ueb_e( $nom_pere ),
+        'Nom de la mère'           => ueb_e( $nom_mere ),
+        'Tél. tuteur / parent'     => ueb_e( $tel_tuteur_str ),
+        'Profession du père'       => ueb_e( $profession_pere ),
     ), $vert, $fond );
 
     $html .= '<div style="height:26px;"></div>

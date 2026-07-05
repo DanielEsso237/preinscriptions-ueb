@@ -354,7 +354,7 @@ get_header();
                         <input type="hidden" name="action" value="generate_pdf">
 <button type="submit" class="btn-submit btn-primary">
     Générer ma fiche de préinscription
-</button>
+</button>   
                     </div>
                 </fieldset>
 
