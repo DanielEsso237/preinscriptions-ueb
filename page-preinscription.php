@@ -50,7 +50,16 @@ get_header();
             ?>
             <form id="form-preinscription" method="post" action="" novalidate>
                 <?php echo $nonce_field; ?>
-                <input type="hidden" name="action" value="preinscription_submit">
+                <!--
+                    NOTE : un seul champ "action" doit exister dans tout le formulaire
+                    (sa valeur "generate_pdf" est ajoutée juste avant le bouton de
+                    soumission, à l'étape 4). Avoir deux champs hidden avec le même
+                    name="action" causait un bug : seule la dernière valeur du DOM
+                    était envoyée dans $_POST, donc ueb_handle_db_save() (Oriol) et
+                    ueb_handle_pdf_generation() (Yann) réagissent tous les deux à
+                    "generate_pdf", via template_redirect avec des priorités
+                    différentes (5 puis 10).
+                -->
                 <!-- Champ caché pour la valeur de série (alimenté par le select JS) -->
                 <input type="hidden" id="serie_diplome" name="serie_diplome">
 
@@ -352,9 +361,9 @@ get_header();
                             <span class="btn-arrow">←</span> Modifier
                         </button>
                         <input type="hidden" name="action" value="generate_pdf">
-<button type="submit" class="btn-submit btn-primary">
-    Générer ma fiche de préinscription
-</button>   
+                        <button type="submit" class="btn-submit btn-primary">
+                            Générer ma fiche de préinscription
+                        </button>
                     </div>
                 </fieldset>
 
