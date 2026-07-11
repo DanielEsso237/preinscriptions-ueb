@@ -145,3 +145,7 @@ add_action( 'init', 'preinscriptions_register_cpt' );
 
 require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
+require_once( get_template_directory() . '/inc/db-schema.php' );
+require_once( get_template_directory() . '/inc/dossier-functions.php' );
+require_once( get_template_directory() . '/inc/db-schema.php' );
+require_once( get_template_directory() . '/inc/db-seed.php' );
