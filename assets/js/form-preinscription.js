@@ -10,164 +10,149 @@
     let currentStep  = 1;
 
     /* ================================================================
-       DONNÉES : SÉRIES PAR FACULTÉ + DIPLÔME
+       APPEL AJAX GÉNÉRIQUE VERS admin-ajax.php
        ================================================================ */
-    const SERIES = {
-        FS: {
-            bac:    [
-                { value: 'C',  label: 'Série C — Mathématiques et Sciences Physiques' },
-                { value: 'D',  label: 'Série D — Sciences Naturelles' },
-                { value: 'TI', label: 'Série TI — Technique Industrielle' },
-                { value: 'F',  label: 'Série F — Sciences Techniques' },
-            ],
-            gce_ol: [
-                { value: 'GCE_OL_SCI', label: 'GCE O/L — Sciences' },
-            ],
-        },
-        FALSH: {
-            bac:    [
-                { value: 'A',  label: 'Série A — Lettres, Philosophie, Sciences Sociales' },
-                { value: 'B',  label: 'Série B — Sciences Économiques et Sociales' },
-            ],
-            gce_ol: [
-                { value: 'GCE_OL_ART', label: 'GCE O/L — Arts & Humanities' },
-                { value: 'GCE_OL_SOC', label: 'GCE O/L — Social Sciences' },
-            ],
-        },
-        FSEG: {
-            bac:    [
-                { value: 'B',  label: 'Série B — Sciences Économiques et Sociales' },
-                { value: 'G',  label: 'Série G — Techniques de Gestion' },
-                { value: 'TI', label: 'Série TI — Technique Industrielle' },
-                { value: 'C',  label: 'Série C — Mathématiques et Sciences Physiques' },
-                { value: 'D',  label: 'Série D — Sciences Naturelles' },
-            ],
-            gce_ol: [
-                { value: 'GCE_OL_COM', label: 'GCE O/L — Commerce / Economics' },
-                { value: 'GCE_OL_GEN', label: 'GCE O/L — General' },
-            ],
-        },
-        FSJP: {
-            bac:    [
-                { value: 'A',  label: 'Série A — Lettres, Philosophie, Sciences Sociales' },
-                { value: 'B',  label: 'Série B — Sciences Économiques et Sociales' },
-                { value: 'C',  label: 'Série C — Mathématiques et Sciences Physiques' },
-                { value: 'D',  label: 'Série D — Sciences Naturelles' },
-                { value: 'G',  label: 'Série G — Techniques de Gestion' },
-            ],
-            gce_ol: [
-                { value: 'GCE_OL_ALL', label: 'GCE O/L — Toutes séries' },
-            ],
-        },
-    };
+    function uebFetchRaw(action, params) {
+        const body = new URLSearchParams(Object.assign({
+            action: action,
+            nonce: (window.uebAjax && window.uebAjax.nonce) || ''
+        }, params || {}));
+
+        return fetch((window.uebAjax && window.uebAjax.ajax_url) || '', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        })
+            .then(function (r) { return r.json(); })
+            .catch(function (err) {
+                console.error('Erreur réseau AJAX (' + action + ')', err);
+                return null;
+            });
+    }
+
+    function uebFetch(action, params) {
+        return uebFetchRaw(action, params).then(function (json) {
+            if (!json || !json.success) {
+                console.error('Erreur AJAX (' + action + ')', json);
+                return [];
+            }
+            return json.data || [];
+        });
+    }
 
     /* ================================================================
-       DONNÉES : FILIÈRES PAR FACULTÉ + TYPE
+       CACHES (évite de refaire des appels identiques)
        ================================================================ */
-    const FILIERES = {
-        FS: {
-            classique: [
-                { value: 'TIC',   label: 'TIC — Technologies de l\'Information et de la Communication' },
-                { value: 'PHY',   label: 'Physique Appliquée' },
-                { value: 'CHIM',  label: 'Chimie Appliquée' },
-                { value: 'GEO',   label: 'Géosciences et Environnement' },
-                { value: 'ROSE',  label: 'ROSE — Recherche Opérationnelle et Économétrie' },
-                { value: 'BIO',   label: 'Biotechnologie et Pharmacognosie' },
-            ],
-            pro: [
-                { value: 'LP_BIO_MED',  label: 'LP Sciences Biomédicales et Médico-Sanitaires' },
-                { value: 'LP_BIO_AGR',  label: 'LP Sciences Biologiques Appliquées à l\'Agriculture' },
-            ],
-        },
-        FALSH: {
-            classique: [
-                { value: 'LMF',   label: 'Lettres Modernes Françaises' },
-                { value: 'LEA',   label: 'Langues Étrangères Appliquées' },
-                { value: 'HIST',  label: 'Histoire' },
-                { value: 'GEO',   label: 'Géographie' },
-                { value: 'PHILO', label: 'Philosophie' },
-                { value: 'SOCIO', label: 'Sociologie' },
-            ],
-            pro: [],
-        },
-        FSEG: {
-            classique: [
-                { value: 'ECO',   label: 'Économie' },
-                { value: 'GEST',  label: 'Gestion' },
-                { value: 'COMPTA',label: 'Comptabilité et Finance' },
-                { value: 'BANQUE',label: 'Banque et Finance' },
-                { value: 'MKT',   label: 'Marketing' },
-            ],
-            pro: [],
-        },
-        FSJP: {
-            classique: [
-                { value: 'DPRIV', label: 'Droit Privé' },
-                { value: 'DPUB',  label: 'Droit Public' },
-                { value: 'SCPOL', label: 'Science Politique' },
-                { value: 'RI',    label: 'Relations Internationales' },
-            ],
-            pro: [],
-        },
-    };
+    let facultesCache = [];
+
+    function getFaculteCode(faculteId) {
+        const f = facultesCache.find(function (x) { return String(x.id) === String(faculteId); });
+        return f ? f.code : '';
+    }
 
     /* ================================================================
        ÉLÉMENTS DOM
        ================================================================ */
     const selectFaculte   = document.getElementById('faculte');
+    const selectDiplome   = document.getElementById('diplome_admission');
     const selectType      = document.getElementById('type_formation');
     const selectFiliere1  = document.getElementById('filiere_1');
     const selectFiliere2  = document.getElementById('filiere_2');
-    const serieContainer  = document.getElementById('serie-container');
     const serieSelect     = document.getElementById('serie_diplome_select');
-    const niveauInput     = document.getElementById('niveau_lmd');
     const proNotice       = document.getElementById('pro-filiere-notice');
     const typeGroup       = document.getElementById('type-formation-group');
+    const serieHidden     = document.getElementById('serie_diplome');
+
+    const selectRegion       = document.getElementById('region_origine');
+    const selectDepartement  = document.getElementById('departement_origine');
+    const selectCommune      = document.getElementById('commune_origine');
 
     /* ================================================================
-       SÉRIES DYNAMIQUES — par faculté ET diplôme
+       HELPER : peupler un <select> à partir d'un tableau {id, libelle}
        ================================================================ */
-    const selectDiplome = document.getElementById('diplome_admission');
+    function fillSelect(select, items, placeholder, enable) {
+        select.innerHTML = '';
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = placeholder;
+        select.appendChild(opt0);
 
-    function updateSeries() {
-        const fac     = selectFaculte.value;
-        const diplome = selectDiplome ? selectDiplome.value : '';
-        const facData = SERIES[fac] || {};
-        const series  = (diplome && facData[diplome]) ? facData[diplome] : [];
-
-        serieSelect.innerHTML = '';
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = (!fac || !diplome)
-            ? "— Choisir d'abord la faculté et le diplôme —"
-            : '— Choisir la série —';
-        serieSelect.appendChild(placeholder);
-
-        series.forEach(function (s) {
+        items.forEach(function (item) {
             const opt = document.createElement('option');
-            opt.value       = s.value;
-            opt.textContent = s.label;
-            serieSelect.appendChild(opt);
+            opt.value = item.id;
+            opt.textContent = item.libelle;
+            select.appendChild(opt);
         });
 
-        serieSelect.disabled = series.length === 0;
-        // Reset hidden
-        if (serieHiddenEarly) serieHiddenEarly.value = '';
+        select.disabled = !enable || items.length === 0;
     }
 
-    // Référence early pour le reset dans updateSeries
-    const serieHiddenEarly = document.getElementById('serie_diplome');
+    /* ================================================================
+       CHARGEMENT INITIAL : facultés, diplômes, régions
+       ================================================================ */
+    const facultesPromise = uebFetch('ueb_get_facultes').then(function (data) {
+        facultesCache = data;
+        fillSelect(selectFaculte, data, '— Choisir —', true);
+        return data;
+    });
+
+    const diplomesPromise = uebFetch('ueb_get_diplomes').then(function (data) {
+        fillSelect(selectDiplome, data, '— Choisir —', true);
+        return data;
+    });
+
+    const regionsPromise = uebFetch('ueb_get_regions').then(function (data) {
+        fillSelect(selectRegion, data, '— Choisir —', true);
+        return data;
+    });
+
+    const statutsPromise = uebFetch('ueb_get_statuts_socio_pro').then(function (data) {
+        fillSelect(document.getElementById('statut_socio_professionnel'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const nationalitesPromise = uebFetch('ueb_get_nationalites').then(function (data) {
+        fillSelect(document.getElementById('nationalite'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const situationsPromise = uebFetch('ueb_get_situations_matrimoniales').then(function (data) {
+        fillSelect(document.getElementById('situation_matrimoniale'), data, '— Choisir —', true);
+        return data;
+    });
 
     /* ================================================================
-       TYPE DE FORMATION : visible uniquement pour FS
+       SÉRIE / SPÉCIALITÉ — dépend de faculté + diplôme
+       ================================================================ */
+    function updateSeries() {
+        const faculteId = selectFaculte.value;
+        const diplomeId = selectDiplome.value;
+
+        if (serieHidden) serieHidden.value = '';
+
+        if (!faculteId || !diplomeId) {
+            fillSelect(serieSelect, [], "— Choisir d'abord la faculté et le diplôme —", false);
+            return;
+        }
+
+        fillSelect(serieSelect, [], '— Chargement... —', false);
+
+        uebFetch('ueb_get_specialites', { faculte_id: faculteId, diplome_id: diplomeId })
+            .then(function (data) {
+                fillSelect(serieSelect, data, '— Choisir la série —', true);
+            });
+    }
+
+    /* ================================================================
+       TYPE DE FORMATION : visible uniquement pour la faculté FS
        ================================================================ */
     function updateTypeFormation() {
-        const fac = selectFaculte.value;
-        if (fac === 'FS') {
+        const code = getFaculteCode(selectFaculte.value);
+
+        if (code === 'FS') {
             typeGroup.style.display = '';
             selectType.disabled = false;
         } else {
-            // Autres facultés : dossier uniquement, champ caché
             typeGroup.style.display = 'none';
             selectType.value    = 'classique';
             selectType.disabled = false;
@@ -176,68 +161,45 @@
     }
 
     /* ================================================================
-       FILIÈRES DYNAMIQUES
+       FILIÈRES — dépend de faculté + type de formation
        ================================================================ */
-    function buildOptions(select, filieres, placeholder, excludeValue) {
-        select.innerHTML = '';
-        const opt0 = document.createElement('option');
-        opt0.value = '';
-        opt0.textContent = placeholder;
-        select.appendChild(opt0);
-        filieres.forEach(function (f) {
-            if (f.value === excludeValue) return;
-            const opt = document.createElement('option');
-            opt.value       = f.value;
-            opt.textContent = f.label;
-            select.appendChild(opt);
-        });
-    }
-
     function updateFilieres() {
-        const fac  = selectFaculte.value;
-        const type = selectType.value || 'classique';
-        const data = FILIERES[fac] || null;
+        const faculteId = selectFaculte.value;
+        const type      = selectType.value || 'classique';
+        const code      = getFaculteCode(faculteId);
 
-        // Cacher la notice pro par défaut
         if (proNotice) proNotice.style.display = 'none';
 
-        if (!fac || !data) {
+        if (!faculteId) {
             [selectFiliere1, selectFiliere2].forEach(function (s) {
-                s.innerHTML = '<option value="">— Choisir d\'abord une faculté —</option>';
-                s.disabled = true;
+                fillSelect(s, [], "— Choisir d'abord une faculté —", false);
             });
             return;
         }
 
-        let filieres1 = [];
-        let filieres2 = [];
-
-        if (type === 'pro' && fac === 'FS') {
-            // Filières LP uniquement en 1er choix
-            filieres1 = data.pro;
-            // 2e choix : filières classiques (en attente du concours)
-            filieres2 = data.classique;
-            if (proNotice) proNotice.style.display = '';
-        } else {
-            // Classique
-            filieres1 = data.classique;
-            filieres2 = data.classique;
+        if (type === 'pro' && code === 'FS' && proNotice) {
+            proNotice.style.display = '';
         }
 
-        if (filieres1.length === 0) {
-            [selectFiliere1, selectFiliere2].forEach(function (s) {
-                s.innerHTML = '<option value="">— Filières à venir —</option>';
-                s.disabled = true;
+        [selectFiliere1, selectFiliere2].forEach(function (s) {
+            fillSelect(s, [], '— Chargement... —', false);
+        });
+
+        uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: type })
+            .then(function (data) {
+                fillSelect(selectFiliere1, data, '— Choisir une filière —', true);
+
+                // 2e choix de filière : toujours les filières "classique" de la faculté
+                // (même logique qu'avant : en pro, le 2e choix reste une filière classique).
+                if (type === 'pro') {
+                    uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
+                        .then(function (data2) {
+                            fillSelect(selectFiliere2, data2, '— Aucun deuxième choix (optionnel) —', data2.length > 0);
+                        });
+                } else {
+                    fillSelect(selectFiliere2, data, '— Aucun deuxième choix (optionnel) —', data.length > 1);
+                }
             });
-            return;
-        }
-
-        buildOptions(selectFiliere1, filieres1, '— Choisir une filière —', null);
-        selectFiliere1.disabled = false;
-
-        const excl = selectFiliere1.value || null;
-        buildOptions(selectFiliere2, filieres2, '— Aucun deuxième choix (optionnel) —', excl);
-        selectFiliere2.disabled = filieres2.length <= 1;
     }
 
     selectFaculte.addEventListener('change', function () {
@@ -245,33 +207,52 @@
         updateTypeFormation();
     });
 
-    if (selectDiplome) {
-        selectDiplome.addEventListener('change', updateSeries);
-    }
-
+    selectDiplome.addEventListener('change', updateSeries);
     selectType.addEventListener('change', updateFilieres);
 
-    selectFiliere1.addEventListener('change', function () {
-        const fac  = selectFaculte.value;
-        const type = selectType.value || 'classique';
-        const data = FILIERES[fac] || null;
-        if (!data) return;
-        const pool = (type === 'pro' && fac === 'FS') ? data.classique : data.classique;
-        buildOptions(selectFiliere2, pool, '— Aucun deuxième choix (optionnel) —', selectFiliere1.value || null);
-        selectFiliere2.disabled = pool.length <= 1;
+    serieSelect.addEventListener('change', function () {
+        if (serieHidden) serieHidden.value = this.value;
     });
 
-    // Init
-    updateSeries();
-    updateTypeFormation();
+    /* ================================================================
+       RÉGION → DÉPARTEMENT → COMMUNE
+       ================================================================ */
+    selectRegion.addEventListener('change', function () {
+        const regionId = this.value;
+
+        fillSelect(selectDepartement, [], '— Choisir d\'abord une région —', false);
+        fillSelect(selectCommune, [], '— Choisir d\'abord un département —', false);
+
+        if (!regionId) return;
+
+        fillSelect(selectDepartement, [], '— Chargement... —', false);
+
+        uebFetch('ueb_get_departements', { region_id: regionId })
+            .then(function (data) {
+                fillSelect(selectDepartement, data, '— Choisir —', true);
+            });
+    });
+
+    selectDepartement.addEventListener('change', function () {
+        const departementId = this.value;
+
+        fillSelect(selectCommune, [], '— Choisir d\'abord un département —', false);
+
+        if (!departementId) return;
+
+        fillSelect(selectCommune, [], '— Chargement... —', false);
+
+        uebFetch('ueb_get_communes', { departement_id: departementId })
+            .then(function (data) {
+                fillSelect(selectCommune, data, '— Choisir —', true);
+            });
+    });
 
     /* ================================================================
        VALIDATION + FORMAT TÉLÉPHONE  →  6XX XX XX XX  (9 chiffres)
        ================================================================ */
     function formatTel(raw) {
-        // Garder uniquement les chiffres
         const digits = raw.replace(/\D/g, '').slice(0, 9);
-        // Appliquer le masque 6XX XX XX XX
         let out = '';
         for (let i = 0; i < digits.length; i++) {
             if (i === 3 || i === 5 || i === 7) out += ' ';
@@ -285,24 +266,20 @@
             const pos    = this.selectionStart;
             const before = this.value.length;
             this.value   = formatTel(this.value);
-            // Repositionner le curseur
             const diff = this.value.length - before;
             this.setSelectionRange(pos + diff, pos + diff);
         });
         input.addEventListener('keydown', function (e) {
             const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
             if (allowed.includes(e.key)) return;
-            // Bloquer tout ce qui n'est pas un chiffre
             if (!/^[0-9]$/.test(e.key)) {
                 e.preventDefault();
             }
         });
-        // Placeholder dynamique
         input.placeholder = '6XX XX XX XX';
-        input.maxLength   = 12; // 9 chiffres + 3 espaces
+        input.maxLength   = 12;
     }
 
-    // Appliquer sur tous les champs tel existants
     document.querySelectorAll('input[type="tel"]').forEach(enforceTelInput);
 
     /* ================================================================
@@ -330,6 +307,18 @@
         row.appendChild(input);
         row.appendChild(btnRemove);
         return row;
+    }
+
+    function fillTelRows(containerId, name, values) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        const list = (values && values.length) ? values : [''];
+        list.forEach(function (val, i) {
+            const row = makeTelRow(name, i === 0);
+            row.querySelector('input').value = val;
+            container.appendChild(row);
+        });
     }
 
     const btnAddTel = document.getElementById('btn-add-tel');
@@ -401,7 +390,7 @@
                 if (!field.checked) addError(field.closest('.form-group') || field.parentElement, 'Vous devez cocher cette case.');
                 return;
             }
-            if (field.id === 'serie_diplome_select') {
+            if (field.tagName === 'SELECT') {
                 if (!field.value) {
                     field.classList.add('error');
                     addError(field.closest('.form-group') || field.parentElement, 'Ce champ est requis.');
@@ -414,7 +403,6 @@
             }
         });
 
-        // Email
         const emailField = fieldset.querySelector('input[type="email"]');
         if (emailField && emailField.value.trim()) {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value.trim())) {
@@ -445,12 +433,13 @@
         lieu_naissance        : 'Lieu de naissance',
         nationalite           : 'Nationalité',
         situation_matrimoniale: 'Situation matrimoniale',
+        statut_socio_professionnel: 'Statut socio-professionnel',
         email                 : 'Adresse e-mail',
         telephone             : 'Téléphone(s)',
         adresse               : 'Adresse actuelle',
         region_origine        : "Région d'origine",
         departement_origine   : "Département d'origine",
-        arrondissement_origine: "Arrondissement d'origine",
+        commune_origine       : "Commune d'origine",
         nom_pere              : 'Nom du père',
         nom_mere              : 'Nom de la mère',
         tel_tuteur            : 'Tél. tuteur / parent',
@@ -459,8 +448,8 @@
 
     const SECTIONS = {
         formation : ['faculte','diplome_admission','serie_diplome','niveau_lmd','type_formation','filiere_1','filiere_2','annee_obtention'],
-        etatCivil : ['nom','prenom','sexe','date_naissance','lieu_naissance','nationalite','situation_matrimoniale'],
-        contact   : ['email','telephone','adresse','region_origine','departement_origine','arrondissement_origine','nom_pere','nom_mere','tel_tuteur','profession_pere'],
+        etatCivil : ['nom','prenom','sexe','date_naissance','lieu_naissance','nationalite','situation_matrimoniale','statut_socio_professionnel'],
+        contact   : ['email','telephone','adresse','region_origine','departement_origine','commune_origine','nom_pere','nom_mere','tel_tuteur','profession_pere'],
     };
 
     const SECTION_TITLES = {
@@ -484,7 +473,7 @@
             const sel = document.getElementById('serie_diplome_select');
             if (!sel) return '';
             const opt = sel.options[sel.selectedIndex];
-            return opt ? opt.text.split('—')[0].trim() : '';
+            return opt ? opt.text : '';
         }
         if (fieldName === 'type_formation') {
             return selectType.value === 'pro' ? 'Formation Professionnelle (LP)' : 'Formation Initiale (Classique)';
@@ -534,10 +523,85 @@
     /* ================================================================
        ÉVÉNEMENTS
        ================================================================ */
+    /* ================================================================
+       COLLECTE DES DONNÉES DU FORMULAIRE (tous les champs, toutes étapes)
+       ================================================================ */
+    function collectFormData() {
+        const data = {};
+        const skip = ['action', 'preinscription_nonce', '_wpnonce', '_wp_http_referer', 'consent'];
+
+        form.querySelectorAll('input, select, textarea').forEach(function (el) {
+            if (!el.name || skip.includes(el.name)) return;
+
+            if (el.type === 'radio') {
+                if (el.checked) data[el.name] = el.value;
+                return;
+            }
+            if (el.type === 'checkbox') {
+                return; // consent exclu, pas d'autre checkbox dans le formulaire
+            }
+            if (el.name.slice(-2) === '[]') {
+                const key = el.name.slice(0, -2);
+                if (!data[key]) data[key] = [];
+                if (el.value.trim()) data[key].push(el.value.trim());
+                return;
+            }
+            data[el.name] = el.value;
+        });
+
+        return data;
+    }
+
+    /* ================================================================
+       SAUVEGARDE DE LA PROGRESSION — non bloquante (erreur silencieuse
+       en console, la navigation continue dans tous les cas)
+       ================================================================ */
+    function saveProgression(etape) {
+        const numeroDossierEl = document.getElementById('numero_dossier');
+        const numeroDossier = numeroDossierEl ? numeroDossierEl.value : '';
+        if (!numeroDossier) return;
+
+        const donnees = collectFormData();
+
+        uebFetch('ueb_save_progression', {
+            numero_dossier: numeroDossier,
+            etape: etape,
+            donnees: JSON.stringify(donnees)
+        });
+        // uebFetch logue déjà toute erreur en console ; on n'attend pas
+        // la réponse et on ne bloque jamais la navigation ici.
+    }
+
+    /* ================================================================
+       SAUVEGARDE AUTOMATIQUE SUR PERTE DE FOCUS (blur), avec anti-rebond
+       pour ne pas déclencher un appel réseau à chaque frappe. Complète la
+       sauvegarde sur "Suivant" : accord du chef de projet (Esso Daniel)
+       pour éviter la perte de champs non validés en cas de fermeture
+       accidentelle de l'onglet ou de coupure réseau.
+       ================================================================ */
+    let autoSaveTimeout = null;
+
+    function scheduleAutoSave() {
+        if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(function () {
+            saveProgression(currentStep);
+        }, 600);
+    }
+
+    form.addEventListener('blur', function (e) {
+        const el = e.target;
+        if (!el || !el.name) return;
+        // Ignore les clics sur les boutons/labels, ne cible que les vrais champs.
+        const tag = el.tagName;
+        if (tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return;
+        scheduleAutoSave();
+    }, true); // capture=true, car "blur" ne bubble pas nativement
+
     form.querySelectorAll('.btn-next').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const next = parseInt(btn.dataset.next, 10);
             if (!validateStep(currentStep)) return;
+            saveProgression(next);
             if (next === 4) buildRecap();
             showStep(next);
         });
@@ -559,19 +623,163 @@
         if (!validateStep(4)) e.preventDefault();
     });
 
-    showStep(1);
-
     /* ================================================================
-       SYNC SELECT SÉRIE → CHAMP HIDDEN (pour soumission PHP)
+       REPRISE D'UN DOSSIER
        ================================================================ */
-    const serieHidden = document.getElementById('serie_diplome');
-    const serieSelectEl = document.getElementById('serie_diplome_select');
+    async function applyResumeData(numeroDossier, etapeAtteinte, donnees) {
+        const numeroHidden = document.getElementById('numero_dossier');
+        if (numeroHidden) numeroHidden.value = numeroDossier;
+        const numeroBanner = document.querySelector('.dossier-banner-numero');
+        if (numeroBanner) numeroBanner.textContent = numeroDossier;
 
-    if (serieSelectEl && serieHidden) {
-        serieSelectEl.addEventListener('change', function () {
-            serieHidden.value = this.value;
+        const simpleFields = [
+            'nom', 'prenom', 'date_naissance', 'lieu_naissance',
+            'handicap', 'email', 'adresse',
+            'nom_pere', 'nom_mere', 'profession_pere', 'annee_obtention'
+        ];
+        simpleFields.forEach(function (name) {
+            if (donnees[name] === undefined) return;
+            const el = form.querySelector('[name="' + name + '"]');
+            if (el) el.value = donnees[name];
+        });
+
+        if (donnees.sexe) {
+            const radio = form.querySelector('input[name="sexe"][value="' + donnees.sexe + '"]');
+            if (radio) radio.checked = true;
+        }
+
+        fillTelRows('telephones-container', 'telephone[]', donnees.telephone);
+        fillTelRows('tel-tuteur-container', 'tel_tuteur[]', donnees.tel_tuteur);
+
+        // Les listes facultés/diplômes/régions/statuts sont déjà en cours de
+        // chargement depuis l'arrivée sur la page : on attend qu'elles soient prêtes.
+        await Promise.all([facultesPromise, diplomesPromise, regionsPromise, statutsPromise, nationalitesPromise, situationsPromise]);
+
+        if (donnees.statut_socio_professionnel) {
+            const el = document.getElementById('statut_socio_professionnel');
+            if (el) el.value = donnees.statut_socio_professionnel;
+        }
+
+        if (donnees.nationalite) {
+            const elNat = document.getElementById('nationalite');
+            if (elNat) elNat.value = donnees.nationalite;
+        }
+
+        if (donnees.situation_matrimoniale) {
+            const elSit = document.getElementById('situation_matrimoniale');
+            if (elSit) elSit.value = donnees.situation_matrimoniale;
+        }
+
+        if (donnees.faculte) selectFaculte.value = donnees.faculte;
+        if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
+
+        const type = donnees.type_formation || 'classique';
+        const faculteCode = getFaculteCode(donnees.faculte);
+        typeGroup.style.display = (faculteCode === 'FS') ? '' : 'none';
+        selectType.value = type;
+
+        if (donnees.faculte && donnees.diplome_admission) {
+            const series = await uebFetch('ueb_get_specialites', {
+                faculte_id: donnees.faculte,
+                diplome_id: donnees.diplome_admission
+            });
+            fillSelect(serieSelect, series, '— Choisir la série —', true);
+            if (donnees.serie_diplome) {
+                serieSelect.value = donnees.serie_diplome;
+                if (serieHidden) serieHidden.value = donnees.serie_diplome;
+            }
+        }
+
+        if (donnees.faculte) {
+            if (type === 'pro' && faculteCode === 'FS' && proNotice) {
+                proNotice.style.display = '';
+            }
+
+            const filieres1 = await uebFetch('ueb_get_filieres', {
+                faculte_id: donnees.faculte,
+                type_formation: type
+            });
+            fillSelect(selectFiliere1, filieres1, '— Choisir une filière —', true);
+            if (donnees.filiere_1) selectFiliere1.value = donnees.filiere_1;
+
+            const filieres2 = (type === 'pro')
+                ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique' })
+                : filieres1;
+            fillSelect(selectFiliere2, filieres2, '— Aucun deuxième choix (optionnel) —', filieres2.length > 0);
+            if (donnees.filiere_2) selectFiliere2.value = donnees.filiere_2;
+        }
+
+        if (donnees.region_origine) {
+            selectRegion.value = donnees.region_origine;
+            const departements = await uebFetch('ueb_get_departements', { region_id: donnees.region_origine });
+            fillSelect(selectDepartement, departements, '— Choisir —', true);
+
+            if (donnees.departement_origine) {
+                selectDepartement.value = donnees.departement_origine;
+                const communes = await uebFetch('ueb_get_communes', { departement_id: donnees.departement_origine });
+                fillSelect(selectCommune, communes, '— Choisir —', true);
+                if (donnees.commune_origine) selectCommune.value = donnees.commune_origine;
+            }
+        }
+
+        const cible = etapeAtteinte || 1;
+        if (cible >= 4) buildRecap();
+        showStep(cible);
+    }
+
+    const btnToggleReprise   = document.getElementById('btn-toggle-reprise');
+    const reprisePanel       = document.getElementById('reprise-panel');
+    const repriseInput       = document.getElementById('reprise-numero');
+    const btnRepriseValider  = document.getElementById('btn-reprise-valider');
+    const repriseMessage     = document.getElementById('reprise-message');
+
+    function showRepriseMessage(msg, isError) {
+        if (!repriseMessage) return;
+        repriseMessage.textContent = msg;
+        repriseMessage.style.display = '';
+        repriseMessage.className = 'reprise-message' + (isError ? ' reprise-message--error' : ' reprise-message--success');
+    }
+
+    if (btnToggleReprise && reprisePanel) {
+        btnToggleReprise.addEventListener('click', function () {
+            reprisePanel.style.display = (reprisePanel.style.display === 'none') ? '' : 'none';
         });
     }
 
+    if (btnRepriseValider) {
+        btnRepriseValider.addEventListener('click', function () {
+            const numero = (repriseInput.value || '').trim();
+            if (!numero) {
+                showRepriseMessage('Merci de saisir un numéro de dossier.', true);
+                return;
+            }
+
+            btnRepriseValider.disabled = true;
+            btnRepriseValider.textContent = 'Recherche...';
+
+            uebFetchRaw('ueb_get_progression', { numero_dossier: numero }).then(function (json) {
+                btnRepriseValider.disabled = false;
+                btnRepriseValider.textContent = 'Reprendre';
+
+                if (!json || !json.success) {
+                    showRepriseMessage((json && json.data && json.data.message) || 'Numéro introuvable.', true);
+                    return;
+                }
+
+                showRepriseMessage('Dossier retrouvé, chargement en cours...', false);
+                applyResumeData(json.data.numero_dossier, json.data.etape_atteinte, json.data.donnees || {}).then(function () {
+                    reprisePanel.style.display = 'none';
+                    btnToggleReprise.style.display = 'none';
+                    repriseMessage.style.display = 'none';
+                });
+            });
+        });
+    }
+
+    if (new URLSearchParams(window.location.search).get('reprise') === '1' && reprisePanel) {
+        reprisePanel.style.display = '';
+    }
+
+    showStep(1);
 
 }());
