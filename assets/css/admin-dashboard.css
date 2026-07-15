@@ -1,0 +1,31 @@
+.admin-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+
+.admin-login-wrap { max-width: 420px; margin: 4rem auto; }
+.admin-login-wrap h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+.admin-login-form .form-group { margin-bottom: 1rem; }
+.admin-login-form label { display:block; margin-bottom:.3rem; font-weight:600; }
+.admin-login-form input { width:100%; padding:.6rem .8rem; border:1px solid #ccc; border-radius:6px; }
+.admin-error { background:#fdecea; color:var(--ueb-bordeaux); padding:.7rem 1rem; border-radius:6px; margin-bottom:1rem; }
+
+.admin-dashboard-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; }
+
+.admin-filters { display:flex; gap:.7rem; margin-bottom:1.2rem; flex-wrap:wrap; }
+.admin-filters select { padding:.5rem .7rem; border-radius:6px; border:1px solid #ccc; }
+
+.admin-dossiers-table { width:100%; border-collapse:collapse; margin-bottom:2rem; }
+.admin-dossiers-table th, .admin-dossiers-table td { padding:.6rem .8rem; border-bottom:1px solid #e4e4e0; text-align:left; font-size:.9rem; }
+.admin-dossiers-table th { background:var(--ueb-green); color:#fff; }
+
+.admin-detail-table { width:100%; border-collapse:collapse; margin:1rem 0 2rem; }
+.admin-detail-table th, .admin-detail-table td { padding:.5rem .8rem; border-bottom:1px solid #e4e4e0; text-align:left; }
+.admin-detail-table th { width:220px; color:var(--ueb-gray); }
+
+.admin-kpi-grid { display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.admin-kpi { background:#fff; border-radius:10px; padding:1rem 1.5rem; box-shadow:0 1px 4px rgba(0,0,0,.08); text-align:center; min-width:160px; }
+.admin-kpi-num { display:block; font-size:1.8rem; font-weight:700; color:var(--ueb-green); }
+
+.admin-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+.admin-chart-card { background:#fff; border-radius:10px; padding:1rem; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.admin-chart-card--wide { grid-column: 1 / -1; }
+
+@media (max-width:700px) { .admin-charts-grid { grid-template-columns:1fr; } }

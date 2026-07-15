@@ -120,6 +120,27 @@ function preinscriptions_form_assets() {
 }
 add_action( 'wp_enqueue_scripts', 'preinscriptions_form_assets' );
 
+require_once( get_template_directory() . '/inc/analytics-functions.php' );
+
+function preinscriptions_admin_assets() {
+    if ( ! is_page_template( 'page-administration.php' ) ) return;
+
+    wp_enqueue_style( 'preinscriptions-admin', get_template_directory_uri() . '/assets/css/admin-dashboard.css', array( 'preinscriptions-style' ), PREINSCRIPTIONS_VERSION );
+
+    if ( ! is_user_logged_in() || ! current_user_can( 'voir_preinscriptions' ) ) return;
+
+    wp_enqueue_script( 'chartjs', get_template_directory_uri() . '/assets/js/vendor/chart.umd.min.js', array(), '4.4.0', true );
+    wp_enqueue_script( 'preinscriptions-admin-analytics', get_template_directory_uri() . '/assets/js/admin-analytics.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
+
+    wp_localize_script( 'preinscriptions-admin-analytics', 'uebAnalytics', array(
+        'parFaculte' => ueb_admin_stats_par_faculte(),
+        'parFiliere' => ueb_admin_stats_par_filiere(),
+        'parRegion'  => ueb_admin_stats_par_region(),
+        'parSexe'    => ueb_admin_stats_par_sexe(),
+        'evolution'  => ueb_admin_stats_evolution(),
+    ) );
+}
+add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
 
 /* ── 2. Custom Post Type : preinscription ── */
 function preinscriptions_register_cpt() {
@@ -143,9 +164,29 @@ function preinscriptions_register_cpt() {
 }
 add_action( 'init', 'preinscriptions_register_cpt' );
 
+/* ── Création du rôle "Gestionnaire Préinscriptions" ── */
+function ueb_register_roles() {
+    add_role(
+        'gestionnaire_preinscriptions',
+        'Gestionnaire Préinscriptions',
+        array(
+            'read'                 => true,  // accès de base à l'admin WP
+            'voir_preinscriptions' => true,
+        )
+    );
+
+    // Donner aussi la capacité aux administrateurs
+    $admin = get_role( 'administrator' );
+    if ( $admin ) {
+        $admin->add_cap( 'voir_preinscriptions' );
+    }
+}
+add_action( 'after_switch_theme', 'ueb_register_roles' );
+
 require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
 require_once( get_template_directory() . '/inc/db-schema.php' );
 require_once( get_template_directory() . '/inc/dossier-functions.php' );
 require_once( get_template_directory() . '/inc/db-schema.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
+require_once( get_template_directory() . '/inc/admin-functions.php' );
