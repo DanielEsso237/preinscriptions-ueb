@@ -676,3 +676,148 @@ select:focus-visible {
     color: var(--ueb-gris);
     margin-left: 4px;
 }
+/* ===== Bandeau numéro de dossier ===== */
+.dossier-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background-color: #f7f7f5;
+    border: 1px solid #c9a227;
+    border-left: 4px solid #1a4a2e;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.dossier-banner-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dossier-banner-label {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.dossier-banner-numero {
+    font-size: 16px;
+    color: #1a4a2e;
+    letter-spacing: 0.5px;
+}
+
+.dossier-banner-hint {
+    font-size: 12.5px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.dossier-banner--error {
+    border-color: #b91c1c;
+    border-left-color: #b91c1c;
+}
+
+.dossier-banner--error p {
+    color: #b91c1c;
+    font-size: 13.5px;
+    margin: 0;
+}
+
+
+/* ===== Reprise de dossier ===== */
+.reprise-dossier {
+    margin-bottom: 20px;
+}
+
+.reprise-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #ffffff;
+    border: 1px solid #c9a227;
+    color: #1a4a2e;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.reprise-toggle:hover {
+    background-color: #f7f7f5;
+}
+
+.reprise-panel {
+    margin-top: 12px;
+    padding: 18px 20px;
+    background-color: #f7f7f5;
+    border: 1px solid #e4e4e0;
+    border-left: 4px solid #1a4a2e;
+    border-radius: 8px;
+    max-width: 520px;
+}
+
+.reprise-panel label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: #1a4a2e;
+    margin-bottom: 8px;
+}
+
+.reprise-panel-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.reprise-panel-row input {
+    flex: 1;
+    min-width: 200px;
+    padding: 9px 12px;
+    border: 1px solid #d1d1cb;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.reprise-panel-row input:focus {
+    outline: none;
+    border-color: #1a4a2e;
+}
+
+.reprise-panel-row button {
+    background-color: #1a4a2e;
+    color: #ffffff;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.reprise-panel-row button:hover:not(:disabled) {
+    background-color: #143d25;
+}
+
+.reprise-panel-row button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.reprise-message {
+    margin: 12px 0 0 0;
+    font-size: 13px;
+}
+
+.reprise-message--error {
+    color: #b91c1c;
+}
+
+.reprise-message--success {
+    color: #1a4a2e;
+    font-weight: 600;
+}

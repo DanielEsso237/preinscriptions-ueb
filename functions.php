@@ -36,8 +36,6 @@ require get_template_directory() . '/inc/landing-page-functions.php';
  * Enregistre et charge les feuilles de style et scripts du theme.
  */
 function preinscriptions_theme_assets() {
-    // Polices auto-hebergees (Sora pour les titres, Inter pour le corps).
-    // Hbergees localement dans assets/fonts (pas d'appel a Google Fonts en CDN : RGPD + perf).
     $fonts_css = get_template_directory() . '/assets/css/fonts.css';
     wp_enqueue_style(
         'preinscriptions-fonts',
@@ -46,7 +44,6 @@ function preinscriptions_theme_assets() {
         file_exists( $fonts_css ) ? filemtime( $fonts_css ) : PREINSCRIPTIONS_VERSION
     );
 
-    // Feuille de style principale du theme (style.css a la racine).
     wp_enqueue_style(
         'preinscriptions-style',
         get_stylesheet_uri(),
@@ -54,7 +51,6 @@ function preinscriptions_theme_assets() {
         PREINSCRIPTIONS_VERSION
     );
 
-    // Header + footer : charges sur TOUTES les pages (nav.bar + site-footer).
     $hf_css = get_template_directory() . '/assets/css/header-footer.css';
     $hf_js  = get_template_directory() . '/assets/js/header-footer.js';
 
@@ -73,7 +69,6 @@ function preinscriptions_theme_assets() {
         true
     );
 
-    // Assets specifiques a la landing page : charges uniquement sur la page d'accueil.
     if ( is_front_page() ) {
         $landing_css = get_template_directory() . '/assets/css/landing-page.css';
         $landing_js  = get_template_directory() . '/assets/js/landing-page.js';
@@ -107,15 +102,21 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/css/form-preinscription.css',
             array( 'preinscriptions-style' ),
-            '1.0'
+            '1.1'
         );
         wp_enqueue_script(
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/js/form-preinscription.js',
             array(),
-            '3.1',
-            true  // chargé en footer
+            '4.0',
+            true
         );
+
+        // Passe l'URL admin-ajax.php et le nonce partagé du formulaire au JS.
+        wp_localize_script( 'preinscriptions-form', 'uebAjax', array(
+            'ajax_url' => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'preinscription_submit' ),
+        ) );
     }
 }
 add_action( 'wp_enqueue_scripts', 'preinscriptions_form_assets' );
@@ -187,6 +188,6 @@ require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
 require_once( get_template_directory() . '/inc/db-schema.php' );
 require_once( get_template_directory() . '/inc/dossier-functions.php' );
-require_once( get_template_directory() . '/inc/db-schema.php' );
+require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
