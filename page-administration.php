@@ -90,13 +90,11 @@ get_header();
             <h1>Tableau de bord — Préinscriptions</h1>
             <a href="<?php echo esc_url( wp_logout_url( get_permalink() ) ); ?>" class="btn btn-secondary">Déconnexion</a>
         </div>
+        <p class="admin-welcome">Bienvenue, <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
 
-        <p>Bienvenue, <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
+        <!-- ===== LISTE ET DÉTAIL DES DOSSIERS ===== -->
+        <h2 class="admin-section-title">Dossiers</h2>
 
-        <!-- Étape 4 : cartes de chiffres clés + graphes Chart.js viendront ici -->
-        <div id="admin-analytics"></div>
-
-        <!-- ===== ÉTAPE 3 : LISTE + DÉTAIL DES DOSSIERS ===== -->
         <?php
         $ueb_filtre_faculte = isset( $_GET['faculte'] ) ? absint( $_GET['faculte'] ) : 0;
         $ueb_filtre_statut  = isset( $_GET['statut'] ) ? sanitize_text_field( wp_unslash( $_GET['statut'] ) ) : '';
@@ -107,10 +105,10 @@ get_header();
             $detail = ueb_admin_get_dossier_detail( $ueb_numero_detail );
             if ( ! $detail ) : ?>
                 <p>Dossier introuvable.</p>
-                <a href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
+                <a class="admin-back-link" href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
             <?php else : $d = $detail['dossier']; ?>
-                <a href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
-                <h2><?php echo esc_html( $d->numero_dossier ); ?></h2>
+                <a class="admin-back-link" href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
+                <h3 class="admin-detail-header"><?php echo esc_html( $d->numero_dossier ); ?></h3>
                 <table class="admin-detail-table">
                     <tr><th>Nom</th><td><?php echo esc_html( $d->nom . ' ' . $d->prenom ); ?></td></tr>
                     <tr><th>Statut</th><td><?php echo esc_html( $d->statut ); ?></td></tr>
@@ -147,25 +145,63 @@ get_header();
                 </select>
                 <button type="submit" class="btn btn-secondary">Filtrer</button>
             </form>
-            <table class="admin-dossiers-table">
-                <thead><tr><th>N° Dossier</th><th>Nom</th><th>Prénom</th><th>Faculté</th><th>Statut</th><th>Date</th><th></th></tr></thead>
-                <tbody>
-                <?php if ( ! $dossiers ) : ?>
-                    <tr><td colspan="7">Aucun dossier trouvé.</td></tr>
-                <?php else : foreach ( $dossiers as $row ) : ?>
-                    <tr>
-                        <td><?php echo esc_html( $row->numero_dossier ); ?></td>
-                        <td><?php echo esc_html( $row->nom ); ?></td>
-                        <td><?php echo esc_html( $row->prenom ); ?></td>
-                        <td><?php echo esc_html( $row->faculte_nom ); ?></td>
-                        <td><?php echo esc_html( $row->statut ); ?></td>
-                        <td><?php echo esc_html( $row->date_creation ); ?></td>
-                        <td><a href="<?php echo esc_url( add_query_arg( 'dossier', $row->numero_dossier, get_permalink() ) ); ?>">Voir</a></td>
-                    </tr>
-                <?php endforeach; endif; ?>
-                </tbody>
-            </table>
+            <div class="admin-dossiers-table-wrap">
+                <table class="admin-dossiers-table">
+                    <thead><tr><th>N° Dossier</th><th>Nom</th><th>Prénom</th><th>Faculté</th><th>Statut</th><th>Date</th><th></th></tr></thead>
+                    <tbody>
+                    <?php if ( ! $dossiers ) : ?>
+                        <tr><td colspan="7">Aucun dossier trouvé.</td></tr>
+                    <?php else : foreach ( $dossiers as $row ) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $row->numero_dossier ); ?></td>
+                            <td><?php echo esc_html( $row->nom ); ?></td>
+                            <td><?php echo esc_html( $row->prenom ); ?></td>
+                            <td><?php echo esc_html( $row->faculte_nom ); ?></td>
+                            <td><?php echo esc_html( $row->statut ); ?></td>
+                            <td><?php echo esc_html( $row->date_creation ); ?></td>
+                            <td><a href="<?php echo esc_url( add_query_arg( 'dossier', $row->numero_dossier, get_permalink() ) ); ?>">Voir →</a></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
+        </div>
+
+        <!-- ===== STATISTIQUES ===== -->
+        <h2 class="admin-section-title">Statistiques</h2>
+
+        <?php $chiffres = ueb_admin_chiffres_cles(); ?>
+        <div id="admin-analytics">
+            <div class="admin-kpi-grid">
+                <div class="admin-kpi">
+                    <span class="admin-kpi-num"><?php echo (int) $chiffres['total']; ?></span>
+                    <span>Dossiers au total</span>
+                </div>
+                <div class="admin-kpi">
+                    <span class="admin-kpi-num"><?php echo (int) $chiffres['aujourdhui']; ?></span>
+                    <span>Dossiers aujourd'hui</span>
+                </div>
+                <div class="admin-kpi admin-kpi--taux">
+                    <span class="admin-kpi-label">Taux par faculté</span>
+                    <?php $ueb_taux_facultes = ueb_admin_taux_par_faculte(); ?>
+                    <ul class="admin-kpi-taux-list">
+                        <?php if ( ! $ueb_taux_facultes ) : ?>
+                            <li>Aucune donnée</li>
+                        <?php else : foreach ( $ueb_taux_facultes as $taux ) : ?>
+                            <li><span><?php echo esc_html( $taux->label ); ?></span> <strong><?php echo esc_html( $taux->pourcentage ); ?>%</strong></li>
+                        <?php endforeach; endif; ?>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="admin-charts-grid">
+                <div class="admin-chart-card"><canvas id="chart-faculte"></canvas></div>
+                <div class="admin-chart-card"><canvas id="chart-filiere"></canvas></div>
+                <div class="admin-chart-card"><canvas id="chart-region"></canvas></div>
+                <div class="admin-chart-card"><canvas id="chart-sexe"></canvas></div>
+                <div class="admin-chart-card admin-chart-card--wide"><canvas id="chart-evolution"></canvas></div>
+            </div>
         </div>
     </div>
 
