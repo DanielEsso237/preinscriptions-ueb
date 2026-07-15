@@ -30,6 +30,8 @@ body.home{font-family:var(--body);color:var(--ink);background:var(--bg);line-hei
 .btn{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--head);font-weight:600;font-size:1rem;padding:.95rem 1.8rem;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:transform .25s ease,box-shadow .25s ease,background .25s}
 .btn-primary{background:var(--gold);color:#2a1f00;box-shadow:0 12px 26px -12px rgba(212,160,23,.9)}
 .btn-primary:hover{transform:translateY(-3px);box-shadow:0 18px 34px -12px rgba(212,160,23,1)}
+.btn-secondary{background:transparent;border-color:var(--green);color:var(--green)}
+.btn-secondary:hover{background:var(--green);color:#fff}
 .btn-ghost{border-color:#cfe0d6;color:var(--ink);background:#fff}
 .btn-ghost:hover{border-color:var(--green);color:var(--green)}
 nav.bar{position:sticky;top:0;z-index:30;background:rgba(244,248,246,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}

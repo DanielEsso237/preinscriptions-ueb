@@ -1,165 +1,49 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-/* ============================================================
-   TABLES DE TRADUCTION (codes → libellés complets)
-   ============================================================ */
+/**
+ * Récupère un libellé (ou toute autre colonne) dans une table de référence
+ * ueb_* à partir d'un ID. $table et $column sont toujours des littéraux
+ * fournis par notre propre code (jamais issus de $_POST), donc pas de
+ * risque d'injection malgré l'absence de placeholder sur les identifiants.
+ */
+function ueb_pdf_lookup( $table, $id, $column = 'libelle' ) {
+    global $wpdb;
 
-function ueb_translate_diplome( $code ) {
-    $map = array(
-        'bac'    => 'Baccalauréat',
-        'gce_ol' => 'GCE O-Level',
-    );
-    return $map[ $code ] ?? $code;
+    if ( ! $id ) {
+        return '';
+    }
+
+    $valeur = $wpdb->get_var( $wpdb->prepare(
+        "SELECT `{$column}` FROM `{$table}` WHERE id = %d",
+        $id
+    ) );
+
+    return $valeur ? $valeur : '';
+}
+
+/**
+ * Calcule l'année académique en cours au format "AAAA-AAAA", avec bascule
+ * au 1er octobre (avant octobre : année N-1/N ; à partir d'octobre : N/N+1).
+ */
+function ueb_get_annee_academique() {
+    $mois = (int) date( 'n' );
+    $annee = (int) date( 'Y' );
+
+    if ( $mois >= 10 ) {
+        return $annee . '&ndash;' . ( $annee + 1 );
+    }
+
+    return ( $annee - 1 ) . '&ndash;' . $annee;
 }
 
 function ueb_translate_type_formation( $code ) {
+    // Enum simple (classique/pro), pas une table de référence : reste codé en dur.
     $map = array(
         'classique' => 'Formation Classique (étude de dossier)',
         'pro'       => 'Formation Professionnelle — Licence Pro (LP)',
     );
     return $map[ $code ] ?? $code;
-}
-
-function ueb_translate_situation( $code ) {
-    $map = array(
-        'celibataire' => 'Célibataire',
-        'marie'       => 'Marié(e)',
-        'divorce'     => 'Divorcé(e)',
-        'veuf'        => 'Veuf / Veuve',
-    );
-    return $map[ $code ] ?? $code;
-}
-
-function ueb_translate_region( $code ) {
-    $map = array(
-        'adamaoua'    => 'Adamaoua',
-        'centre'      => 'Centre',
-        'est'         => 'Est',
-        'extreme_nord'=> 'Extrême-Nord',
-        'littoral'    => 'Littoral',
-        'nord'        => 'Nord',
-        'nord_ouest'  => 'Nord-Ouest',
-        'ouest'       => 'Ouest',
-        'sud'         => 'Sud',
-        'sud_ouest'   => 'Sud-Ouest',
-    );
-    return $map[ $code ] ?? $code;
-}
-
-function ueb_translate_serie( $faculte, $diplome, $code ) {
-    $series = array(
-        'FS' => array(
-            'bac'    => array(
-                'C'  => 'Série C — Mathématiques et Sciences Physiques',
-                'D'  => 'Série D — Sciences Naturelles',
-                'TI' => 'Série TI — Technique Industrielle',
-                'F'  => 'Série F — Sciences Techniques',
-            ),
-            'gce_ol' => array(
-                'GCE_OL_SCI' => 'GCE O/L — Sciences',
-            ),
-        ),
-        'FALSH' => array(
-            'bac'    => array(
-                'A' => 'Série A — Lettres, Philosophie, Sciences Sociales',
-                'B' => 'Série B — Sciences Économiques et Sociales',
-            ),
-            'gce_ol' => array(
-                'GCE_OL_ART' => 'GCE O/L — Arts & Humanities',
-                'GCE_OL_SOC' => 'GCE O/L — Social Sciences',
-            ),
-        ),
-        'FSEG' => array(
-            'bac'    => array(
-                'B'  => 'Série B — Sciences Économiques et Sociales',
-                'G'  => 'Série G — Techniques de Gestion',
-                'TI' => 'Série TI — Technique Industrielle',
-                'C'  => 'Série C — Mathématiques et Sciences Physiques',
-                'D'  => 'Série D — Sciences Naturelles',
-            ),
-            'gce_ol' => array(
-                'GCE_OL_COM' => 'GCE O/L — Commerce / Economics',
-                'GCE_OL_GEN' => 'GCE O/L — General',
-            ),
-        ),
-        'FSJP' => array(
-            'bac'    => array(
-                'A' => 'Série A — Lettres, Philosophie, Sciences Sociales',
-                'B' => 'Série B — Sciences Économiques et Sociales',
-                'C' => 'Série C — Mathématiques et Sciences Physiques',
-                'D' => 'Série D — Sciences Naturelles',
-                'G' => 'Série G — Techniques de Gestion',
-            ),
-            'gce_ol' => array(
-                'GCE_OL_ALL' => 'GCE O/L — Toutes séries',
-            ),
-        ),
-    );
-
-    return $series[ $faculte ][ $diplome ][ $code ] ?? $code;
-}
-
-function ueb_translate_filiere( $faculte, $type_formation, $code ) {
-    if ( empty( $code ) ) {
-        return '';
-    }
-
-    $filieres = array(
-        'FS' => array(
-            'classique' => array(
-                'TIC'  => "TIC — Technologies de l'Information et de la Communication",
-                'PHY'  => 'Physique Appliquée',
-                'CHIM' => 'Chimie Appliquée',
-                'GEO'  => 'Géosciences et Environnement',
-                'ROSE' => 'ROSE — Recherche Opérationnelle et Économétrie',
-                'BIO'  => 'Biotechnologie et Pharmacognosie',
-            ),
-            'pro' => array(
-                'LP_BIO_MED' => 'LP Sciences Biomédicales et Médico-Sanitaires',
-                'LP_BIO_AGR' => "LP Sciences Biologiques Appliquées à l'Agriculture",
-            ),
-        ),
-        'FALSH' => array(
-            'classique' => array(
-                'LMF'   => 'Lettres Modernes Françaises',
-                'LEA'   => 'Langues Étrangères Appliquées',
-                'HIST'  => 'Histoire',
-                'GEO'   => 'Géographie',
-                'PHILO' => 'Philosophie',
-                'SOCIO' => 'Sociologie',
-            ),
-            'pro' => array(),
-        ),
-        'FSEG' => array(
-            'classique' => array(
-                'ECO'    => 'Économie',
-                'GEST'   => 'Gestion',
-                'COMPTA' => 'Comptabilité et Finance',
-                'BANQUE' => 'Banque et Finance',
-                'MKT'    => 'Marketing',
-            ),
-            'pro' => array(),
-        ),
-        'FSJP' => array(
-            'classique' => array(
-                'DPRIV' => 'Droit Privé',
-                'DPUB'  => 'Droit Public',
-                'SCPOL' => 'Science Politique',
-                'RI'    => 'Relations Internationales',
-            ),
-            'pro' => array(),
-        ),
-    );
-
-    if ( isset( $filieres[ $faculte ][ $type_formation ][ $code ] ) ) {
-        return $filieres[ $faculte ][ $type_formation ][ $code ];
-    }
-    if ( isset( $filieres[ $faculte ]['classique'][ $code ] ) ) {
-        return $filieres[ $faculte ]['classique'][ $code ];
-    }
-
-    return $code;
 }
 
 
@@ -184,29 +68,50 @@ function ueb_handle_pdf_generation() {
     // toute sanitisation, sinon des noms comme "Eto'o" deviennent "Eto\'o".
     $posted = wp_unslash( $_POST );
 
+    $numero_dossier         = sanitize_text_field( $posted['numero_dossier'] ?? '' );
     $nom                    = sanitize_text_field( $posted['nom'] ?? '' );
     $prenom                 = sanitize_text_field( $posted['prenom'] ?? '' );
     $sexe                   = sanitize_text_field( $posted['sexe'] ?? '' );
     $date_naissance         = sanitize_text_field( $posted['date_naissance'] ?? '' );
     $lieu_naissance         = sanitize_text_field( $posted['lieu_naissance'] ?? '' );
-    $nationalite            = sanitize_text_field( $posted['nationalite'] ?? '' );
-    $situation_matrimoniale = sanitize_text_field( $posted['situation_matrimoniale'] ?? '' );
-    $faculte                = sanitize_text_field( $posted['faculte'] ?? '' );
-    $diplome_admission      = sanitize_text_field( $posted['diplome_admission'] ?? '' );
-    $serie_diplome          = sanitize_text_field( $posted['serie_diplome'] ?? '' );
     $niveau_lmd             = sanitize_text_field( $posted['niveau_lmd'] ?? '' );
     $type_formation         = sanitize_text_field( $posted['type_formation'] ?? 'classique' );
-    $filiere_1              = sanitize_text_field( $posted['filiere_1'] ?? '' );
-    $filiere_2              = sanitize_text_field( $posted['filiere_2'] ?? '' );
     $annee_obtention        = absint( $posted['annee_obtention'] ?? 0 );
     $email                  = sanitize_email( $posted['email'] ?? '' );
     $adresse                = sanitize_text_field( $posted['adresse'] ?? '' );
-    $region_origine         = sanitize_text_field( $posted['region_origine'] ?? '' );
-    $departement_origine    = sanitize_text_field( $posted['departement_origine'] ?? '' );
-    $arrondissement_origine = sanitize_text_field( $posted['arrondissement_origine'] ?? '' );
     $nom_pere               = sanitize_text_field( $posted['nom_pere'] ?? '' );
     $nom_mere               = sanitize_text_field( $posted['nom_mere'] ?? '' );
     $profession_pere        = sanitize_text_field( $posted['profession_pere'] ?? '' );
+
+    // Champs stockés en ID de FK : on récupère les libellés via les tables ueb_*.
+    $faculte_id       = absint( $posted['faculte'] ?? 0 );
+    $diplome_id       = absint( $posted['diplome_admission'] ?? 0 );
+    $serie_id         = absint( $posted['serie_diplome'] ?? 0 );
+    $filiere_1_id     = absint( $posted['filiere_1'] ?? 0 );
+    $filiere_2_id     = absint( $posted['filiere_2'] ?? 0 );
+    $nationalite_id   = absint( $posted['nationalite'] ?? 0 );
+    $situation_id     = absint( $posted['situation_matrimoniale'] ?? 0 );
+    $statut_socio_id  = absint( $posted['statut_socio_professionnel'] ?? 0 );
+    $region_id        = absint( $posted['region_origine'] ?? 0 );
+    $departement_id   = absint( $posted['departement_origine'] ?? 0 );
+    $commune_id       = absint( $posted['commune_origine'] ?? 0 );
+
+    global $wpdb;
+    $faculte_row = $faculte_id ? $wpdb->get_row( $wpdb->prepare(
+        "SELECT code, nom_fr, nom_en, logo FROM ueb_facultes WHERE id = %d", $faculte_id
+    ) ) : null;
+
+    $diplome_admission_label      = ueb_pdf_lookup( 'ueb_diplomes_admission', $diplome_id, 'libelle' );
+    $type_formation_label         = ueb_translate_type_formation( $type_formation );
+    $situation_matrimoniale_label = ueb_pdf_lookup( 'ueb_situations_matrimoniales', $situation_id, 'libelle' );
+    $nationalite_label            = ueb_pdf_lookup( 'ueb_nationalites', $nationalite_id, 'nom' );
+    $statut_socio_pro_label       = ueb_pdf_lookup( 'ueb_statuts_socio_professionnels', $statut_socio_id, 'libelle' );
+    $region_origine_label         = ueb_pdf_lookup( 'ueb_regions', $region_id, 'nom' );
+    $departement_origine_label    = ueb_pdf_lookup( 'ueb_departements', $departement_id, 'nom' );
+    $commune_origine_label        = ueb_pdf_lookup( 'ueb_communes', $commune_id, 'nom' );
+    $serie_diplome_label          = ueb_pdf_lookup( 'ueb_specialites_diplome', $serie_id, 'libelle' );
+    $filiere_1_label              = ueb_pdf_lookup( 'ueb_filieres', $filiere_1_id, 'libelle' );
+    $filiere_2_label              = ueb_pdf_lookup( 'ueb_filieres', $filiere_2_id, 'libelle' );
 
     $telephones  = isset( $posted['telephone'] ) ? (array) $posted['telephone'] : array();
     $tels_tuteur = isset( $posted['tel_tuteur'] ) ? (array) $posted['tel_tuteur'] : array();
@@ -214,16 +119,6 @@ function ueb_handle_pdf_generation() {
     $tels_tuteur = array_map( 'sanitize_text_field', $tels_tuteur );
     $telephone_str  = implode( ' / ', array_filter( $telephones ) );
     $tel_tuteur_str = implode( ' / ', array_filter( $tels_tuteur ) );
-
-    $diplome_admission_label      = ueb_translate_diplome( $diplome_admission );
-    $type_formation_label         = ueb_translate_type_formation( $type_formation );
-    $situation_matrimoniale_label = ueb_translate_situation( $situation_matrimoniale );
-    $region_origine_label         = ueb_translate_region( $region_origine );
-    $serie_diplome_label          = ueb_translate_serie( $faculte, $diplome_admission, $serie_diplome );
-    $filiere_1_label              = ueb_translate_filiere( $faculte, $type_formation, $filiere_1 );
-    $filiere_2_label              = ueb_translate_filiere( $faculte, 'classique', $filiere_2 );
-
-    $numero_dossier = 'UEB-' . date('Y') . '-' . strtoupper( substr( $nom, 0, 3 ) ) . rand(1000, 9999);
 
     $pdf = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
     $pdf->SetCreator( 'UEB Préinscriptions' );
@@ -238,10 +133,11 @@ function ueb_handle_pdf_generation() {
 
     $html = ueb_pdf_html(
         $numero_dossier, $nom, $prenom, $sexe, $date_naissance, $lieu_naissance,
-        $nationalite, $situation_matrimoniale_label, $faculte, $diplome_admission_label,
+        $nationalite_label, $situation_matrimoniale_label, $statut_socio_pro_label,
+        $faculte_row, $diplome_admission_label,
         $serie_diplome_label, $niveau_lmd, $type_formation_label, $filiere_1_label, $filiere_2_label,
         $annee_obtention, $email, $telephone_str, $adresse, $region_origine_label,
-        $departement_origine, $arrondissement_origine, $nom_pere, $nom_mere,
+        $departement_origine_label, $commune_origine_label, $nom_pere, $nom_mere,
         $tel_tuteur_str, $profession_pere
     );
 
@@ -261,40 +157,6 @@ add_action( 'template_redirect', 'ueb_handle_pdf_generation' );
  */
 function ueb_e( $value ) {
     return htmlspecialchars( (string) $value, ENT_QUOTES, 'UTF-8' );
-}
-
-
-function ueb_get_faculte_info( $code ) {
-    $img_dir = get_template_directory() . '/assets/images/';
-
-    $facultes = array(
-        'FS'    => array(
-            'fr'   => 'Faculté des Sciences',
-            'en'   => 'Faculty of Science',
-            'logo' => $img_dir . 'logo-fs.jpg',
-        ),
-        'FALSH' => array(
-            'fr'   => 'Faculté des Arts, Lettres et Sciences Humaines',
-            'en'   => 'Faculty of Arts, Letters and Human Sciences',
-            'logo' => $img_dir . 'logo-falsh.jpg',
-        ),
-        'FSEG'  => array(
-            'fr'   => 'Faculté des Sciences Économiques et de Gestion',
-            'en'   => 'Faculty of Economics and Management',
-            'logo' => $img_dir . 'logo-fseg.jpg',
-        ),
-        'FSJP'  => array(
-            'fr'   => 'Faculté des Sciences Juridiques et Politiques',
-            'en'   => 'Faculty of Law and Political Sciences',
-            'logo' => $img_dir . 'logo-fsjp.jpg',
-        ),
-    );
-
-    return $facultes[ $code ] ?? array(
-        'fr'   => $code,
-        'en'   => $code,
-        'logo' => '',
-    );
 }
 
 
@@ -326,15 +188,20 @@ function ueb_pdf_section_2col( $title, $fields, $vert, $fond ) {
 
 
 function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
-    $lieu_naissance, $nationalite, $situation_matrimoniale, $faculte,
+    $lieu_naissance, $nationalite, $situation_matrimoniale, $statut_socio_pro, $faculte_row,
     $diplome_admission, $serie_diplome, $niveau_lmd, $type_formation,
     $filiere_1, $filiere_2, $annee_obtention, $email, $telephone_str,
-    $adresse, $region_origine, $departement_origine, $arrondissement_origine,
+    $adresse, $region_origine, $departement_origine, $commune_origine,
     $nom_pere, $nom_mere, $tel_tuteur_str, $profession_pere ) {
 
     $date_generation = date('d/m/Y à H:i');
     $logo_ueb = get_template_directory() . '/assets/images/logo-ueb.png';
-    $fac_info = ueb_get_faculte_info( $faculte );
+
+    $fac_nom_fr = $faculte_row ? $faculte_row->nom_fr : '';
+    $fac_nom_en = $faculte_row ? $faculte_row->nom_en : '';
+    $fac_logo   = ( $faculte_row && $faculte_row->logo )
+        ? get_template_directory() . '/assets/images/' . $faculte_row->logo
+        : '';
 
     $vert = '#1a4a2e';
     $or   = '#c9a227';
@@ -355,14 +222,14 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
                 <img src="' . $logo_ueb . '" width="40" /><br/>
                 <div style="height:14px;"></div>';
 
-    if ( $fac_info['logo'] && file_exists( $fac_info['logo'] ) ) {
+    if ( $fac_logo && file_exists( $fac_logo ) ) {
         $html .= '
-                <img src="' . $fac_info['logo'] . '" width="40" /><br/>';
+                <img src="' . $fac_logo . '" width="40" /><br/>';
     }
 
     $html .= '
-                <p style="margin:4px 0 0 0;font-size:10px;font-weight:bold;color:' . $vert . ';">' . $fac_info['fr'] . '</p>
-                <p style="margin:0;font-size:8px;font-style:italic;color:' . $gris . ';">' . $fac_info['en'] . '</p>
+                <p style="margin:4px 0 0 0;font-size:10px;font-weight:bold;color:' . $vert . ';">' . ueb_e( $fac_nom_fr ) . '</p>
+                <p style="margin:0;font-size:8px;font-style:italic;color:' . $gris . ';">' . ueb_e( $fac_nom_en ) . '</p>
             </td>
             <td width="34%" align="center" style="font-size:8.5px;line-height:1.7;">
                 <strong>REPUBLIC OF CAMEROON</strong><br/>
@@ -377,10 +244,10 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
         <tr>
             <td width="65%" style="vertical-align:middle;">
                 <h2 style="color:' . $vert . ';margin:0;font-size:17px;">FICHE DE PRÉINSCRIPTION</h2>
-                <p style="margin:2px 0 0 0;font-size:9px;color:' . $gris . ';">Année académique 2025–2027</p>
+                <p style="margin:2px 0 0 0;font-size:9px;color:' . $gris . ';">Année académique ' . ueb_get_annee_academique() . '</p>
             </td>
             <td width="35%" align="right" style="vertical-align:middle;">
-                <p style="font-size:9.5px;color:' . $gris . ';margin:0;white-space:nowrap;">N&deg; Dossier : <strong style="color:' . $or . ';">' . $numero_dossier . '</strong></p>
+                <p style="font-size:9.5px;color:' . $gris . ';margin:0;white-space:nowrap;">N&deg; Dossier : <strong style="color:' . $or . ';">' . ueb_e( $numero_dossier ) . '</strong></p>
             </td>
         </tr>
     </table>
@@ -400,13 +267,14 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
     $html .= '<div style="height:9px;"></div>';
 
     $html .= ueb_pdf_section_2col( 'ÉTAT CIVIL', array(
-        'Nom'                    => ueb_e( strtoupper( $nom ) ),
+        'Nom'                     => ueb_e( strtoupper( $nom ) ),
         'Prénom(s)'               => ueb_e( $prenom ),
         'Sexe'                    => ( $sexe === 'M' ? 'Masculin' : 'Féminin' ),
         'Date de naissance'       => ueb_e( $date_naissance ),
         'Lieu de naissance'       => ueb_e( $lieu_naissance ),
         'Nationalité'             => ueb_e( $nationalite ),
         'Situation matrimoniale'  => ueb_e( $situation_matrimoniale ),
+        'Statut socio-professionnel' => ueb_e( $statut_socio_pro ),
     ), $vert, $fond );
 
     $html .= '<div style="height:9px;"></div>';
@@ -417,7 +285,7 @@ function ueb_pdf_html( $numero_dossier, $nom, $prenom, $sexe, $date_naissance,
         'Adresse actuelle'         => ueb_e( $adresse ),
         "Région d'origine"         => ueb_e( $region_origine ),
         "Département d'origine"    => ueb_e( $departement_origine ),
-        'Arrondissement'           => ueb_e( $arrondissement_origine ),
+        "Commune d'origine"        => ueb_e( $commune_origine ),
         'Nom du père'              => ueb_e( $nom_pere ),
         'Nom de la mère'           => ueb_e( $nom_mere ),
         'Tél. tuteur / parent'     => ueb_e( $tel_tuteur_str ),

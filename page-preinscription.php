@@ -9,6 +9,52 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/*
+ * Numéro de dossier : priorité session > cookie persistant > génération.
+ * - Session : évite une régénération à chaque refresh pendant la même visite.
+ * - Cookie (30 jours) : survit à la fermeture du navigateur, sur le même appareil.
+ * - Changer d'appareil (ex. téléphone -> PC) n'est PAS couvert par session/cookie :
+ *   c'est volontaire, le candidat utilise alors le panneau "Continuer ma
+ *   préinscription" (numéro saisi manuellement), qui fonctionne sur
+ *   n'importe quel appareil puisque le numéro est stocké côté serveur.
+ */
+$ueb_numero_dossier = null;
+
+if ( ! empty( $_SESSION['ueb_numero_dossier_en_cours'] ) ) {
+    $ueb_numero_dossier = $_SESSION['ueb_numero_dossier_en_cours'];
+} elseif ( ! empty( $_COOKIE['ueb_numero_dossier'] ) ) {
+    $numero_candidat = sanitize_text_field( wp_unslash( $_COOKIE['ueb_numero_dossier'] ) );
+    // On ne réutilise le numéro que s'il existe VRAIMENT en base (brouillon en cours).
+    // Un dossier déjà soumis n'a plus de ligne de progression (supprimée à la
+    // soumission finale, voir ueb_handle_db_save), donc il ne sera jamais réutilisé ici.
+    if ( null !== ueb_recuperer_progression( $numero_candidat ) ) {
+        $ueb_numero_dossier = $numero_candidat;
+    }
+}
+
+if ( null === $ueb_numero_dossier ) {
+    $ueb_numero_dossier = ueb_initialiser_dossier();
+}
+
+if ( false === $ueb_numero_dossier ) {
+    error_log( '[UEB Préinscription] Échec d\'initialisation du dossier sur page-preinscription.php' );
+} else {
+    $_SESSION['ueb_numero_dossier_en_cours'] = $ueb_numero_dossier;
+    // NOTE sécurité : le cookie n'est pas une preuve d'identité, un candidat
+    // pourrait en théorie le modifier pour tomber sur le numéro de quelqu'un
+    // d'autre. Risque accepté ici (dossier "brouillon" non sensible avant
+    // soumission) ; à documenter comme limite connue du projet.
+    setcookie(
+        'ueb_numero_dossier',
+        $ueb_numero_dossier,
+        time() + 30 * DAY_IN_SECONDS,
+        COOKIEPATH,
+        COOKIE_DOMAIN,
+        is_ssl(),
+        true
+    );
+}
+
 get_header();
 ?>
 
@@ -21,6 +67,32 @@ get_header();
     </div>
 
     <div class="preinscription-container">
+
+        <?php if ( $ueb_numero_dossier ) : ?>
+        <div class="dossier-banner" role="status">
+            <div class="dossier-banner-text">
+                <span class="dossier-banner-label">Ton numéro de dossier :</span>
+                <strong class="dossier-banner-numero"><?php echo esc_html( $ueb_numero_dossier ); ?></strong>
+            </div>
+            <p class="dossier-banner-hint">Note-le bien : il te permettra de reprendre ta préinscription si tu es interrompu(e).</p>
+        </div>
+        <?php else : ?>
+        <div class="dossier-banner dossier-banner--error" role="alert">
+            <p>Une erreur est survenue lors de la génération de ton numéro de dossier. Merci de recharger la page ou de réessayer plus tard.</p>
+        </div>
+        <?php endif; ?>
+
+        <div class="reprise-dossier">
+            <button type="button" id="btn-toggle-reprise" class="reprise-toggle">Tu as déjà un dossier ? Continuer ma préinscription</button>
+            <div id="reprise-panel" class="reprise-panel" style="display:none;">
+                <label for="reprise-numero">Numéro de dossier</label>
+                <div class="reprise-panel-row">
+                    <input type="text" id="reprise-numero" placeholder="Ex : UEB-2026-000123">
+                    <button type="button" id="btn-reprise-valider" class="btn-secondary">Reprendre</button>
+                </div>
+                <p id="reprise-message" class="reprise-message" style="display:none;"></p>
+            </div>
+        </div>
 
         <div class="steps-nav" role="navigation" aria-label="Étapes du formulaire">
             <div class="step-item active" data-step="1">
@@ -60,7 +132,7 @@ get_header();
                     "generate_pdf", via template_redirect avec des priorités
                     différentes (5 puis 10).
                 -->
-                <!-- Champ caché pour la valeur de série (alimenté par le select JS) -->
+                <input type="hidden" id="numero_dossier" name="numero_dossier" value="<?php echo esc_attr( $ueb_numero_dossier ?: '' ); ?>">
                 <input type="hidden" id="serie_diplome" name="serie_diplome">
 
                 <!-- ===== ÉTAPE 1 : FORMATION ===== -->
@@ -72,35 +144,29 @@ get_header();
 
                     <div class="form-grid">
 
-                        <!-- Faculté -->
+                        <!-- Faculté — peuplé via AJAX (ueb_get_facultes) -->
                         <div class="form-group full">
                             <label for="faculte">Faculté / École <span class="required">*</span></label>
-                            <select id="faculte" name="faculte" required>
-                                <option value="">— Choisir —</option>
-                                <option value="FS">Faculté des Sciences (FS)</option>
-                                <option value="FALSH">Faculté des Arts, Lettres et Sciences Humaines (FALSH)</option>
-                                <option value="FSEG">Faculté des Sciences Économiques et de Gestion (FSEG)</option>
-                                <option value="FSJP">Faculté des Sciences Juridiques et Politiques (FSJP)</option>
+                            <select id="faculte" name="faculte" required disabled>
+                                <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
-                        <!-- Diplôme d'admission -->
+                        <!-- Diplôme d'admission — peuplé via AJAX (ueb_get_diplomes) -->
                         <div class="form-group full">
                             <label for="diplome_admission">Diplôme d'admission <span class="required">*</span></label>
-                            <select id="diplome_admission" name="diplome_admission" required>
-                                <option value="">— Choisir —</option>
-                                <option value="bac">Baccalauréat</option>
-                                <option value="gce_ol">GCE O-Level</option>
+                            <select id="diplome_admission" name="diplome_admission" required disabled>
+                                <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
-                        <!-- Série / Spécialité — select dynamique par faculté -->
+                        <!-- Série / Spécialité — select dynamique par faculté + diplôme -->
                         <div class="form-group full" id="serie-container">
                             <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span></label>
                             <select id="serie_diplome_select" required disabled>
-                                <option value="">— Choisir d'abord une faculté —</option>
+                                <option value="">— Choisir d'abord la faculté et le diplôme —</option>
                             </select>
-                            <span class="field-hint">La liste des séries s'adapte selon la faculté choisie.</span>
+                            <span class="field-hint">La liste des séries s'adapte selon la faculté et le diplôme choisis.</span>
                         </div>
 
                         <!-- Type de formation — visible uniquement pour FS -->
@@ -116,7 +182,7 @@ get_header();
                         <!-- Notice filières pro -->
                         <div class="form-group full" id="pro-filiere-notice" style="display:none;">
                             <p class="form-notice form-notice--info">
-                                En formation professionnelle, ton <strong>1er choix</strong> est une filière LP. 
+                                En formation professionnelle, ton <strong>1er choix</strong> est une filière LP.
                                 Tu peux indiquer en <strong>2e choix</strong> une filière classique que tu souhaites intégrer en parallèle par dossier, en attendant les résultats du concours LP.
                             </p>
                         </div>
@@ -209,19 +275,27 @@ get_header();
                             <input type="text" id="lieu_naissance" name="lieu_naissance" placeholder="Ville / Village" required>
                         </div>
 
+                        <!-- Nationalité — peuplé via AJAX (ueb_get_nationalites) -->
                         <div class="form-group">
                             <label for="nationalite">Nationalité <span class="required">*</span></label>
-                            <input type="text" id="nationalite" name="nationalite" value="Camerounaise" required>
+                            <select id="nationalite" name="nationalite" required disabled>
+                                <option value="">— Choisir ta nationalité —</option>
+                            </select>
                         </div>
 
+                        <!-- Situation matrimoniale — peuplé via AJAX (ueb_get_situations_matrimoniales) -->
                         <div class="form-group full">
                             <label for="situation_matrimoniale">Situation matrimoniale <span class="required">*</span></label>
-                            <select id="situation_matrimoniale" name="situation_matrimoniale" required>
-                                <option value="">— Choisir —</option>
-                                <option value="celibataire">Célibataire</option>
-                                <option value="marie">Marié(e)</option>
-                                <option value="divorce">Divorcé(e)</option>
-                                <option value="veuf">Veuf / Veuve</option>
+                            <select id="situation_matrimoniale" name="situation_matrimoniale" required disabled>
+                                <option value="">— Choisir ta situation —</option>
+                            </select>
+                        </div>
+
+                        <!-- Statut socio-professionnel — peuplé via AJAX (ueb_get_statuts_socio_pro) -->
+                        <div class="form-group full">
+                            <label for="statut_socio_professionnel">Statut socio-professionnel <span class="required">*</span></label>
+                            <select id="statut_socio_professionnel" name="statut_socio_professionnel" required disabled>
+                                <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
@@ -255,7 +329,6 @@ get_header();
                             <input type="email" id="email" name="email" placeholder="ton@email.com" required autocomplete="email">
                         </div>
 
-                        <!-- Téléphones multiples étudiant -->
                         <div class="form-group full">
                             <label>Téléphone(s) <span class="required">*</span></label>
                             <div id="telephones-container">
@@ -273,31 +346,28 @@ get_header();
                             <input type="text" id="adresse" name="adresse" placeholder="Quartier, ville" required>
                         </div>
 
+                        <!-- Région d'origine — peuplé via AJAX (ueb_get_regions) -->
                         <div class="form-group">
                             <label for="region_origine">Région d'origine <span class="required">*</span></label>
-                            <select id="region_origine" name="region_origine" required>
-                                <option value="">— Choisir —</option>
-                                <option value="adamaoua">Adamaoua</option>
-                                <option value="centre">Centre</option>
-                                <option value="est">Est</option>
-                                <option value="extreme_nord">Extrême-Nord</option>
-                                <option value="littoral">Littoral</option>
-                                <option value="nord">Nord</option>
-                                <option value="nord_ouest">Nord-Ouest</option>
-                                <option value="ouest">Ouest</option>
-                                <option value="sud">Sud</option>
-                                <option value="sud_ouest">Sud-Ouest</option>
+                            <select id="region_origine" name="region_origine" required disabled>
+                                <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
+                        <!-- Département d'origine — dépend de la région -->
                         <div class="form-group">
                             <label for="departement_origine">Département d'origine <span class="required">*</span></label>
-                            <input type="text" id="departement_origine" name="departement_origine" placeholder="Ex : Mfoundi, Wouri…" required>
+                            <select id="departement_origine" name="departement_origine" required disabled>
+                                <option value="">— Choisir d'abord une région —</option>
+                            </select>
                         </div>
 
+                        <!-- Commune d'origine — dépend du département (remplace l'ancien champ "arrondissement") -->
                         <div class="form-group full">
-                            <label for="arrondissement_origine">Arrondissement d'origine <span class="required">*</span></label>
-                            <input type="text" id="arrondissement_origine" name="arrondissement_origine" placeholder="Ex : Ebolowa 1er" required>
+                            <label for="commune_origine">Commune d'origine <span class="required">*</span></label>
+                            <select id="commune_origine" name="commune_origine" required disabled>
+                                <option value="">— Choisir d'abord un département —</option>
+                            </select>
                         </div>
 
                         <div class="form-group">
@@ -310,7 +380,6 @@ get_header();
                             <input type="text" id="nom_mere" name="nom_mere" placeholder="Nom complet" required>
                         </div>
 
-                        <!-- Téléphone tuteur multiple -->
                         <div class="form-group full">
                             <label>Téléphone tuteur / parent <span class="required">*</span></label>
                             <div id="tel-tuteur-container">

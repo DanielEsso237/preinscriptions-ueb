@@ -33,6 +33,7 @@ $inscription = esc_url( preinscriptions_inscription_url() );
         <div class="cta">
             <a class="btn btn-primary" href="<?php echo $inscription; ?>">Commencer ma préinscription
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn btn-secondary" href="<?php echo esc_url( add_query_arg( 'reprise', '1', $inscription ) ); ?>">Continuer ma préinscription</a>
             <a class="btn btn-ghost" href="#facultes">Voir les filières</a>
         </div>
         <div class="mini">
