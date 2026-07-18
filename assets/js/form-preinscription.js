@@ -58,6 +58,7 @@
     const selectType      = document.getElementById('type_formation');
     const selectFiliere1  = document.getElementById('filiere_1');
     const selectFiliere2  = document.getElementById('filiere_2');
+    const selectFiliere3  = document.getElementById('filiere_3');
     const serieSelect     = document.getElementById('serie_diplome_select');
     const proNotice       = document.getElementById('pro-filiere-notice');
     const typeGroup       = document.getElementById('type-formation-group');
@@ -71,6 +72,8 @@
        HELPER : peupler un <select> à partir d'un tableau {id, libelle}
        ================================================================ */
     function fillSelect(select, items, placeholder, enable) {
+        if (!select) return;
+
         select.innerHTML = '';
         const opt0 = document.createElement('option');
         opt0.value = '';
@@ -88,7 +91,8 @@
     }
 
     /* ================================================================
-       CHARGEMENT INITIAL : facultés, diplômes, régions
+       CHARGEMENT INITIAL : facultés, diplômes, régions, listes de
+       référence "statiques" (pas de cascade dépendante d'un autre champ)
        ================================================================ */
     const facultesPromise = uebFetch('ueb_get_facultes').then(function (data) {
         facultesCache = data;
@@ -118,6 +122,36 @@
 
     const situationsPromise = uebFetch('ueb_get_situations_matrimoniales').then(function (data) {
         fillSelect(document.getElementById('situation_matrimoniale'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const niveauxPromise = uebFetch('ueb_get_niveaux_lmd').then(function (data) {
+        fillSelect(document.getElementById('niveau_lmd'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const mentionsPromise = uebFetch('ueb_get_mentions').then(function (data) {
+        fillSelect(document.getElementById('mention'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const statutsEtudiantPromise = uebFetch('ueb_get_statuts_etudiant').then(function (data) {
+        fillSelect(document.getElementById('statut_etudiant'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const languesPromise = uebFetch('ueb_get_langues').then(function (data) {
+        fillSelect(document.getElementById('premiere_langue'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const sportsPromise = uebFetch('ueb_get_sports').then(function (data) {
+        fillSelect(document.getElementById('sport_prefere'), data, '— Choisir —', true);
+        return data;
+    });
+
+    const artsPromise = uebFetch('ueb_get_arts').then(function (data) {
+        fillSelect(document.getElementById('art_pratique'), data, '— Choisir —', true);
         return data;
     });
 
@@ -162,6 +196,8 @@
 
     /* ================================================================
        FILIÈRES — dépend de faculté + type de formation
+       (1er choix : selon le type ; 2e et 3e choix : toujours la liste
+       "classique" de la faculté)
        ================================================================ */
     function updateFilieres() {
         const faculteId = selectFaculte.value;
@@ -171,7 +207,7 @@
         if (proNotice) proNotice.style.display = 'none';
 
         if (!faculteId) {
-            [selectFiliere1, selectFiliere2].forEach(function (s) {
+            [selectFiliere1, selectFiliere2, selectFiliere3].forEach(function (s) {
                 fillSelect(s, [], "— Choisir d'abord une faculté —", false);
             });
             return;
@@ -181,7 +217,7 @@
             proNotice.style.display = '';
         }
 
-        [selectFiliere1, selectFiliere2].forEach(function (s) {
+        [selectFiliere1, selectFiliere2, selectFiliere3].forEach(function (s) {
             fillSelect(s, [], '— Chargement... —', false);
         });
 
@@ -189,15 +225,18 @@
             .then(function (data) {
                 fillSelect(selectFiliere1, data, '— Choisir une filière —', true);
 
-                // 2e choix de filière : toujours les filières "classique" de la faculté
-                // (même logique qu'avant : en pro, le 2e choix reste une filière classique).
+                // 2e et 3e choix de filière : toujours les filières "classique"
+                // de la faculté (même logique qu'avant pour le 2e choix, le
+                // 3e choix suit la même règle).
                 if (type === 'pro') {
                     uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
                         .then(function (data2) {
                             fillSelect(selectFiliere2, data2, '— Aucun deuxième choix (optionnel) —', data2.length > 0);
+                            fillSelect(selectFiliere3, data2, '— Aucun troisième choix (optionnel) —', data2.length > 0);
                         });
                 } else {
                     fillSelect(selectFiliere2, data, '— Aucun deuxième choix (optionnel) —', data.length > 1);
+                    fillSelect(selectFiliere3, data, '— Aucun troisième choix (optionnel) —', data.length > 1);
                 }
             });
     }
@@ -283,7 +322,9 @@
     document.querySelectorAll('input[type="tel"]').forEach(enforceTelInput);
 
     /* ================================================================
-       TÉLÉPHONES MULTIPLES
+       TÉLÉPHONES MULTIPLES (candidat uniquement — les numéros du père,
+       de la mère et du tuteur sont désormais des champs simples, gérés
+       comme n'importe quel autre input du formulaire)
        ================================================================ */
     function makeTelRow(name, required) {
         const row = document.createElement('div');
@@ -328,15 +369,8 @@
         });
     }
 
-    document.querySelectorAll('.btn-add-field[data-target]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const container = document.getElementById(btn.dataset.target);
-            if (container) container.appendChild(makeTelRow(btn.dataset.name || 'tel[]', false));
-        });
-    });
-
     /* ================================================================
-       NAVIGATION ENTRE ÉTAPES
+       NAVIGATION ENTRE ÉTAPES (5 étapes désormais)
        ================================================================ */
     function showStep(n) {
         steps.forEach(function (s) { s.classList.remove('active'); });
@@ -425,15 +459,21 @@
         type_formation        : 'Type de formation',
         filiere_1             : '1er choix de filière',
         filiere_2             : '2e choix de filière',
+        filiere_3             : '3e choix de filière',
         annee_obtention       : "Année d'obtention",
+        moyenne_diplome       : 'Moyenne obtenue',
+        mention               : 'Mention',
+        statut_etudiant       : 'Statut',
         nom                   : 'Nom',
         prenom                : 'Prénom(s)',
         sexe                  : 'Sexe',
         date_naissance        : 'Date de naissance',
         lieu_naissance        : 'Lieu de naissance',
         nationalite           : 'Nationalité',
+        premiere_langue       : 'Première langue',
         situation_matrimoniale: 'Situation matrimoniale',
         statut_socio_professionnel: 'Statut socio-professionnel',
+        handicap              : 'Situation de handicap',
         email                 : 'Adresse e-mail',
         telephone             : 'Téléphone(s)',
         adresse               : 'Adresse actuelle',
@@ -441,32 +481,37 @@
         departement_origine   : "Département d'origine",
         commune_origine       : "Commune d'origine",
         nom_pere              : 'Nom du père',
-        nom_mere              : 'Nom de la mère',
-        tel_tuteur            : 'Tél. tuteur / parent',
+        numero_pere           : 'Numéro du père',
         profession_pere       : 'Profession du père',
+        nom_mere              : 'Nom de la mère',
+        numero_mere           : 'Numéro de la mère',
+        profession_mere       : 'Profession de la mère',
+        nom_tuteur            : 'Nom du tuteur',
+        numero_tuteur         : 'Numéro du tuteur',
+        sport_prefere         : 'Sport préféré',
+        art_pratique          : 'Art pratiqué',
+        numero_certificat_medical : 'N° certificat médical',
+        lieu_obtention_certificat : "Lieu d'obtention du certificat",
     };
 
     const SECTIONS = {
-        formation : ['faculte','diplome_admission','serie_diplome','niveau_lmd','type_formation','filiere_1','filiere_2','annee_obtention'],
-        etatCivil : ['nom','prenom','sexe','date_naissance','lieu_naissance','nationalite','situation_matrimoniale','statut_socio_professionnel'],
-        contact   : ['email','telephone','adresse','region_origine','departement_origine','commune_origine','nom_pere','nom_mere','tel_tuteur','profession_pere'],
+        formation : ['faculte','diplome_admission','serie_diplome','niveau_lmd','type_formation','filiere_1','filiere_2','filiere_3','annee_obtention','moyenne_diplome','mention','statut_etudiant'],
+        etatCivil : ['nom','prenom','sexe','date_naissance','lieu_naissance','nationalite','premiere_langue','situation_matrimoniale','statut_socio_professionnel','handicap'],
+        contact   : ['email','telephone','adresse','region_origine','departement_origine','commune_origine','nom_pere','numero_pere','profession_pere','nom_mere','numero_mere','profession_mere','nom_tuteur','numero_tuteur'],
+        divers    : ['sport_prefere','art_pratique','numero_certificat_medical','lieu_obtention_certificat'],
     };
 
     const SECTION_TITLES = {
         formation : 'Formation choisie',
         etatCivil : 'État civil',
         contact   : 'Contact & origine',
+        divers    : 'Informations diverses',
     };
 
     function getFieldValue(fieldName) {
         if (fieldName === 'telephone') {
             const vals = [];
             document.querySelectorAll('input[name="telephone[]"]').forEach(function (i) { if (i.value.trim()) vals.push(i.value.trim()); });
-            return vals.join(', ');
-        }
-        if (fieldName === 'tel_tuteur') {
-            const vals = [];
-            document.querySelectorAll('input[name="tel_tuteur[]"]').forEach(function (i) { if (i.value.trim()) vals.push(i.value.trim()); });
             return vals.join(', ');
         }
         if (fieldName === 'serie_diplome') {
@@ -477,6 +522,10 @@
         }
         if (fieldName === 'type_formation') {
             return selectType.value === 'pro' ? 'Formation Professionnelle (LP)' : 'Formation Initiale (Classique)';
+        }
+        if (fieldName === 'handicap') {
+            const checked = form.querySelector('input[name="handicap"]:checked');
+            return checked ? (checked.value === 'oui' ? 'Oui' : 'Non') : '';
         }
         const el = form.querySelector('[name="' + fieldName + '"]');
         if (!el) return '';
@@ -602,7 +651,7 @@
             const next = parseInt(btn.dataset.next, 10);
             if (!validateStep(currentStep)) return;
             saveProgression(next);
-            if (next === 4) buildRecap();
+            if (next === 5) buildRecap();
             showStep(next);
         });
     });
@@ -620,7 +669,7 @@
     });
 
     form.addEventListener('submit', function (e) {
-        if (!validateStep(4)) e.preventDefault();
+        if (!validateStep(5)) e.preventDefault();
     });
 
     /* ================================================================
@@ -634,8 +683,12 @@
 
         const simpleFields = [
             'nom', 'prenom', 'date_naissance', 'lieu_naissance',
-            'handicap', 'email', 'adresse',
-            'nom_pere', 'nom_mere', 'profession_pere', 'annee_obtention'
+            'email', 'adresse',
+            'nom_pere', 'numero_pere', 'profession_pere',
+            'nom_mere', 'numero_mere', 'profession_mere',
+            'nom_tuteur', 'numero_tuteur',
+            'annee_obtention', 'moyenne_diplome',
+            'numero_certificat_medical', 'lieu_obtention_certificat'
         ];
         simpleFields.forEach(function (name) {
             if (donnees[name] === undefined) return;
@@ -648,12 +701,21 @@
             if (radio) radio.checked = true;
         }
 
-        fillTelRows('telephones-container', 'telephone[]', donnees.telephone);
-        fillTelRows('tel-tuteur-container', 'tel_tuteur[]', donnees.tel_tuteur);
+        if (donnees.handicap) {
+            const radio = form.querySelector('input[name="handicap"][value="' + donnees.handicap + '"]');
+            if (radio) radio.checked = true;
+        }
 
-        // Les listes facultés/diplômes/régions/statuts sont déjà en cours de
-        // chargement depuis l'arrivée sur la page : on attend qu'elles soient prêtes.
-        await Promise.all([facultesPromise, diplomesPromise, regionsPromise, statutsPromise, nationalitesPromise, situationsPromise]);
+        fillTelRows('telephones-container', 'telephone[]', donnees.telephone);
+
+        // Les listes facultés/diplômes/régions/statuts/niveaux/mentions/
+        // langues/sports/arts sont déjà en cours de chargement depuis
+        // l'arrivée sur la page : on attend qu'elles soient prêtes.
+        await Promise.all([
+            facultesPromise, diplomesPromise, regionsPromise, statutsPromise,
+            nationalitesPromise, situationsPromise, niveauxPromise, mentionsPromise,
+            statutsEtudiantPromise, languesPromise, sportsPromise, artsPromise
+        ]);
 
         if (donnees.statut_socio_professionnel) {
             const el = document.getElementById('statut_socio_professionnel');
@@ -668,6 +730,36 @@
         if (donnees.situation_matrimoniale) {
             const elSit = document.getElementById('situation_matrimoniale');
             if (elSit) elSit.value = donnees.situation_matrimoniale;
+        }
+
+        if (donnees.niveau_lmd) {
+            const elNiveau = document.getElementById('niveau_lmd');
+            if (elNiveau) elNiveau.value = donnees.niveau_lmd;
+        }
+
+        if (donnees.mention) {
+            const elMention = document.getElementById('mention');
+            if (elMention) elMention.value = donnees.mention;
+        }
+
+        if (donnees.statut_etudiant) {
+            const elStatutEtu = document.getElementById('statut_etudiant');
+            if (elStatutEtu) elStatutEtu.value = donnees.statut_etudiant;
+        }
+
+        if (donnees.premiere_langue) {
+            const elLangue = document.getElementById('premiere_langue');
+            if (elLangue) elLangue.value = donnees.premiere_langue;
+        }
+
+        if (donnees.sport_prefere) {
+            const elSport = document.getElementById('sport_prefere');
+            if (elSport) elSport.value = donnees.sport_prefere;
+        }
+
+        if (donnees.art_pratique) {
+            const elArt = document.getElementById('art_pratique');
+            if (elArt) elArt.value = donnees.art_pratique;
         }
 
         if (donnees.faculte) selectFaculte.value = donnees.faculte;
@@ -702,11 +794,14 @@
             fillSelect(selectFiliere1, filieres1, '— Choisir une filière —', true);
             if (donnees.filiere_1) selectFiliere1.value = donnees.filiere_1;
 
-            const filieres2 = (type === 'pro')
+            const filieres23 = (type === 'pro')
                 ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique' })
                 : filieres1;
-            fillSelect(selectFiliere2, filieres2, '— Aucun deuxième choix (optionnel) —', filieres2.length > 0);
+            fillSelect(selectFiliere2, filieres23, '— Aucun deuxième choix (optionnel) —', filieres23.length > 0);
             if (donnees.filiere_2) selectFiliere2.value = donnees.filiere_2;
+
+            fillSelect(selectFiliere3, filieres23, '— Aucun troisième choix (optionnel) —', filieres23.length > 0);
+            if (donnees.filiere_3) selectFiliere3.value = donnees.filiere_3;
         }
 
         if (donnees.region_origine) {
@@ -723,7 +818,7 @@
         }
 
         const cible = etapeAtteinte || 1;
-        if (cible >= 4) buildRecap();
+        if (cible >= 5) buildRecap();
         showStep(cible);
     }
 

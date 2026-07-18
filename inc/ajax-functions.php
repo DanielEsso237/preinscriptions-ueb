@@ -1,7 +1,8 @@
 <?php
 /**
  * Endpoints AJAX pour les selects dynamiques du formulaire de préinscription
- * (facultés, diplômes, spécialités, filières, régions, départements, communes).
+ * (facultés, diplômes, spécialités, filières, régions, départements, communes,
+ * niveaux LMD, mentions, statuts étudiants, langues, sports, arts).
  *
  * @package Preinscriptions_UEB
  */
@@ -304,3 +305,69 @@ function ueb_ajax_get_situations_matrimoniales() {
 }
 add_action( 'wp_ajax_ueb_get_situations_matrimoniales', 'ueb_ajax_get_situations_matrimoniales' );
 add_action( 'wp_ajax_nopriv_ueb_get_situations_matrimoniales', 'ueb_ajax_get_situations_matrimoniales' );
+
+/* ------------------------------------------------------------------ */
+/* Niveaux LMD                                                         */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_niveaux_lmd() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
+add_action( 'wp_ajax_nopriv_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
+
+/* ------------------------------------------------------------------ */
+/* Mentions                                                             */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_mentions() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_mentions ORDER BY ordre ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_mentions', 'ueb_ajax_get_mentions' );
+add_action( 'wp_ajax_nopriv_ueb_get_mentions', 'ueb_ajax_get_mentions' );
+
+/* ------------------------------------------------------------------ */
+/* Statuts étudiants (CEMAC / hors CEMAC)                               */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_statuts_etudiant() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiants ORDER BY libelle ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_statuts_etudiant', 'ueb_ajax_get_statuts_etudiant' );
+add_action( 'wp_ajax_nopriv_ueb_get_statuts_etudiant', 'ueb_ajax_get_statuts_etudiant' );
+
+/* ------------------------------------------------------------------ */
+/* Langues                                                              */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_langues() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_langues ORDER BY libelle ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_langues', 'ueb_ajax_get_langues' );
+add_action( 'wp_ajax_nopriv_ueb_get_langues', 'ueb_ajax_get_langues' );
+
+/* ------------------------------------------------------------------ */
+/* Sports                                                               */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_sports() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_sports ORDER BY libelle ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_sports', 'ueb_ajax_get_sports' );
+add_action( 'wp_ajax_nopriv_ueb_get_sports', 'ueb_ajax_get_sports' );
+
+/* ------------------------------------------------------------------ */
+/* Arts                                                                 */
+/* ------------------------------------------------------------------ */
+function ueb_ajax_get_arts() {
+    ueb_ajax_check_nonce();
+    global $wpdb;
+    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_arts ORDER BY libelle ASC" ) );
+}
+add_action( 'wp_ajax_ueb_get_arts', 'ueb_ajax_get_arts' );
+add_action( 'wp_ajax_nopriv_ueb_get_arts', 'ueb_ajax_get_arts' );

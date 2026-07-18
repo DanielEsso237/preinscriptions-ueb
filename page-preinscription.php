@@ -112,6 +112,11 @@ get_header();
             <div class="step-separator"></div>
             <div class="step-item" data-step="4">
                 <div class="step-circle">4</div>
+                <span class="step-label">Divers</span>
+            </div>
+            <div class="step-separator"></div>
+            <div class="step-item" data-step="5">
+                <div class="step-circle">5</div>
                 <span class="step-label">Confirmation</span>
             </div>
         </div>
@@ -125,7 +130,7 @@ get_header();
                 <!--
                     NOTE : un seul champ "action" doit exister dans tout le formulaire
                     (sa valeur "generate_pdf" est ajoutée juste avant le bouton de
-                    soumission, à l'étape 4). Avoir deux champs hidden avec le même
+                    soumission, à l'étape 5). Avoir deux champs hidden avec le même
                     name="action" causait un bug : seule la dernière valeur du DOM
                     était envoyée dans $_POST, donc ueb_handle_db_save() (Oriol) et
                     ueb_handle_pdf_generation() (Yann) réagissent tous les deux à
@@ -138,7 +143,7 @@ get_header();
                 <!-- ===== ÉTAPE 1 : FORMATION ===== -->
                 <fieldset class="form-step active" data-step="1">
                     <legend class="step-heading">
-                        <span class="step-num">Étape 1 / 4</span>
+                        <span class="step-num">Étape 1 / 5</span>
                         Choix de ta formation
                     </legend>
 
@@ -146,7 +151,7 @@ get_header();
 
                         <!-- Faculté — peuplé via AJAX (ueb_get_facultes) -->
                         <div class="form-group full">
-                            <label for="faculte">Faculté / École <span class="required">*</span></label>
+                            <label for="faculte">Faculté / École <span class="required">*</span><span class="field-trans">Faculty / School</span></label>
                             <select id="faculte" name="faculte" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
@@ -154,7 +159,7 @@ get_header();
 
                         <!-- Diplôme d'admission — peuplé via AJAX (ueb_get_diplomes) -->
                         <div class="form-group full">
-                            <label for="diplome_admission">Diplôme d'admission <span class="required">*</span></label>
+                            <label for="diplome_admission">Diplôme d'admission <span class="required">*</span><span class="field-trans">Admission diploma</span></label>
                             <select id="diplome_admission" name="diplome_admission" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
@@ -162,7 +167,7 @@ get_header();
 
                         <!-- Série / Spécialité — select dynamique par faculté + diplôme -->
                         <div class="form-group full" id="serie-container">
-                            <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span></label>
+                            <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span><span class="field-trans">Diploma series / specialty</span></label>
                             <select id="serie_diplome_select" required disabled>
                                 <option value="">— Choisir d'abord la faculté et le diplôme —</option>
                             </select>
@@ -171,7 +176,7 @@ get_header();
 
                         <!-- Type de formation — visible uniquement pour FS -->
                         <div class="form-group full" id="type-formation-group" style="display:none;">
-                            <label for="type_formation">Type de formation <span class="required">*</span></label>
+                            <label for="type_formation">Type de formation <span class="required">*</span><span class="field-trans">Training type</span></label>
                             <select id="type_formation" name="type_formation">
                                 <option value="classique">Formation Classique (étude de dossier)</option>
                                 <option value="pro">Formation Professionnelle — Licence Pro (LP)</option>
@@ -189,7 +194,7 @@ get_header();
 
                         <!-- 1er choix de filière -->
                         <div class="form-group full">
-                            <label for="filiere_1">1er choix de filière <span class="required">*</span></label>
+                            <label for="filiere_1">1er choix de filière <span class="required">*</span><span class="field-trans">1st choice of program</span></label>
                             <select id="filiere_1" name="filiere_1" required disabled>
                                 <option value="">— Choisir d'abord une faculté —</option>
                             </select>
@@ -197,30 +202,54 @@ get_header();
 
                         <!-- 2e choix de filière -->
                         <div class="form-group full">
-                            <label for="filiere_2">2e choix de filière <span class="field-optional">(optionnel)</span></label>
+                            <label for="filiere_2">2e choix de filière <span class="field-optional">(optionnel)</span><span class="field-trans">2nd choice of program</span></label>
                             <select id="filiere_2" name="filiere_2" disabled>
                                 <option value="">— Aucun deuxième choix —</option>
                             </select>
                         </div>
 
-                        <!-- Niveau LMD — figé L1 -->
+                        <!-- 3e choix de filière -->
                         <div class="form-group full">
-                            <label for="niveau_lmd">Niveau LMD</label>
-                            <input
-                                type="text"
-                                id="niveau_lmd"
-                                name="niveau_lmd"
-                                value="Licence 1"
-                                readonly
-                                class="field-locked"
-                            >
-                            <span class="field-hint">Les préinscriptions sont ouvertes en Licence 1 uniquement.</span>
+                            <label for="filiere_3">3e choix de filière <span class="field-optional">(optionnel)</span><span class="field-trans">3rd choice of program</span></label>
+                            <select id="filiere_3" name="filiere_3" disabled>
+                                <option value="">— Aucun troisième choix —</option>
+                            </select>
+                        </div>
+
+                        <!-- Niveau LMD — désormais un vrai select, peuplé via AJAX (ueb_get_niveaux_lmd) -->
+                        <div class="form-group full">
+                            <label for="niveau_lmd">Niveau LMD <span class="required">*</span><span class="field-trans">LMD level</span></label>
+                            <select id="niveau_lmd" name="niveau_lmd" required disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
                         </div>
 
                         <!-- Année d'obtention -->
                         <div class="form-group full">
-                            <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span></label>
+                            <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
                             <input type="number" id="annee_obtention" name="annee_obtention" min="1990" max="2025" placeholder="Ex : 2024" required>
+                        </div>
+
+                        <!-- Moyenne obtenue -->
+                        <div class="form-group">
+                            <label for="moyenne_diplome">Moyenne obtenue au diplôme <span class="required">*</span><span class="field-trans">Average obtained</span></label>
+                            <input type="number" id="moyenne_diplome" name="moyenne_diplome" step="0.01" min="0" max="20" placeholder="Ex : 13.5" required>
+                        </div>
+
+                        <!-- Mention — peuplé via AJAX (ueb_get_mentions) -->
+                        <div class="form-group">
+                            <label for="mention">Mention <span class="required">*</span><span class="field-trans">Mention / Honors</span></label>
+                            <select id="mention" name="mention" required disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
+                        </div>
+
+                        <!-- Statut de l'étudiant — peuplé via AJAX (ueb_get_statuts_etudiant) -->
+                        <div class="form-group full">
+                            <label for="statut_etudiant">Statut <span class="required">*</span><span class="field-trans">Student status</span></label>
+                            <select id="statut_etudiant" name="statut_etudiant" required disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
                         </div>
 
                     </div>
@@ -236,23 +265,23 @@ get_header();
                 <!-- ===== ÉTAPE 2 : ÉTAT CIVIL ===== -->
                 <fieldset class="form-step" data-step="2">
                     <legend class="step-heading">
-                        <span class="step-num">Étape 2 / 4</span>
+                        <span class="step-num">Étape 2 / 5</span>
                         Ton état civil
                     </legend>
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="nom">Nom <span class="required">*</span></label>
+                            <label for="nom">Nom <span class="required">*</span><span class="field-trans">Last name</span></label>
                             <input type="text" id="nom" name="nom" placeholder="Ton nom de famille" required autocomplete="family-name">
                         </div>
 
                         <div class="form-group">
-                            <label for="prenom">Prénom(s) <span class="required">*</span></label>
+                            <label for="prenom">Prénom(s) <span class="required">*</span><span class="field-trans">First name(s)</span></label>
                             <input type="text" id="prenom" name="prenom" placeholder="Ton ou tes prénoms" required autocomplete="given-name">
                         </div>
 
                         <div class="form-group">
-                            <label>Sexe <span class="required">*</span></label>
+                            <label>Sexe <span class="required">*</span><span class="field-trans">Gender</span></label>
                             <div class="radio-group">
                                 <label class="radio-option">
                                     <input type="radio" name="sexe" value="M" required>
@@ -266,26 +295,34 @@ get_header();
                         </div>
 
                         <div class="form-group">
-                            <label for="date_naissance">Date de naissance <span class="required">*</span></label>
+                            <label for="date_naissance">Date de naissance <span class="required">*</span><span class="field-trans">Date of birth</span></label>
                             <input type="date" id="date_naissance" name="date_naissance" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="lieu_naissance">Lieu de naissance <span class="required">*</span></label>
+                            <label for="lieu_naissance">Lieu de naissance <span class="required">*</span><span class="field-trans">Place of birth</span></label>
                             <input type="text" id="lieu_naissance" name="lieu_naissance" placeholder="Ville / Village" required>
                         </div>
 
                         <!-- Nationalité — peuplé via AJAX (ueb_get_nationalites) -->
                         <div class="form-group">
-                            <label for="nationalite">Nationalité <span class="required">*</span></label>
+                            <label for="nationalite">Nationalité <span class="required">*</span><span class="field-trans">Nationality</span></label>
                             <select id="nationalite" name="nationalite" required disabled>
                                 <option value="">— Choisir ta nationalité —</option>
                             </select>
                         </div>
 
+                        <!-- Première langue — peuplé via AJAX (ueb_get_langues) -->
+                        <div class="form-group">
+                            <label for="premiere_langue">Première langue <span class="required">*</span><span class="field-trans">First language</span></label>
+                            <select id="premiere_langue" name="premiere_langue" required disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
+                        </div>
+
                         <!-- Situation matrimoniale — peuplé via AJAX (ueb_get_situations_matrimoniales) -->
                         <div class="form-group full">
-                            <label for="situation_matrimoniale">Situation matrimoniale <span class="required">*</span></label>
+                            <label for="situation_matrimoniale">Situation matrimoniale <span class="required">*</span><span class="field-trans">Marital status</span></label>
                             <select id="situation_matrimoniale" name="situation_matrimoniale" required disabled>
                                 <option value="">— Choisir ta situation —</option>
                             </select>
@@ -293,15 +330,18 @@ get_header();
 
                         <!-- Statut socio-professionnel — peuplé via AJAX (ueb_get_statuts_socio_pro) -->
                         <div class="form-group full">
-                            <label for="statut_socio_professionnel">Statut socio-professionnel <span class="required">*</span></label>
+                            <label for="statut_socio_professionnel">Statut socio-professionnel <span class="required">*</span><span class="field-trans">Socio-professional status</span></label>
                             <select id="statut_socio_professionnel" name="statut_socio_professionnel" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
                         <div class="form-group full">
-                            <label for="handicap">Situation de handicap éventuelle</label>
-                            <input type="text" id="handicap" name="handicap" placeholder="Laisser vide si non concerné(e)">
+                            <label>Situation de handicap <span class="required">*</span><span class="field-trans">Disability status</span></label>
+                            <div class="radio-group">
+                                <label class="radio-option"><input type="radio" name="handicap" value="non" required checked><span>Non</span></label>
+                                <label class="radio-option"><input type="radio" name="handicap" value="oui"><span>Oui</span></label>
+                            </div>
                         </div>
                     </div>
 
@@ -318,19 +358,19 @@ get_header();
                 <!-- ===== ÉTAPE 3 : CONTACT & ORIGINE ===== -->
                 <fieldset class="form-step" data-step="3">
                     <legend class="step-heading">
-                        <span class="step-num">Étape 3 / 4</span>
+                        <span class="step-num">Étape 3 / 5</span>
                         Contact & origine
                     </legend>
 
                     <div class="form-grid">
 
                         <div class="form-group full">
-                            <label for="email">Adresse e-mail <span class="required">*</span></label>
+                            <label for="email">Adresse e-mail <span class="required">*</span><span class="field-trans">Email address</span></label>
                             <input type="email" id="email" name="email" placeholder="ton@email.com" required autocomplete="email">
                         </div>
 
                         <div class="form-group full">
-                            <label>Téléphone(s) <span class="required">*</span></label>
+                            <label>Téléphone(s) <span class="required">*</span><span class="field-trans">Phone number(s)</span></label>
                             <div id="telephones-container">
                                 <div class="tel-row">
                                     <input type="tel" name="telephone[]" placeholder="6X XX XX XX XX" required class="tel-input">
@@ -342,13 +382,13 @@ get_header();
                         </div>
 
                         <div class="form-group full">
-                            <label for="adresse">Adresse actuelle <span class="required">*</span></label>
+                            <label for="adresse">Adresse actuelle <span class="required">*</span><span class="field-trans">Current address</span></label>
                             <input type="text" id="adresse" name="adresse" placeholder="Quartier, ville" required>
                         </div>
 
                         <!-- Région d'origine — peuplé via AJAX (ueb_get_regions) -->
                         <div class="form-group">
-                            <label for="region_origine">Région d'origine <span class="required">*</span></label>
+                            <label for="region_origine">Région d'origine <span class="required">*</span><span class="field-trans">Region of origin</span></label>
                             <select id="region_origine" name="region_origine" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
@@ -356,7 +396,7 @@ get_header();
 
                         <!-- Département d'origine — dépend de la région -->
                         <div class="form-group">
-                            <label for="departement_origine">Département d'origine <span class="required">*</span></label>
+                            <label for="departement_origine">Département d'origine <span class="required">*</span><span class="field-trans">Department of origin</span></label>
                             <select id="departement_origine" name="departement_origine" required disabled>
                                 <option value="">— Choisir d'abord une région —</option>
                             </select>
@@ -364,37 +404,46 @@ get_header();
 
                         <!-- Commune d'origine — dépend du département (remplace l'ancien champ "arrondissement") -->
                         <div class="form-group full">
-                            <label for="commune_origine">Commune d'origine <span class="required">*</span></label>
+                            <label for="commune_origine">Commune d'origine <span class="required">*</span><span class="field-trans">Municipality of origin</span></label>
                             <select id="commune_origine" name="commune_origine" required disabled>
                                 <option value="">— Choisir d'abord un département —</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label for="nom_pere">Nom du père <span class="required">*</span></label>
+                            <label for="nom_pere">Nom du père <span class="required">*</span><span class="field-trans">Father's name</span></label>
                             <input type="text" id="nom_pere" name="nom_pere" placeholder="Nom complet" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="numero_pere">Numéro du père <span class="field-trans">Father's phone number</span></label>
+                            <input type="tel" id="numero_pere" name="numero_pere" placeholder="6X XX XX XX XX">
                         </div>
 
                         <div class="form-group">
-                            <label for="nom_mere">Nom de la mère <span class="required">*</span></label>
+                            <label for="nom_mere">Nom de la mère <span class="required">*</span><span class="field-trans">Mother's name</span></label>
                             <input type="text" id="nom_mere" name="nom_mere" placeholder="Nom complet" required>
                         </div>
-
-                        <div class="form-group full">
-                            <label>Téléphone tuteur / parent <span class="required">*</span></label>
-                            <div id="tel-tuteur-container">
-                                <div class="tel-row">
-                                    <input type="tel" name="tel_tuteur[]" placeholder="6X XX XX XX XX" required class="tel-input">
-                                </div>
-                            </div>
-                            <button type="button" class="btn-add-field" data-target="tel-tuteur-container" data-name="tel_tuteur[]">
-                                <span>+</span> Ajouter un numéro
-                            </button>
+                        <div class="form-group">
+                            <label for="numero_mere">Numéro de la mère <span class="field-trans">Mother's phone number</span></label>
+                            <input type="tel" id="numero_mere" name="numero_mere" placeholder="6X XX XX XX XX">
                         </div>
 
-                        <div class="form-group full">
-                            <label for="profession_pere">Profession du père</label>
+                        <div class="form-group">
+                            <label for="nom_tuteur">Nom du tuteur <span class="field-trans">Guardian's name</span></label>
+                            <input type="text" id="nom_tuteur" name="nom_tuteur" placeholder="Nom complet (si applicable)">
+                        </div>
+                        <div class="form-group">
+                            <label for="numero_tuteur">Numéro du tuteur <span class="field-trans">Guardian's phone number</span></label>
+                            <input type="tel" id="numero_tuteur" name="numero_tuteur" placeholder="6X XX XX XX XX">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="profession_pere">Profession du père <span class="field-trans">Father's occupation</span></label>
                             <input type="text" id="profession_pere" name="profession_pere" placeholder="Ex : Enseignant">
+                        </div>
+                        <div class="form-group">
+                            <label for="profession_mere">Profession de la mère <span class="field-trans">Mother's occupation</span></label>
+                            <input type="text" id="profession_mere" name="profession_mere" placeholder="Ex : Commerçante">
                         </div>
 
                     </div>
@@ -404,15 +453,58 @@ get_header();
                             <span class="btn-arrow">←</span> Précédent
                         </button>
                         <button type="button" class="btn-next btn-primary" data-next="4">
+                            Suivant <span class="btn-arrow">→</span>
+                        </button>
+                    </div>
+                </fieldset>
+
+                <!-- ===== ÉTAPE 4 : INFORMATIONS DIVERSES ===== -->
+                <fieldset class="form-step" data-step="4">
+                    <legend class="step-heading">
+                        <span class="step-num">Étape 4 / 5</span>
+                        Informations diverses
+                    </legend>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sport_prefere">Sport préféré <span class="field-trans">Favorite sport</span></label>
+                            <select id="sport_prefere" name="sport_prefere" disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numero_certificat_medical">N° certificat médical <span class="field-trans">Medical certificate number</span></label>
+                            <input type="text" id="numero_certificat_medical" name="numero_certificat_medical" placeholder="Laisser vide si non disponible">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="art_pratique">Art pratiqué <span class="field-trans">Art practiced</span></label>
+                            <select id="art_pratique" name="art_pratique" disabled>
+                                <option value="">— Chargement... —</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lieu_obtention_certificat">Lieu d'obtention du certificat <span class="field-trans">Place certificate obtained</span></label>
+                            <input type="text" id="lieu_obtention_certificat" name="lieu_obtention_certificat" placeholder="Ex : Centre médico-social d'Ébolowa">
+                        </div>
+                    </div>
+
+                    <div class="form-nav">
+                        <button type="button" class="btn-prev btn-secondary" data-prev="3">
+                            <span class="btn-arrow">←</span> Précédent
+                        </button>
+                        <button type="button" class="btn-next btn-primary" data-next="5">
                             Vérifier <span class="btn-arrow">→</span>
                         </button>
                     </div>
                 </fieldset>
 
-                <!-- ===== ÉTAPE 4 : RÉCAPITULATIF ===== -->
-                <fieldset class="form-step" data-step="4">
+                <!-- ===== ÉTAPE 5 : RÉCAPITULATIF ===== -->
+                <fieldset class="form-step" data-step="5">
                     <legend class="step-heading">
-                        <span class="step-num">Étape 4 / 4</span>
+                        <span class="step-num">Étape 5 / 5</span>
                         Vérifie ta demande
                     </legend>
 
@@ -426,7 +518,7 @@ get_header();
                     </div>
 
                     <div class="form-nav">
-                        <button type="button" class="btn-prev btn-secondary" data-prev="3">
+                        <button type="button" class="btn-prev btn-secondary" data-prev="4">
                             <span class="btn-arrow">←</span> Modifier
                         </button>
                         <input type="hidden" name="action" value="generate_pdf">

@@ -19,6 +19,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *
  * Les QR codes utilisent le support natif de TCPDF (write2DBarcode),
  * aucune librairie externe.
+ *
+ * Depuis le ticket "champs additionnels" (filière 3, niveau LMD en table
+ * de référence, moyenne, mention, statut étudiant, première langue,
+ * handicap oui/non, contacts père/mère/tuteur détaillés, informations
+ * diverses), chaque section de la fiche affiche, sous le libellé français
+ * de chaque champ, sa traduction anglaise en petit texte gris semi-
+ * transparent — cf. ueb_pdf_section_fiche().
  */
 
 /**
@@ -95,37 +102,64 @@ function ueb_handle_pdf_generation() {
     $sexe            = sanitize_text_field( $posted['sexe'] ?? '' );
     $date_naissance  = sanitize_text_field( $posted['date_naissance'] ?? '' );
     $lieu_naissance  = sanitize_text_field( $posted['lieu_naissance'] ?? '' );
-    $niveau_lmd      = sanitize_text_field( $posted['niveau_lmd'] ?? '' );
     $type_formation  = sanitize_text_field( $posted['type_formation'] ?? 'classique' );
     $annee_obtention = absint( $posted['annee_obtention'] ?? 0 );
     $email           = sanitize_email( $posted['email'] ?? '' );
     $adresse         = sanitize_text_field( $posted['adresse'] ?? '' );
-    $nom_pere        = sanitize_text_field( $posted['nom_pere'] ?? '' );
-    $nom_mere        = sanitize_text_field( $posted['nom_mere'] ?? '' );
-    $profession_pere = sanitize_text_field( $posted['profession_pere'] ?? '' );
+
+    // Moyenne : champ réel, on garde 2 décimales pour l'affichage.
+    $moyenne_diplome = isset( $posted['moyenne_diplome'] ) && $posted['moyenne_diplome'] !== ''
+        ? number_format( (float) $posted['moyenne_diplome'], 2 )
+        : '';
+
+    // Handicap : radio oui/non, "non" par défaut si absent/invalide.
+    $handicap = in_array( $posted['handicap'] ?? '', array( 'oui', 'non' ), true ) ? $posted['handicap'] : 'non';
+
+    // Filiation — contacts père/mère/tuteur détaillés (remplace l'ancien
+    // "tel_tuteur[]" multi-valeurs par des champs simples dédiés).
+    $nom_pere         = sanitize_text_field( $posted['nom_pere'] ?? '' );
+    $numero_pere      = sanitize_text_field( $posted['numero_pere'] ?? '' );
+    $profession_pere  = sanitize_text_field( $posted['profession_pere'] ?? '' );
+    $nom_mere         = sanitize_text_field( $posted['nom_mere'] ?? '' );
+    $numero_mere      = sanitize_text_field( $posted['numero_mere'] ?? '' );
+    $profession_mere  = sanitize_text_field( $posted['profession_mere'] ?? '' );
+    $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
+    $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
+
+    // Informations diverses.
+    $numero_certificat_medical = sanitize_text_field( $posted['numero_certificat_medical'] ?? '' );
+    $lieu_obtention_certificat = sanitize_text_field( $posted['lieu_obtention_certificat'] ?? '' );
 
     // Champs stockés en ID de FK : on récupère les libellés via les tables ueb_*.
-    $faculte_id      = absint( $posted['faculte'] ?? 0 );
-    $diplome_id      = absint( $posted['diplome_admission'] ?? 0 );
-    $serie_id        = absint( $posted['serie_diplome'] ?? 0 );
-    $filiere_1_id    = absint( $posted['filiere_1'] ?? 0 );
-    $filiere_2_id    = absint( $posted['filiere_2'] ?? 0 );
-    $nationalite_id  = absint( $posted['nationalite'] ?? 0 );
-    $situation_id    = absint( $posted['situation_matrimoniale'] ?? 0 );
-    $statut_socio_id = absint( $posted['statut_socio_professionnel'] ?? 0 );
-    $region_id       = absint( $posted['region_origine'] ?? 0 );
-    $departement_id  = absint( $posted['departement_origine'] ?? 0 );
-    $commune_id      = absint( $posted['commune_origine'] ?? 0 );
+    $faculte_id         = absint( $posted['faculte'] ?? 0 );
+    $diplome_id         = absint( $posted['diplome_admission'] ?? 0 );
+    $serie_id           = absint( $posted['serie_diplome'] ?? 0 );
+    $filiere_1_id       = absint( $posted['filiere_1'] ?? 0 );
+    $filiere_2_id       = absint( $posted['filiere_2'] ?? 0 );
+    $filiere_3_id       = absint( $posted['filiere_3'] ?? 0 );
+    $niveau_lmd_id      = absint( $posted['niveau_lmd'] ?? 0 );
+    $mention_id         = absint( $posted['mention'] ?? 0 );
+    $statut_etudiant_id = absint( $posted['statut_etudiant'] ?? 0 );
+    $nationalite_id     = absint( $posted['nationalite'] ?? 0 );
+    $premiere_langue_id = absint( $posted['premiere_langue'] ?? 0 );
+    $situation_id       = absint( $posted['situation_matrimoniale'] ?? 0 );
+    $statut_socio_id    = absint( $posted['statut_socio_professionnel'] ?? 0 );
+    $region_id          = absint( $posted['region_origine'] ?? 0 );
+    $departement_id     = absint( $posted['departement_origine'] ?? 0 );
+    $commune_id         = absint( $posted['commune_origine'] ?? 0 );
+    $sport_id           = absint( $posted['sport_prefere'] ?? 0 );
+    $art_id             = absint( $posted['art_pratique'] ?? 0 );
 
     global $wpdb;
     $faculte_row = $faculte_id ? $wpdb->get_row( $wpdb->prepare(
         "SELECT code, nom_fr, nom_en, logo FROM ueb_facultes WHERE id = %d", $faculte_id
     ) ) : null;
 
-    $telephones  = isset( $posted['telephone'] ) ? (array) $posted['telephone'] : array();
-    $tels_tuteur = isset( $posted['tel_tuteur'] ) ? (array) $posted['tel_tuteur'] : array();
-    $telephones  = array_map( 'sanitize_text_field', $telephones );
-    $tels_tuteur = array_map( 'sanitize_text_field', $tels_tuteur );
+    // Téléphone(s) du candidat uniquement — les numéros du père, de la
+    // mère et du tuteur sont désormais des champs simples (numero_pere,
+    // numero_mere, numero_tuteur), lus juste au-dessus.
+    $telephones = isset( $posted['telephone'] ) ? (array) $posted['telephone'] : array();
+    $telephones = array_map( 'sanitize_text_field', $telephones );
 
     $d = array(
         'numero_dossier'         => $numero_dossier,
@@ -135,28 +169,42 @@ function ueb_handle_pdf_generation() {
         'diplome_admission'      => ueb_pdf_lookup( 'ueb_diplomes_admission', $diplome_id, 'libelle' ),
         'serie_diplome'          => ueb_pdf_lookup( 'ueb_specialites_diplome', $serie_id, 'libelle' ),
         'annee_obtention'        => $annee_obtention ? (string) $annee_obtention : '',
-        'niveau_lmd'             => $niveau_lmd,
+        'moyenne_diplome'        => $moyenne_diplome,
+        'niveau_lmd'             => ueb_pdf_lookup( 'ueb_niveaux_lmd', $niveau_lmd_id, 'libelle' ),
+        'mention'                => ueb_pdf_lookup( 'ueb_mentions', $mention_id, 'libelle' ),
+        'statut_etudiant'        => ueb_pdf_lookup( 'ueb_statuts_etudiants', $statut_etudiant_id, 'libelle' ),
         'type_formation'         => ueb_translate_type_formation( $type_formation ),
         'filiere_1'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_1_id, 'libelle' ),
         'filiere_2'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_2_id, 'libelle' ),
+        'filiere_3'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_3_id, 'libelle' ),
         'nom'                    => $nom,
         'prenom'                 => $prenom,
         'sexe'                   => $sexe,
         'date_naissance'         => $date_naissance,
         'lieu_naissance'         => $lieu_naissance,
         'nationalite'            => ueb_pdf_lookup( 'ueb_nationalites', $nationalite_id, 'nom' ),
+        'premiere_langue'        => ueb_pdf_lookup( 'ueb_langues', $premiere_langue_id, 'libelle' ),
         'situation_matrimoniale' => ueb_pdf_lookup( 'ueb_situations_matrimoniales', $situation_id, 'libelle' ),
         'statut_socio'           => ueb_pdf_lookup( 'ueb_statuts_socio_professionnels', $statut_socio_id, 'libelle' ),
+        'handicap'               => $handicap === 'oui' ? 'Oui' : 'Non',
         'region'                 => ueb_pdf_lookup( 'ueb_regions', $region_id, 'nom' ),
         'departement'            => ueb_pdf_lookup( 'ueb_departements', $departement_id, 'nom' ),
         'commune'                => ueb_pdf_lookup( 'ueb_communes', $commune_id, 'nom' ),
         'email'                  => $email,
         'adresse'                => $adresse,
         'telephone'              => implode( ' / ', array_filter( $telephones ) ),
-        'tel_tuteur'             => implode( ' / ', array_filter( $tels_tuteur ) ),
         'nom_pere'               => $nom_pere,
-        'nom_mere'               => $nom_mere,
+        'numero_pere'            => $numero_pere,
         'profession_pere'        => $profession_pere,
+        'nom_mere'               => $nom_mere,
+        'numero_mere'            => $numero_mere,
+        'profession_mere'        => $profession_mere,
+        'nom_tuteur'             => $nom_tuteur,
+        'numero_tuteur'          => $numero_tuteur,
+        'sport_prefere'          => ueb_pdf_lookup( 'ueb_sports', $sport_id, 'libelle' ),
+        'art_pratique'           => ueb_pdf_lookup( 'ueb_arts', $art_id, 'libelle' ),
+        'numero_certificat_medical' => $numero_certificat_medical,
+        'lieu_obtention_certificat' => $lieu_obtention_certificat,
     );
 
     $pdf = ueb_pdf_build_document( $d );
@@ -297,6 +345,21 @@ function ueb_pdf_txt( $pdf, $x, $y, $txt, $size, $style = '', $color = null, $al
     }
 }
 
+/**
+ * Écrit un libellé français puis, juste en dessous, sa traduction
+ * anglaise en petit texte gris semi-transparent (SetAlpha). Utilisé pour
+ * tous les libellés de champ de la fiche — cf. maquette Excel du prof.
+ */
+function ueb_pdf_txt_trad( $pdf, $x, $y, $label_fr, $label_en, $size, $style, $color ) {
+    ueb_pdf_txt( $pdf, $x, $y, $label_fr, $size, $style, $color );
+
+    if ( $label_en !== '' ) {
+        $pdf->setAlpha( 0.45 );
+        ueb_pdf_txt( $pdf, $x, $y + 3.1, $label_en, max( 5.5, $size - 1.4 ), 'I', $color );
+        $pdf->setAlpha( 1 );
+    }
+}
+
 /** Ligne continue fine. */
 function ueb_pdf_ligne( $pdf, $x1, $y1, $x2, $y2, $color, $width = 0.2, $dash = 0 ) {
     $pdf->SetLineStyle( array(
@@ -342,8 +405,13 @@ function ueb_pdf_entete_bilingue( $pdf, $y ) {
 
 /**
  * Section de la fiche : barre de titre verte + lignes en 2 colonnes
- * (label/valeur gauche, label/valeur droite), fonds alternés.
- * $lignes : tableau de array( labelG, valG, labelD, valD ).
+ * (label FR / traduction EN / valeur, à gauche puis à droite),
+ * fonds alternés.
+ *
+ * $lignes : tableau de array( labelG_fr, labelG_en, valG, labelD_fr, labelD_en, valD ).
+ * Un libellé vide ('') n'affiche ni label ni traduction ni valeur —
+ * utile pour les lignes où une seule colonne est renseignée.
+ *
  * Retourne le y bas.
  */
 function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
@@ -357,22 +425,23 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
     $pdf->SetFont( 'dejavusans', '', 8 );
     $i = 0;
     foreach ( $lignes as $ligne ) {
-        list( $labelG, $valG, $labelD, $valD ) = $ligne;
+        list( $labelG, $labelG_en, $valG, $labelD, $labelD_en, $valD ) = $ligne;
 
-        // Hauteur de ligne selon la valeur la plus longue (retours à la ligne)
+        // Hauteur de ligne selon la valeur la plus longue (retours à la ligne).
+        // +3 mm de base pour la ligne de traduction anglaise sous le label.
         $nbG = $valG !== '' ? $pdf->getNumLines( $valG, 58 ) : 1;
         $nbD = $valD !== '' ? $pdf->getNumLines( $valD, 48.5 ) : 1;
         $nb  = max( $nbG, $nbD );
-        $h   = max( 6.2, $nb * 3.7 + 2.5 );
+        $h   = max( 9.2, $nb * 3.7 + 5.5 );
 
         if ( $i % 2 === 0 ) {
             $pdf->Rect( 8, $y, 194, $h, 'F', array(), $c['fond'] );
         }
 
-        $ty = $y + ( $h - 4.6 ) / 2; // centrage vertical (labels une ligne)
+        $ty = $y + 1.3; // point de départ du libellé (traduction juste en dessous)
 
         if ( $labelG !== '' ) {
-            ueb_pdf_txt( $pdf, 11, $ty, $labelG, 7.2, 'B', $c['noir'] );
+            ueb_pdf_txt_trad( $pdf, 11, $ty, $labelG, $labelG_en, 7.2, 'B', $c['noir'] );
             if ( $valG !== '' ) {
                 $pdf->SetFont( 'dejavusans', '', 8 );
                 $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
@@ -381,7 +450,7 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
             }
         }
         if ( $labelD !== '' ) {
-            ueb_pdf_txt( $pdf, 110, $ty, $labelD, 7.2, 'B', $c['noir'] );
+            ueb_pdf_txt_trad( $pdf, 110, $ty, $labelD, $labelD_en, 7.2, 'B', $c['noir'] );
             if ( $valD !== '' ) {
                 $pdf->SetFont( 'dejavusans', '', 8 );
                 $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
@@ -444,7 +513,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . 'Ne(e) : '   . $d['date_naissance'] . "\n"
         . 'Sexe : '    . $d['sexe'] . "\n"
         . 'Etab : '    . $etab . "\n"
-        . 'Niveau : '  . $d['niveau_lmd'] . "\n"
+        . 'Niveau : '  . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . 'Choix 1 : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
         . 'Choix 2 : ' . ueb_pdf_sans_accents( $d['filiere_2'] ) . "\n"
         . 'Email : '   . $d['email'] . "\n"
@@ -458,41 +527,64 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $y = 61;
 
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
-        array( 'Faculté',              $d['faculte'],        "Diplôme d'admission", $d['diplome_admission'] ),
-        array( 'Type de formation',    $d['type_formation'], 'Série / Spécialité',  $d['serie_diplome'] ),
-        array( '1er choix de filière', $d['filiere_1'],      "Année d'obtention",   $d['annee_obtention'] ),
-        array( '2e choix de filière',  $d['filiere_2'],      'Niveau LMD',          $d['niveau_lmd'] ),
-        array( '3e choix de filière',  $nr,                  'Statut',              '' ),
+        array( 'Faculté', 'Faculty', $d['faculte'],
+               "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
+        array( 'Type de formation', 'Training type', $d['type_formation'],
+               'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
+        array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
+               "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
+        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
+               'Niveau LMD', 'LMD level', $d['niveau_lmd'] ),
+        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
+               'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
+        array( 'Mention', 'Mention / Honors', $d['mention'],
+               'Statut', 'Student status', $d['statut_etudiant'] ),
     ), $y );
 
     $y += 3.2;
 
     $date_lieu = trim( $d['date_naissance'] . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
     $y = ueb_pdf_section_fiche( $pdf, 'ÉTAT CIVIL', array(
-        array( 'Nom',                        strtoupper( $d['nom'] ), 'Prénom(s)',          $d['prenom'] ),
-        array( 'Date et lieu de naissance',  $date_lieu,              'Nationalité',        $d['nationalite'] ),
-        array( 'Sexe',                       $d['sexe'] === 'M' ? 'Masculin' : ( $d['sexe'] === 'F' ? 'Féminin' : '' ),
-               'Statut matrimonial',         $d['situation_matrimoniale'] ),
-        array( 'Statut socio-professionnel', $d['statut_socio'],      '',                   '' ),
+        array( 'Nom', 'Surname', strtoupper( $d['nom'] ),
+               'Prénom(s)', 'First name(s)', $d['prenom'] ),
+        array( 'Date et lieu de naissance', 'Date & place of birth', $date_lieu,
+               'Nationalité', 'Nationality', $d['nationalite'] ),
+        array( 'Sexe', 'Gender', $d['sexe'] === 'M' ? 'Masculin' : ( $d['sexe'] === 'F' ? 'Féminin' : '' ),
+               'Statut matrimonial', 'Marital status', $d['situation_matrimoniale'] ),
+        array( 'Statut socio-professionnel', 'Occupation status', $d['statut_socio'],
+               'Première langue', 'First language', $d['premiere_langue'] ),
+        array( 'Situation de handicap', 'Disability status', $d['handicap'],
+               '', '', '' ),
     ), $y );
 
     $y += 3.2;
 
     $y = ueb_pdf_section_fiche( $pdf, 'CONTACT ET ORIGINE', array(
-        array( 'Téléphone',         $d['telephone'],   'Nom du père',        $d['nom_pere'] ),
-        array( 'E-mail',            $d['email'],       'Contact du père',    $nr ),
-        array( 'Adresse actuelle',  $d['adresse'],     'Profession du père', $d['profession_pere'] ),
-        array( 'Département',       $d['departement'], 'Nom de la mère',     $d['nom_mere'] ),
-        array( 'Commune',           $d['commune'],     'Contact de la mère', $nr ),
-        array( "Région d'origine",  $d['region'],      'Nom du tuteur',      $nr ),
-        array( '',                  '',                'Contact du tuteur',  $d['tel_tuteur'] !== '' ? $d['tel_tuteur'] : $nr ),
+        array( 'Téléphone', 'Phone', $d['telephone'],
+               'Nom du père', "Father's name", $d['nom_pere'] ?: $nr ),
+        array( 'E-mail', 'Email', $d['email'],
+               'Numéro du père', "Father's phone number", $d['numero_pere'] ?: $nr ),
+        array( 'Adresse actuelle', 'Current address', $d['adresse'],
+               'Nom de la mère', "Mother's name", $d['nom_mere'] ?: $nr ),
+        array( 'Département', 'Department', $d['departement'],
+               'Numéro de la mère', "Mother's phone number", $d['numero_mere'] ?: $nr ),
+        array( 'Commune', 'Municipality', $d['commune'],
+               'Nom du tuteur', "Guardian's name", $d['nom_tuteur'] ?: $nr ),
+        array( "Région d'origine", 'Region of origin', $d['region'],
+               'Numéro du tuteur', "Guardian's phone number", $d['numero_tuteur'] ?: $nr ),
+        array( '', '', '',
+               'Profession du père', "Father's occupation", $d['profession_pere'] ?: $nr ),
+        array( '', '', '',
+               'Profession de la mère', "Mother's occupation", $d['profession_mere'] ?: $nr ),
     ), $y );
 
     $y += 3.2;
 
     $y = ueb_pdf_section_fiche( $pdf, 'INFORMATIONS DIVERSES', array(
-        array( 'Sport préféré', $nr, 'N certificat médical',           $nr ),
-        array( 'Art pratiqué',  $nr, "Lieu d'obtention du certificat", $nr ),
+        array( 'Sport préféré', 'Favorite sport', $d['sport_prefere'] ?: $nr,
+               'N° certificat médical', 'Medical certificate no.', $d['numero_certificat_medical'] ?: $nr ),
+        array( 'Art pratiqué', 'Art practiced', $d['art_pratique'] ?: $nr,
+               "Lieu d'obtention du certificat", 'Certificate obtained at', $d['lieu_obtention_certificat'] ?: $nr ),
     ), $y );
 
     /* --- Déclaration + signatures --- */
@@ -545,7 +637,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . 'Nom : '    . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
         . 'Fil : '    . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
         . 'Etab : '   . $etab . "\n"
-        . 'Niveau : ' . $d['niveau_lmd'] . "\n"
+        . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . "Bq : CCABANK\n"
         . 'Compte : 10039-10012-0027277050';
     ueb_pdf_qr_stylise( $pdf, $qr_coupon, 185.5, 248, 17 );
@@ -657,12 +749,13 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ), $y );
 
     /* --- Personne à contacter en cas d'urgence ---
-       Champs dédiés absents du schéma (décision d'équipe) : on réutilise
-       le téléphone du tuteur/parent déjà saisi ; nom et adresse : "—". */
+       Reprend désormais le nom et le numéro du tuteur saisis à l'étape
+       "Contact & origine" (avant, ces deux champs restaient "—" faute de
+       saisie dédiée : nom_tuteur/numero_tuteur existent maintenant). */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
-        array( 'personne',  'Nom et Prénom',       '' ),
-        array( 'telephone', 'Téléphone (urgence)', $d['tel_tuteur'] ),
+        array( 'personne',  'Nom et Prénom',       $d['nom_tuteur'] ),
+        array( 'telephone', 'Téléphone (urgence)', $d['numero_tuteur'] ),
         array( 'lieu',      'Adresse (urgence)',   '' ),
     ), $y );
 
