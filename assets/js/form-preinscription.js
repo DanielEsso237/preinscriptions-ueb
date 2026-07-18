@@ -45,6 +45,12 @@
        ================================================================ */
     let facultesCache = [];
 
+    // Listes "brutes" des filières (avant filtrage croisé), mises à jour
+    // à chaque changement de faculté/type de formation, et relues par
+    // refreshFiliereCrossFilter() ci-dessous.
+    let filiere1Data  = []; // options pour le 1er choix
+    let filiere23Data = []; // options pour les 2e et 3e choix
+
     function getFaculteCode(faculteId) {
         const f = facultesCache.find(function (x) { return String(x.id) === String(faculteId); });
         return f ? f.code : '';
@@ -195,6 +201,49 @@
     }
 
     /* ================================================================
+       FILTRAGE CROISÉ DES 3 CHOIX DE FILIÈRE
+       ------------------------------------------------------------
+       Reconstruit les options de filiere_1 / filiere_2 / filiere_3 à
+       partir des listes "brutes" (filiere1Data / filiere23Data), en
+       retirant de chaque select les filières déjà choisies dans LES
+       AUTRES selects (une même filière ne peut pas être choisie deux
+       fois). La valeur actuellement sélectionnée d'un select est
+       toujours conservée si elle reste valide.
+       ================================================================ */
+    function refreshFiliereCrossFilter() {
+        const configs = [
+            { select: selectFiliere1, base: filiere1Data,  placeholder: '— Choisir une filière —' },
+            { select: selectFiliere2, base: filiere23Data, placeholder: '— Aucun deuxième choix (optionnel) —' },
+            { select: selectFiliere3, base: filiere23Data, placeholder: '— Aucun troisième choix (optionnel) —' }
+        ];
+
+        configs.forEach(function (cfg) {
+            const currentVal = cfg.select.value;
+
+            const usedElsewhere = configs
+                .filter(function (other) { return other.select !== cfg.select; })
+                .map(function (other) { return other.select.value; })
+                .filter(Boolean);
+
+            const available = cfg.base.filter(function (item) {
+                return usedElsewhere.indexOf(String(item.id)) === -1;
+            });
+
+            fillSelect(cfg.select, available, cfg.placeholder, true);
+
+            if (currentVal && available.some(function (item) { return String(item.id) === currentVal; })) {
+                cfg.select.value = currentVal;
+            }
+        });
+    }
+
+    // Dès qu'un des 3 choix change, on réapplique le filtrage sur les
+    // deux autres (et sur lui-même, sans effet néfaste).
+    [selectFiliere1, selectFiliere2, selectFiliere3].forEach(function (select) {
+        select.addEventListener('change', refreshFiliereCrossFilter);
+    });
+
+    /* ================================================================
        FILIÈRES — dépend de faculté + type de formation
        (1er choix : selon le type ; 2e et 3e choix : toujours la liste
        "classique" de la faculté)
@@ -207,6 +256,8 @@
         if (proNotice) proNotice.style.display = 'none';
 
         if (!faculteId) {
+            filiere1Data  = [];
+            filiere23Data = [];
             [selectFiliere1, selectFiliere2, selectFiliere3].forEach(function (s) {
                 fillSelect(s, [], "— Choisir d'abord une faculté —", false);
             });
@@ -223,22 +274,20 @@
 
         uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: type })
             .then(function (data) {
-                fillSelect(selectFiliere1, data, '— Choisir une filière —', true);
+                filiere1Data = data;
 
                 // 2e et 3e choix de filière : toujours les filières "classique"
-                // de la faculté (même logique qu'avant pour le 2e choix, le
-                // 3e choix suit la même règle).
+                // de la faculté (même en formation pro).
                 if (type === 'pro') {
-                    uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
+                    return uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
                         .then(function (data2) {
-                            fillSelect(selectFiliere2, data2, '— Aucun deuxième choix (optionnel) —', data2.length > 0);
-                            fillSelect(selectFiliere3, data2, '— Aucun troisième choix (optionnel) —', data2.length > 0);
+                            filiere23Data = data2;
                         });
-                } else {
-                    fillSelect(selectFiliere2, data, '— Aucun deuxième choix (optionnel) —', data.length > 1);
-                    fillSelect(selectFiliere3, data, '— Aucun troisième choix (optionnel) —', data.length > 1);
                 }
-            });
+
+                filiere23Data = data;
+            })
+            .then(refreshFiliereCrossFilter);
     }
 
     selectFaculte.addEventListener('change', function () {
@@ -787,21 +836,31 @@
                 proNotice.style.display = '';
             }
 
-            const filieres1 = await uebFetch('ueb_get_filieres', {
+            filiere1Data = await uebFetch('ueb_get_filieres', {
                 faculte_id: donnees.faculte,
                 type_formation: type
             });
-            fillSelect(selectFiliere1, filieres1, '— Choisir une filière —', true);
-            if (donnees.filiere_1) selectFiliere1.value = donnees.filiere_1;
 
-            const filieres23 = (type === 'pro')
+            filiere23Data = (type === 'pro')
                 ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique' })
-                : filieres1;
-            fillSelect(selectFiliere2, filieres23, '— Aucun deuxième choix (optionnel) —', filieres23.length > 0);
-            if (donnees.filiere_2) selectFiliere2.value = donnees.filiere_2;
+                : filiere1Data;
 
-            fillSelect(selectFiliere3, filieres23, '— Aucun troisième choix (optionnel) —', filieres23.length > 0);
-            if (donnees.filiere_3) selectFiliere3.value = donnees.filiere_3;
+            // Premier passage : peuple les 3 selects avec la liste complète
+            // pour pouvoir y injecter les valeurs sauvegardées.
+            refreshFiliereCrossFilter();
+            if (donnees.filiere_1 && selectFiliere1.querySelector('option[value="' + donnees.filiere_1 + '"]')) {
+                selectFiliere1.value = donnees.filiere_1;
+            }
+            if (donnees.filiere_2 && selectFiliere2.querySelector('option[value="' + donnees.filiere_2 + '"]')) {
+                selectFiliere2.value = donnees.filiere_2;
+            }
+            if (donnees.filiere_3 && selectFiliere3.querySelector('option[value="' + donnees.filiere_3 + '"]')) {
+                selectFiliere3.value = donnees.filiere_3;
+            }
+            // Second passage : réapplique le filtrage croisé maintenant que
+            // les 3 valeurs sont replacées (retire les doublons des autres
+            // listes, comme lors d'une saisie normale).
+            refreshFiliereCrossFilter();
         }
 
         if (donnees.region_origine) {

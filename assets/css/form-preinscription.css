@@ -203,6 +203,7 @@
     grid-template-columns: 1fr;
     gap: 16px;
     margin-bottom: 24px;
+    align-items: end;
 }
 
 .form-group        { display: flex; flex-direction: column; gap: 6px; }
