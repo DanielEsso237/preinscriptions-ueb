@@ -5,7 +5,8 @@
  * Contrairement à db-schema.php (qui ne crée QUE la structure des tables),
  * ce fichier insère les données de référence : régions, départements,
  * communes, facultés, diplômes, spécialités, filières, situations
- * matrimoniales, statuts socio-professionnels, nationalités.
+ * matrimoniales, statuts socio-professionnels, nationalités, niveaux LMD,
+ * mentions, statuts étudiants, langues, sports, arts.
  *
  * INSERT IGNORE est utilisé partout : comme chaque table a une contrainte
  * UNIQUE sur son code/nom, ré-exécuter ce script (à chaque activation du
@@ -578,6 +579,33 @@ INSERT IGNORE INTO ueb_nationalites (nom) VALUES
     ('Malienne'),
     ('Guinéenne'),
     ('Autre');
+SQL,
+        'ueb_niveaux_lmd' => <<<SQL
+INSERT IGNORE INTO ueb_niveaux_lmd (code, libelle, ordre) VALUES
+    ('L1', 'Licence 1', 1), ('L2', 'Licence 2', 2), ('L3', 'Licence 3', 3),
+    ('M1', 'Master 1', 4), ('M2', 'Master 2', 5), ('DOC', 'Doctorat', 6);
+SQL,
+        'ueb_mentions' => <<<SQL
+INSERT IGNORE INTO ueb_mentions (code, libelle, ordre) VALUES
+    ('passable', 'Passable', 1), ('assez_bien', 'Assez Bien', 2), ('bien', 'Bien', 3),
+    ('tres_bien', 'Très Bien', 4), ('excellent', 'Excellent', 5);
+SQL,
+        'ueb_statuts_etudiants' => <<<SQL
+INSERT IGNORE INTO ueb_statuts_etudiants (code, libelle) VALUES
+    ('cemac', 'Étudiant CEMAC'), ('hors_cemac', 'Étudiant Hors CEMAC');
+SQL,
+        'ueb_langues' => <<<SQL
+INSERT IGNORE INTO ueb_langues (code, libelle) VALUES
+    ('fr', 'Français'), ('en', 'Anglais');
+SQL,
+        'ueb_sports' => <<<SQL
+INSERT IGNORE INTO ueb_sports (libelle) VALUES
+    ('Football'), ('Basketball'), ('Handball'), ('Volleyball'),
+    ('Athlétisme'), ('Natation'), ('Tennis'), ('Judo / Arts martiaux'), ('Autre');
+SQL,
+        'ueb_arts' => <<<SQL
+INSERT IGNORE INTO ueb_arts (libelle) VALUES
+    ('Musique'), ('Théâtre'), ('Danse'), ('Chant'), ('Peinture / Dessin'), ('Cinéma'), ('Autre');
 SQL,
     );
 }

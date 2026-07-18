@@ -821,3 +821,13 @@ select:focus-visible {
     color: #1a4a2e;
     font-weight: 600;
 }
+
+.field-trans {
+    display: block;
+    font-size: .68rem;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ueb-gris);
+    opacity: .55;
+    margin-top: 1px;
+}

@@ -44,6 +44,13 @@ function ueb_handle_db_save() {
         'profession_pere'        => 'sanitize_text_field',
         'niveau_lmd'             => 'sanitize_text_field',
         'type_formation'         => 'sanitize_text_field',
+        'numero_pere'            => 'sanitize_text_field',
+        'numero_mere'            => 'sanitize_text_field',
+        'profession_mere'        => 'sanitize_text_field',
+        'nom_tuteur'             => 'sanitize_text_field',
+        'numero_tuteur'          => 'sanitize_text_field',
+        'numero_certificat_medical'  => 'sanitize_text_field',
+        'lieu_obtention_certificat'  => 'sanitize_text_field',
     );
 
     $data = array();
@@ -54,10 +61,16 @@ function ueb_handle_db_save() {
 
     /* Champs numériques (ID de FK + année) */
     $champs_id = array(
-        'faculte', 'diplome_admission', 'serie_diplome', 'filiere_1', 'filiere_2',
-        'nationalite', 'situation_matrimoniale', 'statut_socio_professionnel',
-        'region_origine', 'departement_origine', 'commune_origine',
+      'faculte', 'diplome_admission', 'serie_diplome', 'filiere_1', 'filiere_2', 'filiere_3',
+      'nationalite', 'premiere_langue', 'situation_matrimoniale', 'statut_socio_professionnel',
+      'region_origine', 'departement_origine', 'commune_origine',
+      'niveau_lmd', 'mention', 'statut_etudiant', 'sport_prefere', 'art_pratique',
     );
+    $data['moyenne_diplome'] = isset( $posted['moyenne_diplome'] ) && $posted['moyenne_diplome'] !== ''
+    ? round( (float) $posted['moyenne_diplome'], 2 )
+    : null;
+    $data['handicap'] = in_array( $posted['handicap'] ?? '', array( 'oui', 'non' ), true ) ? $posted['handicap'] : 'non';
+
     foreach ( $champs_id as $key ) {
         $raw = isset( $posted[ $key ] ) ? $posted[ $key ] : '';
         $data[ $key ] = ( '' !== $raw ) ? absint( $raw ) : null;
@@ -71,39 +84,55 @@ function ueb_handle_db_save() {
 
     /* Insertion / mise à jour dans ueb_preinscriptions */
     $insert_data = array(
-        'numero_dossier'                 => $numero_dossier,
-        'statut'                         => 'soumis',
-        'faculte_id'                     => $data['faculte'],
-        'diplome_admission_id'           => $data['diplome_admission'],
-        'specialite_diplome_id'          => $data['serie_diplome'],
-        'niveau_lmd'                     => $data['niveau_lmd'] ?: 'Licence 1',
-        'type_formation'                 => $data['type_formation'],
-        'filiere_1_id'                   => $data['filiere_1'],
-        'filiere_2_id'                   => $data['filiere_2'],
-        'annee_obtention'                => $data['annee_obtention'],
-        'nom'                            => $data['nom'],
-        'prenom'                         => $data['prenom'],
-        'sexe'                           => $data['sexe'],
-        'date_naissance'                 => $data['date_naissance'] ?: null,
-        'lieu_naissance'                 => $data['lieu_naissance'],
-        'nationalite_id'                 => $data['nationalite'],
-        'situation_matrimoniale_id'      => $data['situation_matrimoniale'],
-        'statut_socio_professionnel_id'  => $data['statut_socio_professionnel'],
-        'handicap'                       => $data['handicap'],
-        'email'                          => $data['email'],
-        'adresse'                        => $data['adresse'],
-        'region_origine_id'              => $data['region_origine'],
-        'departement_origine_id'         => $data['departement_origine'],
-        'commune_origine_id'             => $data['commune_origine'],
-        'nom_pere'                       => $data['nom_pere'],
-        'nom_mere'                       => $data['nom_mere'],
-        'profession_pere'                => $data['profession_pere'],
+      'numero_dossier'                 => $numero_dossier,
+      'statut'                         => 'soumis',
+      'faculte_id'                     => $data['faculte'],
+      'diplome_admission_id'           => $data['diplome_admission'],
+      'specialite_diplome_id'          => $data['serie_diplome'],
+      'niveau_lmd_id'                  => $data['niveau_lmd'],
+      'type_formation'                 => $data['type_formation'],
+      'filiere_1_id'                   => $data['filiere_1'],
+      'filiere_2_id'                   => $data['filiere_2'],
+      'filiere_3_id'                   => $data['filiere_3'],
+      'annee_obtention'                => $data['annee_obtention'],
+      'moyenne_diplome'                => $data['moyenne_diplome'],
+      'mention_id'                     => $data['mention'],
+      'statut_etudiant_id'             => $data['statut_etudiant'],
+      'nom'                            => $data['nom'],
+      'prenom'                         => $data['prenom'],
+      'sexe'                           => $data['sexe'],
+      'date_naissance'                 => $data['date_naissance'] ?: null,
+      'lieu_naissance'                 => $data['lieu_naissance'],
+      'nationalite_id'                 => $data['nationalite'],
+      'premiere_langue_id'             => $data['premiere_langue'],
+      'situation_matrimoniale_id'      => $data['situation_matrimoniale'],
+      'statut_socio_professionnel_id'  => $data['statut_socio_professionnel'],
+      'handicap'                       => $data['handicap'],
+      'email'                          => $data['email'],
+      'adresse'                        => $data['adresse'],
+      'region_origine_id'              => $data['region_origine'],
+      'departement_origine_id'         => $data['departement_origine'],
+      'commune_origine_id'             => $data['commune_origine'],
+      'nom_pere'                       => $data['nom_pere'],
+      'numero_pere'                    => $data['numero_pere'],
+      'profession_pere'                => $data['profession_pere'],
+      'nom_mere'                       => $data['nom_mere'],
+      'numero_mere'                    => $data['numero_mere'],
+      'profession_mere'                => $data['profession_mere'],
+      'nom_tuteur'                     => $data['nom_tuteur'],
+      'numero_tuteur'                  => $data['numero_tuteur'],
+      'sport_prefere_id'               => $data['sport_prefere'],
+      'art_pratique_id'                => $data['art_pratique'],
+      'numero_certificat_medical'      => $data['numero_certificat_medical'],
+      'lieu_obtention_certificat'      => $data['lieu_obtention_certificat'],
     );
 
     $formats = array(
-        '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d',
-        '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s',
-        '%s', '%d', '%d', '%d', '%s', '%s', '%s',
+      '%s','%s','%d','%d','%d','%d','%s','%d','%d','%d','%d','%f','%d','%d',
+      '%s','%s','%s','%s','%s','%d','%d','%d','%d','%s',
+      '%s','%s','%d','%d','%d',
+      '%s','%s','%s','%s','%s','%s','%s','%s',
+      '%d','%d','%s','%s',
     );
 
     // numero_dossier est UNIQUE : on upsert au cas où le candidat soumettrait

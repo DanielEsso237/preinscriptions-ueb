@@ -30,9 +30,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         diplômes, spécialités, filières, situations matrimoniales,
  *         statuts socio-professionnels, nationalités, dossier de
  *         préinscription, téléphones, progression).
+ * - 1.1 : ajout des tables de référence niveaux_lmd, mentions,
+ *         statuts_etudiant, langues, sports, arts ; ajout à
+ *         ueb_preinscriptions des colonnes numero_pere, numero_mere,
+ *         profession_mere, nom_tuteur, numero_tuteur, filiere_3_id,
+ *         moyenne_diplome, mention_id, statut_etudiant_id,
+ *         premiere_langue_id, sport_prefere_id, art_pratique_id,
+ *         numero_certificat_medical, lieu_obtention_certificat ;
+ *         niveau_lmd (texte libre) remplacé par niveau_lmd_id (FK) ;
+ *         handicap passe de texte libre à ENUM('oui','non').
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '1.0' );
+    define( 'UEB_DB_SCHEMA_VERSION', '1.1' );
 }
 
 /**
@@ -150,6 +159,64 @@ CREATE TABLE IF NOT EXISTS ueb_nationalites (
     UNIQUE KEY uq_nationalite_nom (nom)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
+
+        /* ------------------------------------------------------------
+         * NOUVEAU (1.1) — Tables de référence ajoutées pour les champs
+         * niveau_lmd, mention, statut_etudiant, premiere_langue,
+         * sport_prefere et art_pratique, désormais gérés en FK comme
+         * le reste des listes déroulantes du formulaire (au lieu de
+         * texte libre ou de valeurs codées en dur).
+         * ------------------------------------------------------------ */
+        'ueb_niveaux_lmd' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_niveaux_lmd (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
+    libelle VARCHAR(50) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_niveau_lmd_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_mentions' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_mentions (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    libelle VARCHAR(50) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_mention_libelle (libelle)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_statuts_etudiant' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_statuts_etudiant (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    libelle VARCHAR(100) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_statut_etudiant_libelle (libelle)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_langues' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_langues (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    nom VARCHAR(50) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_langue_nom (nom)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_sports' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_sports (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    libelle VARCHAR(80) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_sport_libelle (libelle)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_arts' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_arts (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    libelle VARCHAR(80) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_art_libelle (libelle)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+
         'ueb_dossier_sequence' => <<<SQL
 CREATE TABLE IF NOT EXISTS ueb_dossier_sequence (
     annee SMALLINT UNSIGNED NOT NULL,
@@ -167,11 +234,15 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     faculte_id INT UNSIGNED DEFAULT NULL,
     diplome_admission_id INT UNSIGNED DEFAULT NULL,
     specialite_diplome_id INT UNSIGNED DEFAULT NULL,
-    niveau_lmd VARCHAR(20) NOT NULL DEFAULT 'Licence 1',
+    niveau_lmd_id INT UNSIGNED DEFAULT NULL,
     type_formation ENUM('classique', 'pro') NOT NULL DEFAULT 'classique',
     filiere_1_id INT UNSIGNED DEFAULT NULL,
     filiere_2_id INT UNSIGNED DEFAULT NULL,
+    filiere_3_id INT UNSIGNED DEFAULT NULL,
     annee_obtention SMALLINT UNSIGNED DEFAULT NULL,
+    moyenne_diplome DECIMAL(4,2) DEFAULT NULL,
+    mention_id INT UNSIGNED DEFAULT NULL,
+    statut_etudiant_id INT UNSIGNED DEFAULT NULL,
 
     -- État civil --
     nom VARCHAR(100) DEFAULT NULL,
@@ -180,9 +251,10 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     date_naissance DATE DEFAULT NULL,
     lieu_naissance VARCHAR(150) DEFAULT NULL,
     nationalite_id INT UNSIGNED DEFAULT NULL,
+    premiere_langue_id INT UNSIGNED DEFAULT NULL,
     situation_matrimoniale_id INT UNSIGNED DEFAULT NULL,
     statut_socio_professionnel_id INT UNSIGNED DEFAULT NULL,
-    handicap VARCHAR(255) DEFAULT NULL,
+    handicap ENUM('oui', 'non') NOT NULL DEFAULT 'non',
 
     -- Contact & origine --
     email VARCHAR(150) DEFAULT NULL,
@@ -194,8 +266,19 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
 
     -- Filiation --
     nom_pere VARCHAR(150) DEFAULT NULL,
-    nom_mere VARCHAR(150) DEFAULT NULL,
+    numero_pere VARCHAR(20) DEFAULT NULL,
     profession_pere VARCHAR(150) DEFAULT NULL,
+    nom_mere VARCHAR(150) DEFAULT NULL,
+    numero_mere VARCHAR(20) DEFAULT NULL,
+    profession_mere VARCHAR(150) DEFAULT NULL,
+    nom_tuteur VARCHAR(150) DEFAULT NULL,
+    numero_tuteur VARCHAR(20) DEFAULT NULL,
+
+    -- Divers / visite médicale --
+    sport_prefere_id INT UNSIGNED DEFAULT NULL,
+    art_pratique_id INT UNSIGNED DEFAULT NULL,
+    numero_certificat_medical VARCHAR(100) DEFAULT NULL,
+    lieu_obtention_certificat VARCHAR(150) DEFAULT NULL,
 
     -- Métadonnées --
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -204,17 +287,24 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     PRIMARY KEY (id),
     UNIQUE KEY uq_numero_dossier (numero_dossier),
 
-    CONSTRAINT fk_pi_faculte       FOREIGN KEY (faculte_id)                 REFERENCES ueb_facultes(id),
-    CONSTRAINT fk_pi_diplome       FOREIGN KEY (diplome_admission_id)       REFERENCES ueb_diplomes_admission(id),
-    CONSTRAINT fk_pi_specialite    FOREIGN KEY (specialite_diplome_id)      REFERENCES ueb_specialites_diplome(id),
-    CONSTRAINT fk_pi_filiere1      FOREIGN KEY (filiere_1_id)               REFERENCES ueb_filieres(id),
-    CONSTRAINT fk_pi_filiere2      FOREIGN KEY (filiere_2_id)               REFERENCES ueb_filieres(id),
-    CONSTRAINT fk_pi_nationalite   FOREIGN KEY (nationalite_id)             REFERENCES ueb_nationalites(id),
-    CONSTRAINT fk_pi_situation     FOREIGN KEY (situation_matrimoniale_id)  REFERENCES ueb_situations_matrimoniales(id),
-    CONSTRAINT fk_pi_statut_socio  FOREIGN KEY (statut_socio_professionnel_id) REFERENCES ueb_statuts_socio_professionnels(id),
-    CONSTRAINT fk_pi_region        FOREIGN KEY (region_origine_id)          REFERENCES ueb_regions(id),
-    CONSTRAINT fk_pi_departement   FOREIGN KEY (departement_origine_id)     REFERENCES ueb_departements(id),
-    CONSTRAINT fk_pi_commune       FOREIGN KEY (commune_origine_id)         REFERENCES ueb_communes(id)
+    CONSTRAINT fk_pi_faculte          FOREIGN KEY (faculte_id)                    REFERENCES ueb_facultes(id),
+    CONSTRAINT fk_pi_diplome          FOREIGN KEY (diplome_admission_id)          REFERENCES ueb_diplomes_admission(id),
+    CONSTRAINT fk_pi_specialite       FOREIGN KEY (specialite_diplome_id)         REFERENCES ueb_specialites_diplome(id),
+    CONSTRAINT fk_pi_niveau_lmd       FOREIGN KEY (niveau_lmd_id)                 REFERENCES ueb_niveaux_lmd(id),
+    CONSTRAINT fk_pi_filiere1         FOREIGN KEY (filiere_1_id)                  REFERENCES ueb_filieres(id),
+    CONSTRAINT fk_pi_filiere2         FOREIGN KEY (filiere_2_id)                  REFERENCES ueb_filieres(id),
+    CONSTRAINT fk_pi_filiere3         FOREIGN KEY (filiere_3_id)                  REFERENCES ueb_filieres(id),
+    CONSTRAINT fk_pi_mention          FOREIGN KEY (mention_id)                    REFERENCES ueb_mentions(id),
+    CONSTRAINT fk_pi_statut_etudiant  FOREIGN KEY (statut_etudiant_id)            REFERENCES ueb_statuts_etudiant(id),
+    CONSTRAINT fk_pi_nationalite      FOREIGN KEY (nationalite_id)                REFERENCES ueb_nationalites(id),
+    CONSTRAINT fk_pi_langue           FOREIGN KEY (premiere_langue_id)            REFERENCES ueb_langues(id),
+    CONSTRAINT fk_pi_situation        FOREIGN KEY (situation_matrimoniale_id)     REFERENCES ueb_situations_matrimoniales(id),
+    CONSTRAINT fk_pi_statut_socio     FOREIGN KEY (statut_socio_professionnel_id) REFERENCES ueb_statuts_socio_professionnels(id),
+    CONSTRAINT fk_pi_region           FOREIGN KEY (region_origine_id)             REFERENCES ueb_regions(id),
+    CONSTRAINT fk_pi_departement      FOREIGN KEY (departement_origine_id)        REFERENCES ueb_departements(id),
+    CONSTRAINT fk_pi_commune          FOREIGN KEY (commune_origine_id)            REFERENCES ueb_communes(id),
+    CONSTRAINT fk_pi_sport            FOREIGN KEY (sport_prefere_id)              REFERENCES ueb_sports(id),
+    CONSTRAINT fk_pi_art              FOREIGN KEY (art_pratique_id)               REFERENCES ueb_arts(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
         'ueb_preinscriptions_telephones' => <<<SQL
