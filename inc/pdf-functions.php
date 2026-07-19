@@ -529,16 +529,22 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
         array( 'Faculté', 'Faculty', $d['faculte'],
                "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
+
         array( 'Type de formation', 'Training type', $d['type_formation'],
                'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
+               
         array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
-               "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
-        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
-               'Niveau LMD', 'LMD level', $d['niveau_lmd'] ),
-        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
                'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
-        array( 'Mention', 'Mention / Honors', $d['mention'],
+
+        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
+               'Mention', 'Mention / Honors', $d['mention'] ),
+
+        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
+               "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
+
+        array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'],
                'Statut', 'Student status', $d['statut_etudiant'] ),
+
     ), $y );
 
     $y += 3.2;
@@ -546,14 +552,19 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $date_lieu = trim( $d['date_naissance'] . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
     $y = ueb_pdf_section_fiche( $pdf, 'ÉTAT CIVIL', array(
         array( 'Nom', 'Surname', strtoupper( $d['nom'] ),
-               'Prénom(s)', 'First name(s)', $d['prenom'] ),
-        array( 'Date et lieu de naissance', 'Date & place of birth', $date_lieu,
                'Nationalité', 'Nationality', $d['nationalite'] ),
+
+        array( 'Prénom(s)', 'First name(s)', $d['prenom'],
+               'Première langue', 'First language', $d['premiere_langue']),
+
+        array( 'Date et lieu de naissance', 'Date & place of birth', $date_lieu,
+               'Statut matrimonial', 'Marital status', $d['situation_matrimoniale']),
+
         array( 'Sexe', 'Gender', $d['sexe'] === 'M' ? 'Masculin' : ( $d['sexe'] === 'F' ? 'Féminin' : '' ),
-               'Statut matrimonial', 'Marital status', $d['situation_matrimoniale'] ),
-        array( 'Statut socio-professionnel', 'Occupation status', $d['statut_socio'],
-               'Première langue', 'First language', $d['premiere_langue'] ),
-        array( 'Situation de handicap', 'Disability status', $d['handicap'],
+               'Statut socio-professionnel', 'Occupation status', $d['statut_socio'],
+                ),
+
+        array('Situation de handicap', 'Disability status', $d['handicap'],
                '', '', '' ),
     ), $y );
 
@@ -562,20 +573,27 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $y = ueb_pdf_section_fiche( $pdf, 'CONTACT ET ORIGINE', array(
         array( 'Téléphone', 'Phone', $d['telephone'],
                'Nom du père', "Father's name", $d['nom_pere'] ?: $nr ),
+
         array( 'E-mail', 'Email', $d['email'],
                'Numéro du père', "Father's phone number", $d['numero_pere'] ?: $nr ),
+
         array( 'Adresse actuelle', 'Current address', $d['adresse'],
-               'Nom de la mère', "Mother's name", $d['nom_mere'] ?: $nr ),
+               'Profession du père', "Father's occupation", $d['profession_pere'] ?: $nr,),
+
         array( 'Département', 'Department', $d['departement'],
-               'Numéro de la mère', "Mother's phone number", $d['numero_mere'] ?: $nr ),
+               'Nom de la mère', "Mother's name", $d['nom_mere'] ?: $nr,),
+
         array( 'Commune', 'Municipality', $d['commune'],
-               'Nom du tuteur', "Guardian's name", $d['nom_tuteur'] ?: $nr ),
+               'Numéro de la mère', "Mother's phone number", $d['numero_mere'] ?: $nr ),
+
         array( "Région d'origine", 'Region of origin', $d['region'],
-               'Numéro du tuteur', "Guardian's phone number", $d['numero_tuteur'] ?: $nr ),
-        array( '', '', '',
-               'Profession du père', "Father's occupation", $d['profession_pere'] ?: $nr ),
-        array( '', '', '',
                'Profession de la mère', "Mother's occupation", $d['profession_mere'] ?: $nr ),
+
+        array( '', '', '',
+               'Nom du tuteur', "Guardian's name", $d['nom_tuteur'] ?: $nr, ),
+
+        array( '', '', '',
+               'Numéro du tuteur', "Guardian's phone number", $d['numero_tuteur'] ?: $nr, ),
     ), $y );
 
     $y += 3.2;
