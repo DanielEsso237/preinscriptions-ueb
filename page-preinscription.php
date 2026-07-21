@@ -313,7 +313,10 @@ get_header();
                         </div>
 
                         <!-- Première langue — peuplé via AJAX (ueb_get_langues) -->
-                        <div class="form-group">
+                        <!-- .full : seule sur sa ligne (le champ suivant, situation_matrimoniale,
+                             est en .full et saute à la ligne), donc pleine largeur pour éviter
+                             une case vide à côté. -->
+                        <div class="form-group full">
                             <label for="premiere_langue">Première langue <span class="required">*</span><span class="field-trans">First language</span></label>
                             <select id="premiere_langue" name="premiere_langue" required disabled>
                                 <option value="">— Chargement... —</option>
