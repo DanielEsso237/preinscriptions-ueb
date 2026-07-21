@@ -81,7 +81,6 @@
     margin: .5rem 0 2rem;
 }
 
-/* Titres de section : un seul style utilisé partout dans le dashboard */
 .admin-section-title {
     font-size: 1.05rem;
     font-weight: 700;
@@ -90,7 +89,98 @@
     padding-bottom: .5rem;
     border-bottom: 1px solid #e4e4e0;
 }
-.admin-section-title:first-of-type { margin-top: 0; }
+
+/* ---------------------------------------------------------------------
+   PANNEAU DE FILTRES (partagé par les deux onglets)
+   --------------------------------------------------------------------- */
+.admin-filter-form {
+    background: var(--ueb-white);
+    border-radius: 12px;
+    padding: 1.25rem 1.4rem 1.4rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    margin-bottom: 1.5rem;
+}
+.admin-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem 1.1rem;
+}
+.admin-filter-field { display: flex; flex-direction: column; gap: .3rem; }
+.admin-filter-field label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ueb-gray);
+}
+.admin-filter-field select {
+    padding: .55rem .7rem;
+    border-radius: 7px;
+    border: 1px solid #d8d8d4;
+    font-size: .86rem;
+    background: var(--ueb-white);
+    color: var(--ueb-text);
+}
+.admin-filter-field select:disabled {
+    background: #f2f2ef;
+    color: var(--ueb-gray);
+    font-style: italic;
+}
+.admin-filter-actions {
+    display: flex;
+    gap: .75rem;
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid #e4e4e0;
+}
+.admin-filter-actions .btn { padding: .55rem 1.4rem; }
+
+/* ---------------------------------------------------------------------
+   ONGLETS
+   --------------------------------------------------------------------- */
+.admin-tabs {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid #e4e4e0;
+}
+.admin-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: .8rem 1.1rem;
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--ueb-gray);
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
+}
+.admin-tab-btn:hover { color: var(--ueb-green); }
+.admin-tab-btn.active {
+    color: var(--ueb-green);
+    border-bottom-color: var(--ueb-green);
+}
+
+.admin-tab-panel { display: none; }
+.admin-tab-panel.active { display: block; }
+
+/* ---------------------------------------------------------------------
+   ÉTATS (chargement / vide)
+   --------------------------------------------------------------------- */
+.admin-loading, .admin-empty {
+    background: var(--ueb-white);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--ueb-gray);
+    font-size: .9rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,.06);
+}
+
+.admin-results-count {
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--ueb-green);
+    margin-bottom: .9rem;
+}
 
 /* ---------------------------------------------------------------------
    CARTES DE CHIFFRES CLÉS (KPI)
@@ -99,7 +189,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
     align-items: stretch;
 }
 .admin-kpi {
@@ -165,32 +255,12 @@
 .admin-chart-card--wide { grid-column: 1 / -1; height: 260px; }
 
 /* ---------------------------------------------------------------------
-   FILTRES + TABLEAU DES DOSSIERS
+   TABLEAU DES DOSSIERS
    --------------------------------------------------------------------- */
-.admin-filters {
-    display: flex;
-    gap: .75rem;
-    flex-wrap: wrap;
-    align-items: center;
-    background: var(--ueb-white);
-    padding: 1rem 1.1rem;
-    border-radius: 10px;
-    box-shadow: 0 1px 6px rgba(0,0,0,.06);
-    margin-bottom: 1.25rem;
-}
-.admin-filters select {
-    padding: .5rem .7rem;
-    border-radius: 7px;
-    border: 1px solid #d8d8d4;
-    font-size: .88rem;
-    background: var(--ueb-white);
-}
-.admin-filters .btn { padding: .5rem 1.2rem; }
-
 .admin-dossiers-table-wrap {
     background: var(--ueb-white);
     border-radius: 12px;
-    overflow: hidden;
+    overflow: hidden auto;
     box-shadow: 0 1px 6px rgba(0,0,0,.06);
     margin-bottom: 1rem;
 }
@@ -208,15 +278,20 @@
     font-size: .8rem;
     text-transform: uppercase;
     letter-spacing: .03em;
+    white-space: nowrap;
 }
 .admin-dossiers-table tbody tr:nth-child(even) { background: var(--ueb-bg); }
 .admin-dossiers-table tbody tr:hover { background: #eef4f1; }
-.admin-dossiers-table td a {
+.admin-voir-btn {
+    background: transparent;
+    border: none;
     color: var(--ueb-blue-dark);
     font-weight: 600;
-    text-decoration: none;
+    cursor: pointer;
+    font-size: .86rem;
+    padding: 0;
 }
-.admin-dossiers-table td a:hover { text-decoration: underline; }
+.admin-voir-btn:hover { text-decoration: underline; }
 
 /* ---------------------------------------------------------------------
    VUE DÉTAIL D'UN DOSSIER
@@ -224,9 +299,12 @@
 .admin-back-link {
     display: inline-block;
     margin-bottom: 1rem;
+    background: transparent;
+    border: none;
+    padding: 0;
     color: var(--ueb-blue-dark);
     font-weight: 600;
-    text-decoration: none;
+    cursor: pointer;
     font-size: .9rem;
 }
 .admin-back-link:hover { text-decoration: underline; }
@@ -272,4 +350,6 @@
     .admin-detail-table th { width: 140px; }
     .admin-dossiers-table-wrap { overflow-x: auto; }
     .admin-dossiers-table { min-width: 640px; }
+    .admin-filter-actions { flex-direction: column; }
+    .admin-filter-actions .btn { width: 100%; }
 }
