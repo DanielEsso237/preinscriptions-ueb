@@ -11,29 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *   Page 3 : fiche d'examen médical officielle, reproduite telle quelle
  *            depuis le modèle du prof (image assets/pdf/, à remplir à la
  *            main par le médecin).
- *
- * Le rendu est fait en primitives TCPDF natives (SetXY/Cell/MultiCell,
- * RoundedRect, write2DBarcode…) et non en writeHTML : le modèle exige un
- * positionnement au millimètre (coupon, QR, encadrés) que le moteur HTML
- * de TCPDF ne garantit pas.
- *
- * Les QR codes utilisent le support natif de TCPDF (write2DBarcode),
- * aucune librairie externe.
- *
- * Depuis le ticket "champs additionnels" (filière 3, niveau LMD en table
- * de référence, moyenne, mention, statut étudiant, première langue,
- * handicap oui/non, contacts père/mère/tuteur détaillés, informations
- * diverses), chaque section de la fiche affiche, sous le libellé français
- * de chaque champ, sa traduction anglaise en petit texte gris semi-
- * transparent — cf. ueb_pdf_section_fiche().
  */
 
-/**
- * Récupère un libellé (ou toute autre colonne) dans une table de référence
- * ueb_* à partir d'un ID. $table et $column sont toujours des littéraux
- * fournis par notre propre code (jamais issus de $_POST), donc pas de
- * risque d'injection malgré l'absence de placeholder sur les identifiants.
- */
 function ueb_pdf_lookup( $table, $id, $column = 'libelle' ) {
     global $wpdb;
 
@@ -49,11 +28,6 @@ function ueb_pdf_lookup( $table, $id, $column = 'libelle' ) {
     return $valeur ? $valeur : '';
 }
 
-/**
- * Calcule l'année académique en cours au format "AAAA-AAAA", avec bascule
- * au 1er octobre (avant octobre : année N-1/N ; à partir d'octobre : N/N+1).
- * Retourne du texte brut (le rendu natif TCPDF n'interprète pas le HTML).
- */
 function ueb_get_annee_academique() {
     $mois  = (int) date( 'n' );
     $annee = (int) date( 'Y' );
@@ -66,7 +40,6 @@ function ueb_get_annee_academique() {
 }
 
 function ueb_translate_type_formation( $code ) {
-    // Enum simple (classique/pro), pas une table de référence : reste codé en dur.
     $map = array(
         'classique' => 'Formation Classique (étude de dossier)',
         'pro'       => 'Formation Professionnelle — Licence Pro (LP)',
@@ -76,7 +49,7 @@ function ueb_translate_type_formation( $code ) {
 
 
 /* ============================================================
-   GÉNÉRATION DU PDF (point d'entrée, hook template_redirect)
+   GÉNÉRATION DU PDF
    ============================================================ */
 
 function ueb_handle_pdf_generation() {
@@ -91,9 +64,6 @@ function ueb_handle_pdf_generation() {
 
     require_once get_template_directory() . '/lib/tcpdf/tcpdf.php';
 
-    // WordPress ajoute des antislashs devant les apostrophes dans $_POST
-    // (émulation historique des "magic quotes"). On les retire AVANT
-    // toute sanitisation, sinon des noms comme "Eto'o" deviennent "Eto\'o".
     $posted = wp_unslash( $_POST );
 
     $numero_dossier  = sanitize_text_field( $posted['numero_dossier'] ?? '' );
@@ -107,16 +77,12 @@ function ueb_handle_pdf_generation() {
     $email           = sanitize_email( $posted['email'] ?? '' );
     $adresse         = sanitize_text_field( $posted['adresse'] ?? '' );
 
-    // Moyenne : champ réel, on garde 2 décimales pour l'affichage.
     $moyenne_diplome = isset( $posted['moyenne_diplome'] ) && $posted['moyenne_diplome'] !== ''
         ? number_format( (float) $posted['moyenne_diplome'], 2 )
         : '';
 
-    // Handicap : radio oui/non, "non" par défaut si absent/invalide.
     $handicap = in_array( $posted['handicap'] ?? '', array( 'oui', 'non' ), true ) ? $posted['handicap'] : 'non';
 
-    // Filiation — contacts père/mère/tuteur détaillés (remplace l'ancien
-    // "tel_tuteur[]" multi-valeurs par des champs simples dédiés).
     $nom_pere         = sanitize_text_field( $posted['nom_pere'] ?? '' );
     $numero_pere      = sanitize_text_field( $posted['numero_pere'] ?? '' );
     $profession_pere  = sanitize_text_field( $posted['profession_pere'] ?? '' );
@@ -126,11 +92,9 @@ function ueb_handle_pdf_generation() {
     $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
     $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
 
-    // Informations diverses.
     $numero_certificat_medical = sanitize_text_field( $posted['numero_certificat_medical'] ?? '' );
     $lieu_obtention_certificat = sanitize_text_field( $posted['lieu_obtention_certificat'] ?? '' );
 
-    // Champs stockés en ID de FK : on récupère les libellés via les tables ueb_*.
     $faculte_id         = absint( $posted['faculte'] ?? 0 );
     $diplome_id         = absint( $posted['diplome_admission'] ?? 0 );
     $serie_id           = absint( $posted['serie_diplome'] ?? 0 );
@@ -155,9 +119,6 @@ function ueb_handle_pdf_generation() {
         "SELECT code, nom_fr, nom_en, logo FROM ueb_facultes WHERE id = %d", $faculte_id
     ) ) : null;
 
-    // Téléphone(s) du candidat uniquement — les numéros du père, de la
-    // mère et du tuteur sont désormais des champs simples (numero_pere,
-    // numero_mere, numero_tuteur), lus juste au-dessus.
     $telephones = isset( $posted['telephone'] ) ? (array) $posted['telephone'] : array();
     $telephones = array_map( 'sanitize_text_field', $telephones );
 
@@ -216,11 +177,6 @@ function ueb_handle_pdf_generation() {
 add_action( 'template_redirect', 'ueb_handle_pdf_generation' );
 
 
-/**
- * Construit le document 3 pages à partir des données déjà résolues
- * (libellés, pas d'IDs). Séparé du handler pour être testable en CLI
- * sans WordPress ni base de données.
- */
 function ueb_pdf_build_document( array $d ) {
     $pdf = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
     $pdf->SetCreator( 'UEB Préinscriptions' );
@@ -229,7 +185,7 @@ function ueb_pdf_build_document( array $d ) {
     $pdf->setPrintHeader( false );
     $pdf->setPrintFooter( false );
     $pdf->SetMargins( 0, 0, 0 );
-    $pdf->SetAutoPageBreak( false, 0 ); // mise en page absolue, page par page
+    $pdf->SetAutoPageBreak( false, 0 );
 
     ueb_pdf_page_fiche( $pdf, $d );
     ueb_pdf_page_medicale( $pdf, $d );
@@ -240,28 +196,23 @@ function ueb_pdf_build_document( array $d ) {
 
 
 /* ============================================================
-   PALETTE & PETITS HELPERS DE RENDU
+   PALETTE & HELPERS
    ============================================================ */
 
 function ueb_pdf_couleurs() {
     return array(
-        'vert'       => array( 22, 82, 49 ),   // barres de section, bandeaux
-        'vert_titre' => array( 22, 106, 58 ),  // grands titres
-        'orange'     => array( 232, 126, 24 ), // numéro de dossier
-        'or'         => array( 240, 190, 60 ), // code sur bandeau vert (page 2)
+        'vert'       => array( 22, 82, 49 ),
+        'vert_titre' => array( 22, 106, 58 ),
+        'orange'     => array( 232, 126, 24 ),
+        'or'         => array( 240, 190, 60 ),
         'noir'       => array( 33, 37, 41 ),
         'gris'       => array( 107, 114, 128 ),
         'ligne'      => array( 225, 229, 226 ),
-        'fond'       => array( 243, 247, 244 ), // lignes alternées
-        'vert_pale'  => array( 238, 245, 239 ), // fond bloc notes page 2
+        'fond'       => array( 243, 247, 244 ),
+        'vert_pale'  => array( 238, 245, 239 ),
     );
 }
 
-/**
- * Translittère les accents en ASCII pour le contenu des QR codes
- * (compatibilité maximale des lecteurs + moins d'octets, donc un QR
- * moins dense et plus facile à scanner).
- */
 function ueb_pdf_sans_accents( $txt ) {
     $map = array(
         'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
@@ -277,19 +228,12 @@ function ueb_pdf_sans_accents( $txt ) {
     return $ascii !== false ? $ascii : $s;
 }
 
-/**
- * Dessine un QR code stylisé « design » : points ronds vert UEB pour les
- * données, coins de repérage aux angles arrondis. Même contenu et même
- * fiabilité qu'un QR classique (les lecteurs se basent sur la position
- * des modules, pas sur leur forme, tant que chaque point couvre ~95 %
- * de sa case et que le contraste est fort — le vert foncé l'assure).
- */
 function ueb_pdf_qr_stylise( $pdf, $texte, $x, $y, $taille ) {
     if ( ! class_exists( 'TCPDF2DBarcode' ) ) {
         require_once get_template_directory() . '/lib/tcpdf/tcpdf_barcodes_2d.php';
     }
 
-    $encre = array( 0, 0, 0 ); // noir : contraste maximal au scan
+    $encre = array( 0, 0, 0 );
     $blanc = array( 255, 255, 255 );
 
     $barcode = new TCPDF2DBarcode( $texte, 'QRCODE,L' );
@@ -299,19 +243,16 @@ function ueb_pdf_qr_stylise( $pdf, $texte, $x, $y, $taille ) {
     }
 
     $n = $matrice['num_cols'];
-    $m = $taille / $n; // taille d'un module en mm
+    $m = $taille / $n;
 
-    // Conteneur : carré de contour en trait fin autour du QR.
     $marge = 1.2;
     $pdf->SetLineStyle( array( 'width' => 0.2, 'dash' => 0, 'color' => $encre ) );
     $pdf->Rect( $x - $marge, $y - $marge, $taille + 2 * $marge, $taille + 2 * $marge );
 
-    // Les 3 motifs de repérage (7×7) sont redessinés à part, en arrondi.
     $dans_repere = static function ( $r, $c ) use ( $n ) {
         return ( $r < 7 && $c < 7 ) || ( $r < 7 && $c >= $n - 7 ) || ( $r >= $n - 7 && $c < 7 );
     };
 
-    // Modules de données : points ronds (diamètre ~95 % du module).
     foreach ( $matrice['bcode'] as $r => $ligne ) {
         foreach ( $ligne as $c => $plein ) {
             if ( ! $plein || $dans_repere( $r, $c ) ) {
@@ -321,7 +262,6 @@ function ueb_pdf_qr_stylise( $pdf, $texte, $x, $y, $taille ) {
         }
     }
 
-    // Motifs de repérage : anneau arrondi + cœur plein arrondi.
     foreach ( array( array( 0, 0 ), array( 0, $n - 7 ), array( $n - 7, 0 ) ) as $coin ) {
         list( $r0, $c0 ) = $coin;
         $fx = $x + $c0 * $m;
@@ -332,7 +272,6 @@ function ueb_pdf_qr_stylise( $pdf, $texte, $x, $y, $taille ) {
     }
 }
 
-/** Écrit un texte à une position absolue. $w > 0 => cellule alignée. */
 function ueb_pdf_txt( $pdf, $x, $y, $txt, $size, $style = '', $color = null, $align = 'L', $w = 0 ) {
     $c = $color ?: ueb_pdf_couleurs()['noir'];
     $pdf->SetFont( 'dejavusans', $style, $size );
@@ -345,11 +284,6 @@ function ueb_pdf_txt( $pdf, $x, $y, $txt, $size, $style = '', $color = null, $al
     }
 }
 
-/**
- * Écrit un libellé français puis, juste en dessous, sa traduction
- * anglaise en petit texte gris semi-transparent (SetAlpha). Utilisé pour
- * tous les libellés de champ de la fiche — cf. maquette Excel du prof.
- */
 function ueb_pdf_txt_trad( $pdf, $x, $y, $label_fr, $label_en, $size, $style, $color ) {
     ueb_pdf_txt( $pdf, $x, $y, $label_fr, $size, $style, $color );
 
@@ -360,36 +294,24 @@ function ueb_pdf_txt_trad( $pdf, $x, $y, $label_fr, $label_en, $size, $style, $c
     }
 }
 
-/** Ligne continue fine. */
 function ueb_pdf_ligne( $pdf, $x1, $y1, $x2, $y2, $color, $width = 0.2, $dash = 0 ) {
-    $pdf->SetLineStyle( array(
-        'width' => $width,
-        'dash'  => $dash,
-        'color' => $color,
-    ) );
+    $pdf->SetLineStyle( array( 'width' => $width, 'dash' => $dash, 'color' => $color ) );
     $pdf->Line( $x1, $y1, $x2, $y2 );
 }
 
-/**
- * En-tête administratif bilingue commun aux pages 1 et 2
- * (République / logo UEB centré / Republic). Retourne le y bas.
- */
 function ueb_pdf_entete_bilingue( $pdf, $y ) {
     $c    = ueb_pdf_couleurs();
     $logo = get_template_directory() . '/assets/images/logo-ueb.png';
 
-    // Colonne française (gauche)
     ueb_pdf_txt( $pdf, 8,  $y,        'RÉPUBLIQUE DU CAMEROUN', 9, 'B', $c['noir'], 'C', 66 );
     ueb_pdf_txt( $pdf, 8,  $y + 5,    'Paix – Travail – Patrie', 8, 'I', $c['noir'], 'C', 66 );
     ueb_pdf_txt( $pdf, 8,  $y + 10,   'MINISTÈRE DE L\'ENSEIGNEMENT SUPÉRIEUR', 7, '', $c['noir'], 'C', 66 );
     ueb_pdf_txt( $pdf, 8,  $y + 15,   'UNIVERSITÉ D\'ÉBOLOWA', 8.5, 'B', $c['vert_titre'], 'C', 66 );
 
-    // Logo central
     if ( file_exists( $logo ) ) {
         $pdf->Image( $logo, 94, $y - 1, 22, 0, 'PNG' );
     }
 
-    // Colonne anglaise (droite)
     ueb_pdf_txt( $pdf, 136, $y,      'REPUBLIC OF CAMEROON', 9, 'B', $c['noir'], 'C', 66 );
     ueb_pdf_txt( $pdf, 136, $y + 5,  'Peace – Work – Fatherland', 8, 'I', $c['noir'], 'C', 66 );
     ueb_pdf_txt( $pdf, 136, $y + 10, 'MINISTRY OF HIGHER EDUCATION', 7, '', $c['noir'], 'C', 66 );
@@ -400,24 +322,12 @@ function ueb_pdf_entete_bilingue( $pdf, $y ) {
 
 
 /* ============================================================
-   PAGE 1 — FICHE DE PRÉINSCRIPTION + COUPON RÉCÉPISSÉ
+   PAGE 1
    ============================================================ */
 
-/**
- * Section de la fiche : barre de titre verte + lignes en 2 colonnes
- * (label FR / traduction EN / valeur, à gauche puis à droite),
- * fonds alternés.
- *
- * $lignes : tableau de array( labelG_fr, labelG_en, valG, labelD_fr, labelD_en, valD ).
- * Un libellé vide ('') n'affiche ni label ni traduction ni valeur —
- * utile pour les lignes où une seule colonne est renseignée.
- *
- * Retourne le y bas.
- */
 function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
     $c = ueb_pdf_couleurs();
 
-    // Barre de titre (compactée : 4.6mm au lieu de 6.2mm)
     $pdf->RoundedRect( 8, $y, 194, 4.6, 0.6, '1111', 'F', array(), $c['vert'] );
     ueb_pdf_txt( $pdf, 11, $y + 0.15, $titre, 7.5, 'B', array( 255, 255, 255 ) );
     $y += 4.6;
@@ -430,7 +340,6 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
         $nbG = $valG !== '' ? $pdf->getNumLines( $valG, 58 ) : 1;
         $nbD = $valD !== '' ? $pdf->getNumLines( $valD, 48.5 ) : 1;
         $nb  = max( $nbG, $nbD );
-        // Hauteur mini réduite : 6.4mm (au lieu de 9.2mm)
         $h   = max( 6.4, $nb * 2.8 + 4.0 );
 
         if ( $i % 2 === 0 ) {
@@ -475,7 +384,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
 
     ueb_pdf_entete_bilingue( $pdf, 6 );
 
-    /* --- Cadre PHOTO (compacté) --- */
+    /* --- Cadre PHOTO --- */
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
     $pdf->Rect( 8, 28, 22, 24 );
     ueb_pdf_txt( $pdf, 8, 38.5, 'PHOTO', 6.5, '', $c['gris'], 'C', 22 );
@@ -513,71 +422,50 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 168, 48.3, 'Année académique', 7, 'B', $c['noir'], 'C', 40 );
     ueb_pdf_txt( $pdf, 168, 52,   $d['annee_academique'], 7, 'B', $c['noir'], 'C', 40 );
 
-    /* --- Sections (démarrent plus haut, gap réduit entre sections) --- */
+    /* --- Sections --- */
     $y = 59;
 
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
-        array( 'Faculté', 'Faculty', $d['faculte'],
-               "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
-        array( 'Type de formation', 'Training type', $d['type_formation'],
-               'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
-        array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
-               'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
-        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
-               'Mention', 'Mention / Honors', $d['mention'] ),
-        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
-               "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
-        array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'],
-               'Statut', 'Student status', $d['statut_etudiant'] ),
+        array( 'Faculté', 'Faculty', $d['faculte'], "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
+        array( 'Type de formation', 'Training type', $d['type_formation'], 'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
+        array( '1er choix de filière', '1st choice of program', $d['filiere_1'], 'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
+        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'], 'Mention', 'Mention / Honors', $d['mention'] ),
+        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'], "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
+        array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'], 'Statut', 'Student status', $d['statut_etudiant'] ),
     ), $y );
 
     $y += 1.8;
 
     $date_lieu = trim( $d['date_naissance'] . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
     $y = ueb_pdf_section_fiche( $pdf, 'ÉTAT CIVIL', array(
-        array( 'Nom', 'Surname', strtoupper( $d['nom'] ),
-               'Nationalité', 'Nationality', $d['nationalite'] ),
-        array( 'Prénom(s)', 'First name(s)', $d['prenom'],
-               'Première langue', 'First language', $d['premiere_langue'] ),
-        array( 'Date et lieu de naissance', 'Date & place of birth', $date_lieu,
-               'Statut matrimonial', 'Marital status', $d['situation_matrimoniale'] ),
-        array( 'Sexe', 'Gender', $d['sexe'] === 'M' ? 'Masculin' : ( $d['sexe'] === 'F' ? 'Féminin' : '' ),
-               'Statut socio-professionnel', 'Occupation status', $d['statut_socio'] ),
-        array( 'Situation de handicap', 'Disability status', $d['handicap'],
-               '', '', '' ),
+        array( 'Nom', 'Surname', strtoupper( $d['nom'] ), 'Nationalité', 'Nationality', $d['nationalite'] ),
+        array( 'Prénom(s)', 'First name(s)', $d['prenom'], 'Première langue', 'First language', $d['premiere_langue'] ),
+        array( 'Date et lieu de naissance', 'Date & place of birth', $date_lieu, 'Statut matrimonial', 'Marital status', $d['situation_matrimoniale'] ),
+        array( 'Sexe', 'Gender', $d['sexe'] === 'M' ? 'Masculin' : ( $d['sexe'] === 'F' ? 'Féminin' : '' ), 'Statut socio-professionnel', 'Occupation status', $d['statut_socio'] ),
+        array( 'Situation de handicap', 'Disability status', $d['handicap'], '', '', '' ),
     ), $y );
 
     $y += 1.8;
 
     $y = ueb_pdf_section_fiche( $pdf, 'CONTACT ET ORIGINE', array(
-        array( 'Téléphone', 'Phone', $d['telephone'],
-               'Nom du père', "Father's name", $d['nom_pere'] ?: $nr ),
-        array( 'E-mail', 'Email', $d['email'],
-               'Numéro du père', "Father's phone number", $d['numero_pere'] ?: $nr ),
-        array( 'Adresse actuelle', 'Current address', $d['adresse'],
-               'Profession du père', "Father's occupation", $d['profession_pere'] ?: $nr ),
-        array( 'Département', 'Department', $d['departement'],
-               'Nom de la mère', "Mother's name", $d['nom_mere'] ?: $nr ),
-        array( 'Commune', 'Municipality', $d['commune'],
-               'Numéro de la mère', "Mother's phone number", $d['numero_mere'] ?: $nr ),
-        array( "Région d'origine", 'Region of origin', $d['region'],
-               'Profession de la mère', "Mother's occupation", $d['profession_mere'] ?: $nr ),
-        array( '', '', '',
-               'Nom du tuteur', "Guardian's name", $d['nom_tuteur'] ?: $nr ),
-        array( '', '', '',
-               'Numéro du tuteur', "Guardian's phone number", $d['numero_tuteur'] ?: $nr ),
+        array( 'Téléphone', 'Phone', $d['telephone'], 'Nom du père', "Father's name", $d['nom_pere'] ?: $nr ),
+        array( 'E-mail', 'Email', $d['email'], 'Numéro du père', "Father's phone number", $d['numero_pere'] ?: $nr ),
+        array( 'Adresse actuelle', 'Current address', $d['adresse'], 'Profession du père', "Father's occupation", $d['profession_pere'] ?: $nr ),
+        array( 'Département', 'Department', $d['departement'], 'Nom de la mère', "Mother's name", $d['nom_mere'] ?: $nr ),
+        array( 'Commune', 'Municipality', $d['commune'], 'Numéro de la mère', "Mother's phone number", $d['numero_mere'] ?: $nr ),
+        array( "Région d'origine", 'Region of origin', $d['region'], 'Profession de la mère', "Mother's occupation", $d['profession_mere'] ?: $nr ),
+        array( '', '', '', 'Nom du tuteur', "Guardian's name", $d['nom_tuteur'] ?: $nr ),
+        array( '', '', '', 'Numéro du tuteur', "Guardian's phone number", $d['numero_tuteur'] ?: $nr ),
     ), $y );
 
     $y += 1.8;
 
     $y = ueb_pdf_section_fiche( $pdf, 'INFORMATIONS DIVERSES', array(
-        array( 'Sport préféré', 'Favorite sport', $d['sport_prefere'] ?: $nr,
-               'N° certificat médical', 'Medical certificate no.', $d['numero_certificat_medical'] ?: $nr ),
-        array( 'Art pratiqué', 'Art practiced', $d['art_pratique'] ?: $nr,
-               "Lieu d'obtention du certificat", 'Certificate obtained at', $d['lieu_obtention_certificat'] ?: $nr ),
+        array( 'Sport préféré', 'Favorite sport', $d['sport_prefere'] ?: $nr, 'N° certificat médical', 'Medical certificate no.', $d['numero_certificat_medical'] ?: $nr ),
+        array( 'Art pratiqué', 'Art practiced', $d['art_pratique'] ?: $nr, "Lieu d'obtention du certificat", 'Certificate obtained at', $d['lieu_obtention_certificat'] ?: $nr ),
     ), $y );
 
-    /* --- Déclaration + signatures (compactées) --- */
+    /* --- Déclaration + signatures --- */
     ueb_pdf_txt( $pdf, 8, $y + 1.5, "Je déclare sur l'honneur que les informations saisies sont exactes.", 7, '', $c['noir'] );
 
     $y_sig = $y + 5.5;
@@ -589,18 +477,17 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
 
     $y_bas_fiche = $y_sig + 3.8 + 7;
 
-    /* --- Ligne de découpe : position CALCULÉE, plus jamais figée --- */
+    /* --- Ligne de découpe --- */
     $y_decoupe = $y_bas_fiche + 3;
     ueb_pdf_txt( $pdf, 4, $y_decoupe - 0.6, '✂', 9, '', $c['noir'] );
     ueb_pdf_ligne( $pdf, 11, $y_decoupe, 206, $y_decoupe, $c['noir'], 0.3, '2.2,1.6' );
 
     /* ================================================
-       COUPON RÉCÉPISSÉ DE DÉPÔT (version compactée)
+       COUPON RÉCÉPISSÉ DE DÉPÔT (dernière version)
        ================================================ */
     $ct = $y_decoupe + 2.5;
-    $coupon_h = 39; // compacté
+    $coupon_h = 42;
 
-    // Garde-fou
     if ( $ct + $coupon_h > 296 ) {
         $ct = 296 - $coupon_h;
     }
@@ -611,22 +498,22 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 55, $ct + 3, 'RÉCÉPISSÉ DE DÉPÔT', 11.5, 'B', $c['vert_titre'], 'C', 100 );
 
     // Colonne gauche
-    ueb_pdf_txt( $pdf, 10, $ct + 7, 'Code :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 21.5, $ct + 7, $d['numero_dossier'], 8, 'B', $c['orange'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 11.5, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 46.5, $ct + 11.5, strtoupper( $d['nom'] ) . ' ' . $d['prenom'], 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 16, 'Filière :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 23, $ct + 16, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 20.5, 'Établissement :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 36.5, $ct + 20.5, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 7.5, 'Code :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 21.5, $ct + 7.5, $d['numero_dossier'], 8, 'B', $c['orange'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 12.4, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 46.5, $ct + 12.4, strtoupper( $d['nom'] ) . ' ' . $d['prenom'], 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 17.3, 'Filière :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 23, $ct + 17.3, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 22.2, 'Établissement :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 36.5, $ct + 22.2, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
 
     // Colonne droite
-    ueb_pdf_txt( $pdf, 126, $ct + 7, 'Niveau :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 140, $ct + 7, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
-    ueb_pdf_txt( $pdf, 138, $ct + 11, 'Avis', 8, 'B', $c['noir'], 'C', 44 );
-    ueb_pdf_txt( $pdf, 138, $ct + 14.5, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
+    ueb_pdf_txt( $pdf, 126, $ct + 7.5, 'Niveau :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 140, $ct + 7.5, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
+    ueb_pdf_txt( $pdf, 138, $ct + 12, 'Avis', 8, 'B', $c['noir'], 'C', 44 );
+    ueb_pdf_txt( $pdf, 138, $ct + 15.8, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
-    $pdf->Rect( 138, $ct + 17.5, 44, 6.5 );
+    $pdf->Rect( 138, $ct + 19, 44, 7 );
 
     // QR Code
     $qr_coupon = 'Code : ' . $d['numero_dossier'] . "\n"
@@ -637,55 +524,46 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . "Bq : CCABANK\n"
         . 'Compte : 10039-10012-0027277050';
 
-    ueb_pdf_qr_stylise( $pdf, $qr_coupon, 187, $ct + 5, 14 );
+    ueb_pdf_qr_stylise( $pdf, $qr_coupon, 186.5, $ct + 5.5, 15 );
 
-    /* Encadré paiement (resserré) */
-    $pdf->RoundedRect( 9, $ct + 25, 192, 10, 1, '1111', 'D',
+    /* Encadré paiement */
+    $pdf->RoundedRect( 9, $ct + 27, 192, 11.5, 1, '1111', 'D',
         array( 'width' => 0.3, 'dash' => 0, 'color' => $c['noir'] ) );
 
-    ueb_pdf_ligne( $pdf, 68, $ct + 26, 68, $ct + 34, $c['ligne'], 0.25 );
-    ueb_pdf_ligne( $pdf, 114, $ct + 26, 114, $ct + 34, $c['ligne'], 0.25 );
+    ueb_pdf_ligne( $pdf, 68, $ct + 28, 68, $ct + 37.5, $c['ligne'], 0.25 );
+    ueb_pdf_ligne( $pdf, 114, $ct + 28, 114, $ct + 37.5, $c['ligne'], 0.25 );
 
-    ueb_pdf_icone( $pdf, 'banque', 12, $ct + 27.3, 6 );
-    ueb_pdf_txt( $pdf, 21, $ct + 27, '*Agence de paiement :', 6.6, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 21, $ct + 30.8, 'CCABANK', 6.6, '', $c['noir'] );
+    ueb_pdf_icone( $pdf, 'banque', 12, $ct + 29.5, 6.5 );
+    ueb_pdf_txt( $pdf, 21.5, $ct + 29, '*Agence de paiement :', 6.8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 21.5, $ct + 33, 'CCABANK', 6.8, '', $c['noir'] );
 
-    ueb_pdf_icone( $pdf, 'recu', 69.5, $ct + 27.8, 5.5 );
-    ueb_pdf_txt( $pdf, 77, $ct + 27, '*Numéro de transaction :', 6.2, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 77, $ct + 30.8, '.....................', 6.4, '', $c['noir'] );
+    ueb_pdf_icone( $pdf, 'recu', 69.5, $ct + 30, 6 );
+    ueb_pdf_txt( $pdf, 77.5, $ct + 29, '*Numéro de transaction :', 6.4, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 77.5, $ct + 33, '.....................', 6.6, '', $c['noir'] );
 
-    ueb_pdf_icone( $pdf, 'banque', 117, $ct + 27.3, 6 );
-    ueb_pdf_txt( $pdf, 126, $ct + 26.3, '*N°Compte Bancaire :', 6.6, 'B', $c['noir'] );
-    $pdf->SetFont( 'dejavusans', '', 6 );
+    ueb_pdf_icone( $pdf, 'banque', 117, $ct + 29.5, 6.5 );
+    ueb_pdf_txt( $pdf, 126.5, $ct + 28.5, '*N°Compte Bancaire :', 6.8, 'B', $c['noir'] );
+    $pdf->SetFont( 'dejavusans', '', 6.2 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
-    $pdf->SetXY( 126, $ct + 29.6 );
-    $pdf->MultiCell( 74, 2.9, "FACULTÉS DES SCIENCES ÉCONOMIQUES ET\nDE GESTION | CCA BANK-10039-10012-0027277050", 0, 'L' );
+    $pdf->SetXY( 126.5, $ct + 32 );
+    $pdf->MultiCell( 73.5, 3, "FACULTÉS DES SCIENCES ÉCONOMIQUES ET\nDE GESTION | CCA BANK-10039-10012-0027277050", 0, 'L' );
 }
 
 /* ============================================================
-   PAGE 2 — FICHE MÉDICALE
+   PAGE 2 & 3 + ICÔNES (inchangées)
    ============================================================ */
 
-/**
- * Boîte de section de la fiche médicale : pastille de titre verte
- * (icône + texte blanc) chevauchant un cadre arrondi contenant des
- * lignes "icône  label  :  valeur". Retourne le y bas du cadre.
- */
 function ueb_pdf_boite_medicale( $pdf, $titre, $icone_titre, $largeur_pastille, $lignes, $y ) {
     $c     = ueb_pdf_couleurs();
     $h_row = 13.4;
     $h_box = count( $lignes ) * $h_row + 7.5;
 
-    // Cadre
-    $pdf->RoundedRect( 10, $y + 4.5, 190, $h_box, 2, '1111', 'D',
-        array( 'width' => 0.3, 'dash' => 0, 'color' => $c['gris'] ) );
+    $pdf->RoundedRect( 10, $y + 4.5, 190, $h_box, 2, '1111', 'D', array( 'width' => 0.3, 'dash' => 0, 'color' => $c['gris'] ) );
 
-    // Pastille de titre
     $pdf->RoundedRect( 10, $y, $largeur_pastille, 9, 2, '1111', 'F', array(), $c['vert'] );
     ueb_pdf_icone( $pdf, $icone_titre, 14.5, $y + 2, 5, array( 255, 255, 255 ) );
     ueb_pdf_txt( $pdf, 23, $y + 2, $titre, 9.5, 'B', array( 255, 255, 255 ) );
 
-    // Lignes
     $ry = $y + 9 + 1.5;
     foreach ( $lignes as $idx => $ligne ) {
         list( $icone, $label, $valeur ) = $ligne;
@@ -709,10 +587,8 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     $c = ueb_pdf_couleurs();
 
     $pdf->AddPage();
-
     ueb_pdf_entete_bilingue( $pdf, 9 );
 
-    /* --- Bandeau code de préinscription --- */
     $pdf->SetFont( 'dejavusans', 'B', 11 );
     $w1 = $pdf->GetStringWidth( 'CODE DE PRÉINSCRIPTION : ' );
     $w2 = $pdf->GetStringWidth( $d['numero_dossier'] );
@@ -725,7 +601,6 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 0, 55, '(Imprimez ces deux fiches et apportez-les au Centre médico-social lors de la visite médicale)',
         9, 'I', $c['gris'], 'C', 210 );
 
-    /* --- Informations personnelles --- */
     $date_fr = $d['date_naissance'];
     $ts = strtotime( $d['date_naissance'] );
     if ( $d['date_naissance'] !== '' && $ts ) {
@@ -744,7 +619,6 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'lieu',       'Adresse',           strtoupper( $d['adresse'] ) ),
     ), $y );
 
-    /* --- Personne à contacter en cas d'urgence --- */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
         array( 'personne',  'Nom et Prénom',       $d['nom_tuteur'] ),
@@ -752,7 +626,6 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'lieu',      'Adresse (urgence)',   '' ),
     ), $y );
 
-    /* --- Notes importantes --- */
     $y += 7.5;
     $pdf->RoundedRect( 10, $y, 190, 27, 2, '1111', 'DF',
         array( 'width' => 0.3, 'dash' => 0, 'color' => array( 200, 215, 202 ) ), $c['vert_pale'] );
@@ -763,7 +636,6 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ueb_pdf_icone( $pdf, 'coche', 17, $y + 19.5, 4.5 );
     ueb_pdf_txt( $pdf, 25, $y + 19.2, 'Apportez-les au Centre médico-social lors de votre visite médicale.', 9.5, '', $c['noir'] );
 
-    /* --- Pied de page --- */
     $yf = 272;
     ueb_pdf_ligne( $pdf, 30, $yf, 99,  $yf, $c['gris'], 0.25 );
     ueb_pdf_ligne( $pdf, 111, $yf, 180, $yf, $c['gris'], 0.25 );
@@ -772,35 +644,18 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 0, $yf + 12, 'Thank you for your cooperation.', 9.5, 'I', $c['gris'], 'C', 210 );
 }
 
-
-/* ============================================================
-   PAGE 3 — FICHE D'EXAMEN MÉDICAL (modèle officiel, image)
-   ============================================================ */
-
 function ueb_pdf_page_examen( $pdf ) {
     $pdf->AddPage();
 
     $img = get_template_directory() . '/assets/pdf/fiche-visite-medicale-p3.png';
     if ( file_exists( $img ) ) {
-        // Image 300 dpi au ratio de la page source (205×297 mm), centrée.
         $pdf->Image( $img, 2.4, 0, 205.2, 297, 'PNG' );
     } else {
         $c = ueb_pdf_couleurs();
-        ueb_pdf_txt( $pdf, 0, 140,
-            "Fiche d'examen médical indisponible (assets/pdf/fiche-visite-medicale-p3.png manquant).",
-            10, 'B', $c['gris'], 'C', 210 );
+        ueb_pdf_txt( $pdf, 0, 140, "Fiche d'examen médical indisponible (assets/pdf/fiche-visite-medicale-p3.png manquant).", 10, 'B', $c['gris'], 'C', 210 );
     }
 }
 
-
-/* ============================================================
-   ICÔNES VECTORIELLES (primitives TCPDF, style filaire vert)
-   ============================================================ */
-
-/**
- * Dessine une petite icône filaire dans un carré de $s mm de côté
- * dont le coin haut-gauche est en ($x,$y).
- */
 function ueb_pdf_icone( $pdf, $type, $x, $y, $s, $color = null ) {
     $c  = $color ?: ueb_pdf_couleurs()['vert'];
     $lw = max( 0.35, $s * 0.09 );
@@ -808,63 +663,54 @@ function ueb_pdf_icone( $pdf, $type, $x, $y, $s, $color = null ) {
     $cx = $x + $s / 2;
 
     switch ( $type ) {
-        case 'personne': // tête + épaules
+        case 'personne':
             $pdf->Circle( $cx, $y + $s * 0.3, $s * 0.19 );
             $pdf->Ellipse( $cx, $y + $s * 1.02, $s * 0.32, $s * 0.42, 0, 55, 125 );
             break;
-
         case 'calendrier':
             $pdf->RoundedRect( $x + $s * 0.08, $y + $s * 0.16, $s * 0.84, $s * 0.74, $s * 0.08, '1111', 'D', array(), array() );
             $pdf->Line( $x + $s * 0.08, $y + $s * 0.4, $x + $s * 0.92, $y + $s * 0.4 );
             $pdf->Line( $x + $s * 0.3, $y + $s * 0.05, $x + $s * 0.3, $y + $s * 0.26 );
             $pdf->Line( $x + $s * 0.7, $y + $s * 0.05, $x + $s * 0.7, $y + $s * 0.26 );
             break;
-
         case 'mail':
             $pdf->RoundedRect( $x + $s * 0.05, $y + $s * 0.2, $s * 0.9, $s * 0.6, $s * 0.05, '1111', 'D', array(), array() );
             $pdf->Line( $x + $s * 0.09, $y + $s * 0.25, $cx, $y + $s * 0.55 );
             $pdf->Line( $cx, $y + $s * 0.55, $x + $s * 0.91, $y + $s * 0.25 );
             break;
-
-        case 'telephone': // combiné (arc épais + écouteurs)
+        case 'telephone':
             $pdf->SetLineStyle( array( 'width' => $lw * 1.5, 'dash' => 0, 'color' => $c ) );
             $pdf->Ellipse( $cx, $y + $s * 0.62, $s * 0.34, $s * 0.34, 0, 30, 150 );
             $pdf->Circle( $cx - $s * 0.3, $y + $s * 0.48, $s * 0.09, 0, 360, 'F', array(), $c );
             $pdf->Circle( $cx + $s * 0.3, $y + $s * 0.48, $s * 0.09, 0, 360, 'F', array(), $c );
             break;
-
-        case 'tel_urgence': // combiné + ondes
+        case 'tel_urgence':
             ueb_pdf_icone( $pdf, 'telephone', $x, $y + $s * 0.12, $s * 0.85, $c );
             $pdf->SetLineStyle( array( 'width' => $lw * 0.8, 'dash' => 0, 'color' => $c ) );
             $pdf->Ellipse( $x + $s * 0.78, $y + $s * 0.3, $s * 0.14, $s * 0.14, 0, 300, 60 );
             $pdf->Ellipse( $x + $s * 0.78, $y + $s * 0.3, $s * 0.26, $s * 0.26, 0, 300, 60 );
             break;
-
-        case 'genre': // symbole masculin
+        case 'genre':
             $pdf->Circle( $cx - $s * 0.1, $y + $s * 0.6, $s * 0.24 );
             $pdf->Line( $cx + $s * 0.07, $y + $s * 0.43, $x + $s * 0.88, $y + $s * 0.12 );
             $pdf->Line( $x + $s * 0.88, $y + $s * 0.12, $x + $s * 0.62, $y + $s * 0.1 );
             $pdf->Line( $x + $s * 0.88, $y + $s * 0.12, $x + $s * 0.9, $y + $s * 0.38 );
             break;
-
-        case 'lieu': // épingle de localisation
+        case 'lieu':
             $pdf->Circle( $cx, $y + $s * 0.34, $s * 0.24 );
             $pdf->Circle( $cx, $y + $s * 0.34, $s * 0.07, 0, 360, 'F', array(), $c );
             $pdf->Line( $cx - $s * 0.17, $y + $s * 0.51, $cx, $y + $s * 0.92 );
             $pdf->Line( $cx, $y + $s * 0.92, $cx + $s * 0.17, $y + $s * 0.51 );
             break;
-
-        case 'info': // cercle plein + i
+        case 'info':
             $pdf->Circle( $cx, $y + $s / 2, $s / 2, 0, 360, 'F', array(), $c );
             ueb_pdf_txt( $pdf, $x, $y + $s * 0.14, 'i', $s * 2.2, 'BI', array( 255, 255, 255 ), 'C', $s );
             break;
-
-        case 'coche': // cercle plein + check
+        case 'coche':
             $pdf->Circle( $cx, $y + $s / 2, $s / 2, 0, 360, 'F', array(), $c );
             ueb_pdf_txt( $pdf, $x, $y + $s * 0.08, '✓', $s * 1.9, 'B', array( 255, 255, 255 ), 'C', $s );
             break;
-
-        case 'coeur': // cœur médical (contour + croix)
+        case 'coeur':
             $pdf->Circle( $cx - $s * 0.18, $y + $s * 0.3, $s * 0.22 );
             $pdf->Circle( $cx + $s * 0.18, $y + $s * 0.3, $s * 0.22 );
             $pdf->Line( $cx - $s * 0.38, $y + $s * 0.42, $cx, $y + $s * 0.92 );
@@ -872,8 +718,7 @@ function ueb_pdf_icone( $pdf, $type, $x, $y, $s, $color = null ) {
             $pdf->Line( $cx, $y + $s * 0.3, $cx, $y + $s * 0.62 );
             $pdf->Line( $cx - $s * 0.16, $y + $s * 0.46, $cx + $s * 0.16, $y + $s * 0.46 );
             break;
-
-        case 'banque': // fronton + colonnes
+        case 'banque':
             $pdf->Line( $x + $s * 0.05, $y + $s * 0.32, $cx, $y + $s * 0.02 );
             $pdf->Line( $cx, $y + $s * 0.02, $x + $s * 0.95, $y + $s * 0.32 );
             $pdf->Line( $x + $s * 0.05, $y + $s * 0.32, $x + $s * 0.95, $y + $s * 0.32 );
@@ -882,8 +727,7 @@ function ueb_pdf_icone( $pdf, $type, $x, $y, $s, $color = null ) {
             }
             $pdf->Line( $x, $y + $s * 0.88, $x + $s, $y + $s * 0.88 );
             break;
-
-        case 'recu': // reçu de transaction
+        case 'recu':
             $pdf->RoundedRect( $x + $s * 0.14, $y + $s * 0.04, $s * 0.72, $s * 0.84, $s * 0.06, '1111', 'D', array(), array() );
             $pdf->Line( $x + $s * 0.28, $y + $s * 0.24, $x + $s * 0.72, $y + $s * 0.24 );
             $pdf->Line( $x + $s * 0.28, $y + $s * 0.4, $x + $s * 0.72, $y + $s * 0.4 );
