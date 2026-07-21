@@ -6,6 +6,11 @@
  * préinscriptions. Accès réservé aux comptes ayant la capacité
  * "voir_preinscriptions" (rôle gestionnaire_preinscriptions).
  *
+ * Le dashboard a deux onglets (Liste des préinscrits / Statistiques) qui
+ * partagent un même panneau de filtres (tous les champs à choix du
+ * formulaire de préinscription) : les deux se recalculent en AJAX à
+ * chaque changement de filtre, sans rechargement de page.
+ *
  * @package Preinscriptions_UEB
  */
 
@@ -92,114 +97,117 @@ get_header();
         </div>
         <p class="admin-welcome">Bienvenue, <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
 
-        <!-- ===== LISTE ET DÉTAIL DES DOSSIERS ===== -->
-        <h2 class="admin-section-title">Dossiers</h2>
+        <!-- ===== FILTRES (partagés par les deux onglets) ===== -->
+        <form id="admin-filter-form" class="admin-filter-form">
+            <div class="admin-filter-grid">
 
-        <?php
-        $ueb_filtre_faculte = isset( $_GET['faculte'] ) ? absint( $_GET['faculte'] ) : 0;
-        $ueb_filtre_statut  = isset( $_GET['statut'] ) ? sanitize_text_field( wp_unslash( $_GET['statut'] ) ) : '';
-        $ueb_numero_detail  = isset( $_GET['dossier'] ) ? sanitize_text_field( wp_unslash( $_GET['dossier'] ) ) : '';
-        ?>
-        <div id="admin-liste-dossiers">
-        <?php if ( $ueb_numero_detail ) :
-            $detail = ueb_admin_get_dossier_detail( $ueb_numero_detail );
-            if ( ! $detail ) : ?>
-                <p>Dossier introuvable.</p>
-                <a class="admin-back-link" href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
-            <?php else : $d = $detail['dossier']; ?>
-                <a class="admin-back-link" href="<?php echo esc_url( get_permalink() ); ?>">&larr; Retour à la liste</a>
-                <h3 class="admin-detail-header"><?php echo esc_html( $d->numero_dossier ); ?></h3>
-                <table class="admin-detail-table">
-                    <tr><th>Nom</th><td><?php echo esc_html( $d->nom . ' ' . $d->prenom ); ?></td></tr>
-                    <tr><th>Statut</th><td><?php echo esc_html( $d->statut ); ?></td></tr>
-                    <tr><th>Faculté</th><td><?php echo esc_html( $d->faculte_nom ); ?></td></tr>
-                    <tr><th>Diplôme</th><td><?php echo esc_html( $d->diplome_libelle ); ?></td></tr>
-                    <tr><th>Série</th><td><?php echo esc_html( $d->serie_libelle ); ?></td></tr>
-                    <tr><th>1er choix filière</th><td><?php echo esc_html( $d->filiere1_libelle ); ?></td></tr>
-                    <tr><th>2e choix filière</th><td><?php echo esc_html( $d->filiere2_libelle ); ?></td></tr>
-                    <tr><th>Sexe</th><td><?php echo esc_html( $d->sexe === 'M' ? 'Masculin' : 'Féminin' ); ?></td></tr>
-                    <tr><th>Nationalité</th><td><?php echo esc_html( $d->nationalite_nom ); ?></td></tr>
-                    <tr><th>Email</th><td><?php echo esc_html( $d->email ); ?></td></tr>
-                    <tr><th>Origine</th><td><?php echo esc_html( trim( $d->region_nom . ' / ' . $d->departement_nom . ' / ' . $d->commune_nom, ' /' ) ); ?></td></tr>
-                    <tr><th>Téléphone(s)</th><td>
-                        <?php foreach ( $detail['telephones'] as $tel ) : ?>
-                            <?php echo esc_html( $tel->numero . ' (' . $tel->type . ')' ); ?><br>
-                        <?php endforeach; ?>
-                    </td></tr>
-                </table>
-            <?php endif; ?>
-        <?php else :
-            $facultes = ueb_admin_get_facultes_liste();
-            $dossiers = ueb_admin_get_dossiers( $ueb_filtre_faculte, $ueb_filtre_statut ); ?>
-            <form method="get" action="<?php echo esc_url( get_permalink() ); ?>" class="admin-filters">
-                <select name="faculte">
-                    <option value="">Toutes les facultés</option>
-                    <?php foreach ( $facultes as $fac ) : ?>
-                        <option value="<?php echo (int) $fac->id; ?>" <?php selected( $ueb_filtre_faculte, $fac->id ); ?>><?php echo esc_html( $fac->nom_fr ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <select name="statut">
-                    <option value="">Tous les statuts</option>
-                    <option value="brouillon" <?php selected( $ueb_filtre_statut, 'brouillon' ); ?>>Brouillon</option>
-                    <option value="soumis" <?php selected( $ueb_filtre_statut, 'soumis' ); ?>>Soumis</option>
-                </select>
-                <button type="submit" class="btn btn-secondary">Filtrer</button>
-            </form>
-            <div class="admin-dossiers-table-wrap">
-                <table class="admin-dossiers-table">
-                    <thead><tr><th>N° Dossier</th><th>Nom</th><th>Prénom</th><th>Faculté</th><th>Statut</th><th>Date</th><th></th></tr></thead>
-                    <tbody>
-                    <?php if ( ! $dossiers ) : ?>
-                        <tr><td colspan="7">Aucun dossier trouvé.</td></tr>
-                    <?php else : foreach ( $dossiers as $row ) : ?>
-                        <tr>
-                            <td><?php echo esc_html( $row->numero_dossier ); ?></td>
-                            <td><?php echo esc_html( $row->nom ); ?></td>
-                            <td><?php echo esc_html( $row->prenom ); ?></td>
-                            <td><?php echo esc_html( $row->faculte_nom ); ?></td>
-                            <td><?php echo esc_html( $row->statut ); ?></td>
-                            <td><?php echo esc_html( $row->date_creation ); ?></td>
-                            <td><a href="<?php echo esc_url( add_query_arg( 'dossier', $row->numero_dossier, get_permalink() ) ); ?>">Voir →</a></td>
-                        </tr>
-                    <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
+                <div class="admin-filter-field">
+                    <label for="filter-faculte">Faculté</label>
+                    <select id="filter-faculte"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-diplome_admission">Diplôme d'admission</label>
+                    <select id="filter-diplome_admission"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-specialite_diplome">Série / Spécialité</label>
+                    <select id="filter-specialite_diplome" disabled><option value="">— Choisir faculté et diplôme —</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-type_formation">Type de formation</label>
+                    <select id="filter-type_formation"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-filiere">Filière (1er, 2e ou 3e choix)</label>
+                    <select id="filter-filiere" disabled><option value="">— Choisir d'abord une faculté —</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-niveau_lmd">Niveau LMD</label>
+                    <select id="filter-niveau_lmd"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-mention">Mention</label>
+                    <select id="filter-mention"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-statut_etudiant">Statut étudiant</label>
+                    <select id="filter-statut_etudiant"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-sexe">Sexe</label>
+                    <select id="filter-sexe"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-handicap">Situation de handicap</label>
+                    <select id="filter-handicap"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-nationalite">Nationalité</label>
+                    <select id="filter-nationalite"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-premiere_langue">Première langue</label>
+                    <select id="filter-premiere_langue"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-situation_matrimoniale">Situation matrimoniale</label>
+                    <select id="filter-situation_matrimoniale"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-statut_socio_professionnel">Statut socio-professionnel</label>
+                    <select id="filter-statut_socio_professionnel"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-region_origine">Région d'origine</label>
+                    <select id="filter-region_origine"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-departement_origine">Département d'origine</label>
+                    <select id="filter-departement_origine" disabled><option value="">— Choisir d'abord une région —</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-commune_origine">Commune d'origine</label>
+                    <select id="filter-commune_origine" disabled><option value="">— Choisir d'abord un département —</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-sport_prefere">Sport préféré</label>
+                    <select id="filter-sport_prefere"><option value="">Chargement…</option></select>
+                </div>
+                <div class="admin-filter-field">
+                    <label for="filter-art_pratique">Art pratiqué</label>
+                    <select id="filter-art_pratique"><option value="">Chargement…</option></select>
+                </div>
+
             </div>
-        <?php endif; ?>
+
+            <div class="admin-filter-actions">
+                <button type="submit" class="btn btn-primary">Filtrer</button>
+                <button type="button" id="admin-filter-reset" class="btn btn-secondary">Réinitialiser</button>
+            </div>
+        </form>
+
+        <!-- ===== ONGLETS ===== -->
+        <div class="admin-tabs" role="tablist">
+            <button type="button" class="admin-tab-btn active" data-tab="liste" role="tab">Liste des préinscrits</button>
+            <button type="button" class="admin-tab-btn" data-tab="stats" role="tab">Statistiques</button>
         </div>
 
-        <!-- ===== STATISTIQUES ===== -->
-        <h2 class="admin-section-title">Statistiques</h2>
+        <!-- ===== ONGLET LISTE ===== -->
+        <div id="admin-tab-liste" class="admin-tab-panel active" role="tabpanel">
+            <div id="admin-results-count" class="admin-results-count">Chargement…</div>
+            <div id="admin-liste-container"></div>
+        </div>
 
-        <?php $chiffres = ueb_admin_chiffres_cles(); ?>
-        <div id="admin-analytics">
-            <div class="admin-kpi-grid">
-                <div class="admin-kpi">
-                    <span class="admin-kpi-num"><?php echo (int) $chiffres['total']; ?></span>
-                    <span>Dossiers au total</span>
-                </div>
-                <div class="admin-kpi">
-                    <span class="admin-kpi-num"><?php echo (int) $chiffres['aujourdhui']; ?></span>
-                    <span>Dossiers aujourd'hui</span>
-                </div>
-                <div class="admin-kpi admin-kpi--taux">
-                    <span class="admin-kpi-label">Taux par faculté</span>
-                    <?php $ueb_taux_facultes = ueb_admin_taux_par_faculte(); ?>
-                    <ul class="admin-kpi-taux-list">
-                        <?php if ( ! $ueb_taux_facultes ) : ?>
-                            <li>Aucune donnée</li>
-                        <?php else : foreach ( $ueb_taux_facultes as $taux ) : ?>
-                            <li><span><?php echo esc_html( $taux->label ); ?></span> <strong><?php echo esc_html( $taux->pourcentage ); ?>%</strong></li>
-                        <?php endforeach; endif; ?>
-                    </ul>
-                </div>
-            </div>
+        <!-- ===== ONGLET STATISTIQUES ===== -->
+        <div id="admin-tab-stats" class="admin-tab-panel" role="tabpanel">
+            <div id="admin-kpi-grid" class="admin-kpi-grid"></div>
 
             <div class="admin-charts-grid">
                 <div class="admin-chart-card"><canvas id="chart-faculte"></canvas></div>
                 <div class="admin-chart-card"><canvas id="chart-filiere"></canvas></div>
                 <div class="admin-chart-card"><canvas id="chart-region"></canvas></div>
                 <div class="admin-chart-card"><canvas id="chart-sexe"></canvas></div>
+                <div class="admin-chart-card"><canvas id="chart-faculte-sexe"></canvas></div>
                 <div class="admin-chart-card admin-chart-card--wide"><canvas id="chart-evolution"></canvas></div>
             </div>
         </div>

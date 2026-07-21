@@ -39,9 +39,31 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         numero_certificat_medical, lieu_obtention_certificat ;
  *         niveau_lmd (texte libre) remplacé par niveau_lmd_id (FK) ;
  *         handicap passe de texte libre à ENUM('oui','non').
+ * - 1.2 : correction de 4 incohérences schéma / seed / AJAX repérées lors
+ *         du test d'Oriol (selects Langues, Mentions, Niveau LMD et
+ *         Statut étudiant qui ne se peuplaient pas côté formulaire) :
+ *           - ueb_langues : colonne `nom` remplacée par `code` + `libelle`
+ *             (seed et AJAX utilisaient déjà ce couple de colonnes) ;
+ *           - ueb_mentions : ajout des colonnes `code` et `ordre`
+ *             (utilisées par db-seed.php et l'ORDER BY de l'AJAX) ;
+ *           - ueb_niveaux_lmd : ajout de la colonne `ordre` (même besoin) ;
+ *           - ueb_statuts_etudiant renommée en ueb_statuts_etudiants
+ *             (pluriel, pour matcher db-seed.php / ajax-functions.php /
+ *             pdf-functions.php qui utilisaient déjà ce nom), + ajout de
+ *             la colonne `code`.
+ *         ATTENTION : CREATE TABLE IF NOT EXISTS ne modifie jamais une
+ *         table déjà créée. Après avoir mis à jour ce fichier, chaque
+ *         dev ayant déjà ces tables en local doit :
+ *           1) DROP TABLE ueb_langues, ueb_mentions, ueb_niveaux_lmd,
+ *              ueb_statuts_etudiant (ou ueb_statuts_etudiants selon ce
+ *              qui existe déjà) ;
+ *           2) DELETE FROM wp_options WHERE option_name IN
+ *              ('ueb_db_version', 'ueb_data_version') ;
+ *           3) recharger une page de wp-admin pour déclencher la
+ *              recréation + le reseed automatique.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '1.1' );
+    define( 'UEB_DB_SCHEMA_VERSION', '1.2' );
 }
 
 /**
@@ -161,17 +183,25 @@ CREATE TABLE IF NOT EXISTS ueb_nationalites (
 SQL,
 
         /* ------------------------------------------------------------
-         * NOUVEAU (1.1) — Tables de référence ajoutées pour les champs
-         * niveau_lmd, mention, statut_etudiant, premiere_langue,
-         * sport_prefere et art_pratique, désormais gérés en FK comme
-         * le reste des listes déroulantes du formulaire (au lieu de
-         * texte libre ou de valeurs codées en dur).
+         * Tables de référence ajoutées pour les champs niveau_lmd,
+         * mention, statut_etudiant, premiere_langue, sport_prefere et
+         * art_pratique, gérées en FK comme le reste des listes
+         * déroulantes du formulaire (au lieu de texte libre ou de
+         * valeurs codées en dur).
+         *
+         * NOTE (v1.2) : ueb_niveaux_lmd, ueb_mentions et ueb_langues
+         * incluent désormais une colonne `ordre` / `code` alignée sur
+         * ce qu'utilisent réellement db-seed.php et ajax-functions.php
+         * (colonnes manquantes qui empêchaient l'insertion des données
+         * de référence, donc les selects correspondants restaient vides
+         * côté formulaire).
          * ------------------------------------------------------------ */
         'ueb_niveaux_lmd' => <<<SQL
 CREATE TABLE IF NOT EXISTS ueb_niveaux_lmd (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     code VARCHAR(20) NOT NULL,
     libelle VARCHAR(50) NOT NULL,
+    ordre TINYINT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uq_niveau_lmd_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -179,14 +209,17 @@ SQL,
         'ueb_mentions' => <<<SQL
 CREATE TABLE IF NOT EXISTS ueb_mentions (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
     libelle VARCHAR(50) NOT NULL,
+    ordre TINYINT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uq_mention_libelle (libelle)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
-        'ueb_statuts_etudiant' => <<<SQL
-CREATE TABLE IF NOT EXISTS ueb_statuts_etudiant (
+        'ueb_statuts_etudiants' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_statuts_etudiants (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
     libelle VARCHAR(100) NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_statut_etudiant_libelle (libelle)
@@ -195,9 +228,10 @@ SQL,
         'ueb_langues' => <<<SQL
 CREATE TABLE IF NOT EXISTS ueb_langues (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    nom VARCHAR(50) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    libelle VARCHAR(50) NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_langue_nom (nom)
+    UNIQUE KEY uq_langue_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
         'ueb_sports' => <<<SQL
@@ -295,7 +329,7 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     CONSTRAINT fk_pi_filiere2         FOREIGN KEY (filiere_2_id)                  REFERENCES ueb_filieres(id),
     CONSTRAINT fk_pi_filiere3         FOREIGN KEY (filiere_3_id)                  REFERENCES ueb_filieres(id),
     CONSTRAINT fk_pi_mention          FOREIGN KEY (mention_id)                    REFERENCES ueb_mentions(id),
-    CONSTRAINT fk_pi_statut_etudiant  FOREIGN KEY (statut_etudiant_id)            REFERENCES ueb_statuts_etudiant(id),
+    CONSTRAINT fk_pi_statut_etudiant  FOREIGN KEY (statut_etudiant_id)            REFERENCES ueb_statuts_etudiants(id),
     CONSTRAINT fk_pi_nationalite      FOREIGN KEY (nationalite_id)                REFERENCES ueb_nationalites(id),
     CONSTRAINT fk_pi_langue           FOREIGN KEY (premiere_langue_id)            REFERENCES ueb_langues(id),
     CONSTRAINT fk_pi_situation        FOREIGN KEY (situation_matrimoniale_id)     REFERENCES ueb_situations_matrimoniales(id),

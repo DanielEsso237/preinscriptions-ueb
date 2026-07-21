@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.1' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.2' );
 }
 
 /**
@@ -123,6 +123,11 @@ add_action( 'wp_enqueue_scripts', 'preinscriptions_form_assets' );
 
 require_once( get_template_directory() . '/inc/analytics-functions.php' );
 
+/**
+ * Charge le CSS admin pour tout le monde (utile pour afficher proprement
+ * l'écran de connexion), mais le JS + les données ne sont chargés que
+ * pour les comptes ayant la capacité 'voir_preinscriptions'.
+ */
 function preinscriptions_admin_assets() {
     if ( ! is_page_template( 'page-administration.php' ) ) return;
 
@@ -131,14 +136,12 @@ function preinscriptions_admin_assets() {
     if ( ! is_user_logged_in() || ! current_user_can( 'voir_preinscriptions' ) ) return;
 
     wp_enqueue_script( 'chartjs', get_template_directory_uri() . '/assets/js/vendor/chart.umd.min.js', array(), '4.4.0', true );
-    wp_enqueue_script( 'preinscriptions-admin-analytics', get_template_directory_uri() . '/assets/js/admin-analytics.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
 
-    wp_localize_script( 'preinscriptions-admin-analytics', 'uebAnalytics', array(
-        'parFaculte' => ueb_admin_stats_par_faculte(),
-        'parFiliere' => ueb_admin_stats_par_filiere(),
-        'parRegion'  => ueb_admin_stats_par_region(),
-        'parSexe'    => ueb_admin_stats_par_sexe(),
-        'evolution'  => ueb_admin_stats_evolution(),
+    wp_localize_script( 'preinscriptions-admin-dashboard', 'uebAdminDashboard', array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'ueb_admin_dashboard' ),
+        'refs'     => ueb_admin_get_reference_lists(),
     ) );
 }
 add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
@@ -191,3 +194,4 @@ require_once( get_template_directory() . '/inc/dossier-functions.php' );
 require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
+require_once( get_template_directory() . '/inc/admin-ajax-functions.php' );

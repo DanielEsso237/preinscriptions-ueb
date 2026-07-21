@@ -1,3 +1,0 @@
-Au chargement du formulaire (avant l'affichage) : $numero = ueb_initialiser_dossier(); puis afficher $numero au candidat
-À chaque clic "Suivant" (idéalement en AJAX, pas juste au submit final) : ueb_sauvegarder_progression( $numero, $etape, $_POST ) — $donnees peut être tout $_POST du moment, pas besoin de le restructurer
-Sur la page "Reprendre mon dossier" (celle que Neo doit faire l'UI) : $progression = ueb_recuperer_progression( $numero_saisi ); puis si null → afficher "numéro introuvable", sinon pré-remplir le formulaire à l'étape $progression['etape_atteinte'] avec $progression['donnees']
