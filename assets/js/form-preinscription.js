@@ -544,11 +544,13 @@
     };
 
     const SECTIONS = {
-        formation : ['faculte','diplome_admission','serie_diplome','niveau_lmd','type_formation','filiere_1','filiere_2','filiere_3','annee_obtention','moyenne_diplome','mention','statut_etudiant'],
-        etatCivil : ['nom','prenom','sexe','date_naissance','lieu_naissance','nationalite','premiere_langue','situation_matrimoniale','statut_socio_professionnel','handicap'],
-        contact   : ['email','telephone','adresse','region_origine','departement_origine','commune_origine','nom_pere','numero_pere','profession_pere','nom_mere','numero_mere','profession_mere','nom_tuteur','numero_tuteur'],
-        divers    : ['sport_prefere','art_pratique','numero_certificat_medical','lieu_obtention_certificat'],
+    formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
+    etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
+    contact : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur'],
+    divers    : ['sport_prefere',,'numero_certificat_medical','art_pratique','lieu_obtention_certificat'],
     };
+
+    
 
     const SECTION_TITLES = {
         formation : 'Formation choisie',

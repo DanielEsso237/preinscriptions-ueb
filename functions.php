@@ -108,7 +108,7 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/js/form-preinscription.js',
             array(),
-            '4.1',
+            '4.4',
             true
         );
 
