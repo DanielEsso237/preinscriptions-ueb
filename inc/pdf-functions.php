@@ -594,12 +594,13 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 4, $y_decoupe - 0.6, '✂', 9, '', $c['noir'] );
     ueb_pdf_ligne( $pdf, 11, $y_decoupe, 206, $y_decoupe, $c['noir'], 0.3, '2.2,1.6' );
 
-    /* --- COUPON RÉCÉPISSÉ DE DÉPÔT : position calculée à partir de $y_decoupe --- */
-    $ct       = $y_decoupe + 2.5; // $ct = "coupon top", ancien écart 245.5-243
-    $coupon_h = 47.5;
+    /* ================================================
+       COUPON RÉCÉPISSÉ DE DÉPÔT (version compactée)
+       ================================================ */
+    $ct = $y_decoupe + 2.5;
+    $coupon_h = 39; // compacté
 
-    // Garde-fou : si un contenu exceptionnellement long poussait le coupon
-    // trop bas, on le remonte pour rester sur la page (jamais de 2e page ici).
+    // Garde-fou
     if ( $ct + $coupon_h > 296 ) {
         $ct = 296 - $coupon_h;
     }
@@ -610,52 +611,55 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 55, $ct + 3, 'RÉCÉPISSÉ DE DÉPÔT', 11.5, 'B', $c['vert_titre'], 'C', 100 );
 
     // Colonne gauche
-    ueb_pdf_txt( $pdf, 10, $ct + 6, 'Code :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 21.5, $ct + 6, $d['numero_dossier'], 8, 'B', $c['orange'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 10.7, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 46.5, $ct + 10.7, strtoupper( $d['nom'] ) . ' ' . $d['prenom'], 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 15.4, 'Filière :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 23, $ct + 15.4, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 20.1, 'Établissement :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 36.5, $ct + 20.1, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 7, 'Code :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 21.5, $ct + 7, $d['numero_dossier'], 8, 'B', $c['orange'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 11.5, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 46.5, $ct + 11.5, strtoupper( $d['nom'] ) . ' ' . $d['prenom'], 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 16, 'Filière :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 23, $ct + 16, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 20.5, 'Établissement :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 36.5, $ct + 20.5, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
 
     // Colonne droite
-    ueb_pdf_txt( $pdf, 126, $ct + 9.3, 'Niveau :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 140, $ct + 9.3, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
-    ueb_pdf_txt( $pdf, 138, $ct + 13.3, 'Avis', 8, 'B', $c['noir'], 'C', 44 );
-    ueb_pdf_txt( $pdf, 138, $ct + 17.5, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
+    ueb_pdf_txt( $pdf, 126, $ct + 7, 'Niveau :', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 140, $ct + 7, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
+    ueb_pdf_txt( $pdf, 138, $ct + 11, 'Avis', 8, 'B', $c['noir'], 'C', 44 );
+    ueb_pdf_txt( $pdf, 138, $ct + 14.5, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
-    $pdf->Rect( 138, $ct + 22.1, 44, 8.9 );
+    $pdf->Rect( 138, $ct + 17.5, 44, 6.5 );
 
+    // QR Code
     $qr_coupon = 'Code : ' . $d['numero_dossier'] . "\n"
-        . 'Nom : '    . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
-        . 'Fil : '    . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
-        . 'Etab : '   . $etab . "\n"
+        . 'Nom : ' . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
+        . 'Fil : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
+        . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . "Bq : CCABANK\n"
         . 'Compte : 10039-10012-0027277050';
-    ueb_pdf_qr_stylise( $pdf, $qr_coupon, 185.5, $ct + 2.5, 17 );
 
-    /* Encadré paiement */
-    $pdf->RoundedRect( 9, $ct + 32, 192, 14.5, 1, '1111', 'D',
+    ueb_pdf_qr_stylise( $pdf, $qr_coupon, 187, $ct + 5, 14 );
+
+    /* Encadré paiement (resserré) */
+    $pdf->RoundedRect( 9, $ct + 25, 192, 10, 1, '1111', 'D',
         array( 'width' => 0.3, 'dash' => 0, 'color' => $c['noir'] ) );
-    ueb_pdf_ligne( $pdf, 68,  $ct + 33, 68,  $ct + 45.5, $c['ligne'], 0.25 );
-    ueb_pdf_ligne( $pdf, 114, $ct + 33, 114, $ct + 45.5, $c['ligne'], 0.25 );
 
-    ueb_pdf_icone( $pdf, 'banque', 12, $ct + 35, 8 );
-    ueb_pdf_txt( $pdf, 23, $ct + 34.5, '*Agence de paiement :', 7.2, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 23, $ct + 39, 'CCABANK', 7.2, '', $c['noir'] );
+    ueb_pdf_ligne( $pdf, 68, $ct + 26, 68, $ct + 34, $c['ligne'], 0.25 );
+    ueb_pdf_ligne( $pdf, 114, $ct + 26, 114, $ct + 34, $c['ligne'], 0.25 );
 
-    ueb_pdf_icone( $pdf, 'recu', 69.5, $ct + 35.5, 7 );
-    ueb_pdf_txt( $pdf, 78, $ct + 34.5, '*Numéro de transaction :', 6.8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 78, $ct + 39, '.....................', 7, '', $c['noir'] );
+    ueb_pdf_icone( $pdf, 'banque', 12, $ct + 27.3, 6 );
+    ueb_pdf_txt( $pdf, 21, $ct + 27, '*Agence de paiement :', 6.6, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 21, $ct + 30.8, 'CCABANK', 6.6, '', $c['noir'] );
 
-    ueb_pdf_icone( $pdf, 'banque', 117, $ct + 35, 8 );
-    ueb_pdf_txt( $pdf, 127, $ct + 33.8, '*N°Compte Bancaire :', 7.2, 'B', $c['noir'] );
-    $pdf->SetFont( 'dejavusans', '', 6.8 );
+    ueb_pdf_icone( $pdf, 'recu', 69.5, $ct + 27.8, 5.5 );
+    ueb_pdf_txt( $pdf, 77, $ct + 27, '*Numéro de transaction :', 6.2, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 77, $ct + 30.8, '.....................', 6.4, '', $c['noir'] );
+
+    ueb_pdf_icone( $pdf, 'banque', 117, $ct + 27.3, 6 );
+    ueb_pdf_txt( $pdf, 126, $ct + 26.3, '*N°Compte Bancaire :', 6.6, 'B', $c['noir'] );
+    $pdf->SetFont( 'dejavusans', '', 6 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
-    $pdf->SetXY( 127, $ct + 37.6 );
-    $pdf->MultiCell( 73, 3.4, "FACULTÉS DES SCIENCES ÉCONOMIQUES ET\nDE GESTION | CCA BANK-10039-10012-0027277050", 0, 'L' );
+    $pdf->SetXY( 126, $ct + 29.6 );
+    $pdf->MultiCell( 74, 2.9, "FACULTÉS DES SCIENCES ÉCONOMIQUES ET\nDE GESTION | CCA BANK-10039-10012-0027277050", 0, 'L' );
 }
 
 /* ============================================================
@@ -740,10 +744,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'lieu',       'Adresse',           strtoupper( $d['adresse'] ) ),
     ), $y );
 
-    /* --- Personne à contacter en cas d'urgence ---
-       Reprend désormais le nom et le numéro du tuteur saisis à l'étape
-       "Contact & origine" (avant, ces deux champs restaient "—" faute de
-       saisie dédiée : nom_tuteur/numero_tuteur existent maintenant). */
+    /* --- Personne à contacter en cas d'urgence --- */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
         array( 'personne',  'Nom et Prénom',       $d['nom_tuteur'] ),
