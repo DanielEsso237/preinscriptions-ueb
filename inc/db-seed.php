@@ -597,6 +597,12 @@ INSERT IGNORE INTO ueb_nationalites (nom) VALUES
     ('Guinéenne'),
     ('Autre');
 SQL,
+        'ueb_reseaux_sociaux' => <<<SQL
+INSERT IGNORE INTO ueb_reseaux_sociaux (plateforme, url, icone, ordre, actif) VALUES
+    ('youtube', 'https://www.youtube.com/@universiteebolowa', 'youtube', 1, 1),
+    ('facebook', 'https://facebook.com/share/18i1CQ2QuY', 'facebook', 2, 1),
+    ('site_web', 'https://unv-ebolowa.cm', 'globe', 3, 1);
+SQL,
         'ueb_niveaux_lmd' => <<<SQL
 INSERT IGNORE INTO ueb_niveaux_lmd (code, libelle, ordre) VALUES
     ('L1', 'Licence 1', 1), ('L2', 'Licence 2', 2), ('L3', 'Licence 3', 3),

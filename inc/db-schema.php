@@ -66,9 +66,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         _FS, _FALSH, _FSEG, _FSJP). Correction du libellé TI en
  *         "Technologies de l'Information". Correction du code GEO en
  *         GEO_FALSH pour éviter le doublon avec FS.
+ * - 1.4 : ajout de la table ueb_reseaux_sociaux pour stocker les liens
+ *         des réseaux sociaux de l'université (YouTube, Facebook,
+ *         site web). Permet une gestion dynamique sans modifier le code.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.0' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.1' );
  }
 
 /**
@@ -256,6 +259,18 @@ CREATE TABLE IF NOT EXISTS ueb_arts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
 
+        'ueb_reseaux_sociaux' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_reseaux_sociaux (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    plateforme VARCHAR(50) NOT NULL,
+    url VARCHAR(255) NOT NULL,
+    icone VARCHAR(50) DEFAULT NULL,
+    ordre TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    actif TINYINT(1) NOT NULL DEFAULT 1,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_reseau_plateforme (plateforme)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
         'ueb_dossier_sequence' => <<<SQL
 CREATE TABLE IF NOT EXISTS ueb_dossier_sequence (
     annee SMALLINT UNSIGNED NOT NULL,

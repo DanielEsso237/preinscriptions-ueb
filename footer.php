@@ -1,3 +1,31 @@
+<?php
+/**
+ * Footer du thème — affiche les réseaux sociaux depuis la base de données.
+ *
+ * Les liens sont stockés dans ueb_reseaux_sociaux et peuplés via db-seed.php.
+ * Pour ajouter/modifier un réseau : mettre à jour db-seed.php, vider la table,
+ * puis réinitialiser ueb_data_version pour forcer le reseed.
+ */
+
+// Récupération des réseaux sociaux actifs, ordonnés
+// La fonction est définie dans inc/social-medias-functions.php (inclus via functions.php)
+$reseaux = array();
+if ( function_exists( 'ueb_get_reseaux_sociaux' ) ) {
+    $reseaux = ueb_get_reseaux_sociaux();
+}
+
+// Fallback si la fonction n'existe pas encore ou retourne vide
+$reseaux_fallback = array(
+    'youtube'  => array( 'url' => 'https://www.youtube.com/@universiteebolowa', 'label' => 'YouTube', 'icone' => 'youtube' ),
+    'facebook' => array( 'url' => 'https://facebook.com/share/18i1CQ2QuY', 'label' => 'Facebook', 'icone' => 'facebook' ),
+    'site_web' => array( 'url' => 'https://unv-ebolowa.cm', 'label' => 'Site web', 'icone' => 'globe' ),
+);
+
+if ( empty( $reseaux ) ) {
+    $reseaux = $reseaux_fallback;
+}
+?>
+
 </main>
 
 <footer class="site-footer"><div class="wrap">
@@ -31,9 +59,13 @@
         <div>
             <h4>Suivez-nous</h4>
             <ul>
-                <li><a href="#">Facebook</a></li>
-                <li><a href="#">Instagram</a></li>
-                <li><a href="#">YouTube</a></li>
+                <?php foreach ( $reseaux as $key => $reseau ) : ?>
+                    <li>
+                        <a href="<?php echo esc_url( $reseau['url'] ); ?>" target="_blank" rel="noopener noreferrer">
+                            <?php echo esc_html( $reseau['label'] ); ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
             </ul>
         </div>
     </div>
