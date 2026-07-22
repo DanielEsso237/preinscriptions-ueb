@@ -69,9 +69,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - 1.4 : ajout de la table ueb_reseaux_sociaux pour stocker les liens
  *         des réseaux sociaux de l'université (YouTube, Facebook,
  *         site web). Permet une gestion dynamique sans modifier le code.
+ * 
+ * -2.2 : ajout de 5 diplômes d'admission (relevé de notes niveau 1/2,
+*         licence, relevé de notes master 1, master) pour permettre
+*         l'inscription directe en L2, L3, M1, M2 et Doctorat. Aucun
+*         changement de structure de table (données uniquement), mais
+*         UEB_DB_SCHEMA_VERSION est quand même incrémentée car
+*         db-seed.php réutilise cette constante pour son propre reseed.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.1' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.2' );
  }
 
 /**

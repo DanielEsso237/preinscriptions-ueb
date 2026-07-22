@@ -312,7 +312,7 @@ add_action( 'wp_ajax_nopriv_ueb_get_situations_matrimoniales', 'ueb_ajax_get_sit
 function ueb_ajax_get_niveaux_lmd() {
     ueb_ajax_check_nonce();
     global $wpdb;
-    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ) );
+    wp_send_json_success( $wpdb->get_results( "SELECT id, code, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ) );
 }
 add_action( 'wp_ajax_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
 add_action( 'wp_ajax_nopriv_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
