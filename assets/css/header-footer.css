@@ -58,5 +58,28 @@ nav.bar .brand{display:flex;align-items:center;gap:10px}nav.bar img{height:54px;
   nav.bar .wrap{height:60px}
   nav.bar img{height:42px}
   .links{top:60px}
-  .fgrid{grid-template-columns:1fr 1fr;gap:22px}
+
+  /* Footer : une colonne unique, sections empilées */
+  .fgrid{
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  /* Séparateur visuel léger entre sections */
+  .fgrid > div + div{
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,.12);
+  }
+
+  /* Titre de section un peu plus visible */
+  .site-footer h4{
+    font-size: .88rem;
+    margin-bottom: .75rem;
+  }
+
+  /* Liens plus espacés pour le touch */
+  .site-footer li{
+    margin-bottom: .7rem;
+    font-size: .96rem;
+  }
 }
