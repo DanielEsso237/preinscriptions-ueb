@@ -61,10 +61,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  *              ('ueb_db_version', 'ueb_data_version') ;
  *           3) recharger une page de wp-admin pour déclencher la
  *              recréation + le reseed automatique.
+ * - 1.3 : correction des codes de séries dans ueb_specialites_diplome
+ *         pour éviter les doublons dans les selects (codes suffixés par
+ *         _FS, _FALSH, _FSEG, _FSJP). Correction du libellé TI en
+ *         "Technologies de l'Information". Correction du code GEO en
+ *         GEO_FALSH pour éviter le doublon avec FS.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '1.4' );
-}
+    define( 'UEB_DB_SCHEMA_VERSION', '2.0' );
+ }
 
 /**
  * Retourne la liste des instructions CREATE TABLE, dans l'ordre de
