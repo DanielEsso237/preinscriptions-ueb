@@ -2,212 +2,221 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
+ * Toutes les fonctions de stats acceptent désormais un tableau $filters
+ * (mêmes clés que ueb_admin_build_where(), déjà utilisé par la liste des
+ * dossiers), pour que graphiques et liste restent toujours cohérents avec
+ * les mêmes filtres actifs.
+ */
+
+/**
  * Fonction générique : répartition des dossiers selon une table de
- * référence liée par clé étrangère. Réutilisée par toutes les stats
- * "par X" ci-dessous pour éviter de dupliquer la même requête.
+ * référence liée par clé étrangère, avec application des filtres actifs.
  *
  * $table, $fk et $label sont TOUJOURS des littéraux fournis par notre
  * propre code (jamais issus d'une requête utilisateur), donc pas de
  * risque d'injection malgré l'absence de placeholder sur les identifiants.
  *
- * @param string   $table Table de référence (ex. 'ueb_facultes').
- * @param string   $fk    Colonne de clé étrangère dans ueb_preinscriptions (ex. 'faculte_id').
- * @param string   $label Colonne libellé dans la table de référence (ex. 'nom_fr').
- * @param int|null $limit Nombre max de lignes (null = pas de limite).
+ * @param string   $table   Table de référence (ex. 'ueb_facultes').
+ * @param string   $fk      Colonne de clé étrangère dans ueb_preinscriptions (ex. 'faculte_id').
+ * @param array    $filters Filtres actifs du dashboard.
+ * @param string   $label   Colonne libellé dans la table de référence (ex. 'nom_fr').
+ * @param int|null $limit   Nombre max de lignes (null = pas de limite).
  */
-function ueb_admin_stats_generique( $table, $fk, $label = 'libelle', $limit = null ) {
+function ueb_admin_stats_generique( $table, $fk, $filters = array(), $label = 'libelle', $limit = null ) {
     global $wpdb;
 
+    $clause    = ueb_admin_build_where( $filters );
     $limit_sql = $limit ? ' LIMIT ' . (int) $limit : '';
 
-    return $wpdb->get_results(
-        "SELECT t.`{$label}` AS label, COUNT(*) AS total
-         FROM ueb_preinscriptions p
-         JOIN `{$table}` t ON t.id = p.`{$fk}`
-         GROUP BY t.id, t.`{$label}`
-         ORDER BY total DESC{$limit_sql}"
-    );
+    $sql = "SELECT t.`{$label}` AS label, COUNT(*) AS total
+            FROM ueb_preinscriptions p
+            JOIN `{$table}` t ON t.id = p.`{$fk}`
+            WHERE {$clause['where']}
+            GROUP BY t.id, t.`{$label}`
+            ORDER BY total DESC{$limit_sql}";
+
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+
+    return $wpdb->get_results( $sql );
 }
 
-/**
- * Répartition des dossiers par faculté (pour graphe en barres).
- */
-function ueb_admin_stats_par_faculte() {
-    return ueb_admin_stats_generique( 'ueb_facultes', 'faculte_id', 'nom_fr' );
+function ueb_admin_stats_par_faculte( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_facultes', 'faculte_id', $filters, 'nom_fr' );
 }
 
-/**
- * Répartition des dossiers par filière (1er choix), pour graphe en barres.
- */
-function ueb_admin_stats_par_filiere() {
+function ueb_admin_stats_par_filiere( $filters = array() ) {
     global $wpdb;
-    return $wpdb->get_results(
-        "SELECT fi.libelle AS label, COUNT(*) AS total
-         FROM ueb_preinscriptions p JOIN ueb_filieres fi ON fi.id = p.filiere_1_id
-         GROUP BY fi.id, fi.libelle ORDER BY total DESC LIMIT 15"
-    );
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT fi.libelle AS label, COUNT(*) AS total
+            FROM ueb_preinscriptions p JOIN ueb_filieres fi ON fi.id = p.filiere_1_id
+            WHERE {$clause['where']}
+            GROUP BY fi.id, fi.libelle ORDER BY total DESC LIMIT 15";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
+}
+
+function ueb_admin_stats_par_region( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_regions', 'region_origine_id', $filters, 'nom' );
+}
+
+function ueb_admin_stats_par_departement( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_departements', 'departement_origine_id', $filters, 'nom', 15 );
+}
+
+function ueb_admin_stats_par_diplome( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_diplomes_admission', 'diplome_admission_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_niveau_lmd( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_niveaux_lmd', 'niveau_lmd_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_mention( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_mentions', 'mention_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_nationalite( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_nationalites', 'nationalite_id', $filters, 'nom', 10 );
+}
+
+function ueb_admin_stats_par_langue( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_langues', 'premiere_langue_id', $filters, 'nom' );
+}
+
+function ueb_admin_stats_par_situation_matrimoniale( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_situations_matrimoniales', 'situation_matrimoniale_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_statut_socio( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_statuts_socio_professionnels', 'statut_socio_professionnel_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_sport( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_sports', 'sport_prefere_id', $filters, 'libelle', 10 );
+}
+
+function ueb_admin_stats_par_art( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_arts', 'art_pratique_id', $filters, 'libelle', 10 );
 }
 
 /**
- * Répartition des dossiers par région d'origine, pour graphe en barres.
+ * Répartition par statut étudiant. Nom de table corrigé : ueb_statuts_etudiant
+ * (singulier), conforme à la vraie définition dans db-schema.php et à sa
+ * contrainte de clé étrangère — pas "ueb_statuts_etudiants" (pluriel), qui
+ * n'existe pas et faisait planter cette stat silencieusement.
  */
-function ueb_admin_stats_par_region() {
-    return ueb_admin_stats_generique( 'ueb_regions', 'region_origine_id', 'nom' );
+function ueb_admin_stats_par_statut_etudiant( $filters = array() ) {
+    return ueb_admin_stats_generique( 'ueb_statuts_etudiant', 'statut_etudiant_id', $filters, 'libelle' );
+}
+
+function ueb_admin_stats_par_type_formation( $filters = array() ) {
+    global $wpdb;
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT type_formation AS label, COUNT(*) AS total
+            FROM ueb_preinscriptions p WHERE {$clause['where']} GROUP BY type_formation";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
+}
+
+function ueb_admin_stats_par_handicap( $filters = array() ) {
+    global $wpdb;
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT handicap AS label, COUNT(*) AS total
+            FROM ueb_preinscriptions p WHERE {$clause['where']} AND handicap IS NOT NULL GROUP BY handicap";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
+}
+
+function ueb_admin_stats_par_sexe( $filters = array() ) {
+    global $wpdb;
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT sexe AS label, COUNT(*) AS total FROM ueb_preinscriptions p
+            WHERE {$clause['where']} AND sexe IS NOT NULL GROUP BY sexe";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
 }
 
 /**
- * Répartition des dossiers par département d'origine (top 15), pour graphe en barres.
- */
-function ueb_admin_stats_par_departement() {
-    return ueb_admin_stats_generique( 'ueb_departements', 'departement_origine_id', 'nom', 15 );
-}
-
-/**
- * Répartition des dossiers par diplôme d'admission, pour graphe en barres.
- */
-function ueb_admin_stats_par_diplome() {
-    return ueb_admin_stats_generique( 'ueb_diplomes_admission', 'diplome_admission_id', 'libelle' );
-}
-
-/**
- * Répartition des dossiers par niveau LMD, pour graphe en barres.
- */
-function ueb_admin_stats_par_niveau_lmd() {
-    return ueb_admin_stats_generique( 'ueb_niveaux_lmd', 'niveau_lmd_id', 'libelle' );
-}
-
-/**
- * Répartition des dossiers par mention, pour graphe en barres.
- */
-function ueb_admin_stats_par_mention() {
-    return ueb_admin_stats_generique( 'ueb_mentions', 'mention_id', 'libelle' );
-}
-
-/**
- * Répartition des dossiers par nationalité (top 10), pour graphe en barres.
- */
-function ueb_admin_stats_par_nationalite() {
-    return ueb_admin_stats_generique( 'ueb_nationalites', 'nationalite_id', 'nom', 10 );
-}
-
-/**
- * Répartition des dossiers par première langue, pour graphe en camembert.
- */
-function ueb_admin_stats_par_langue() {
-    return ueb_admin_stats_generique( 'ueb_langues', 'premiere_langue_id', 'nom' );
-}
-
-/**
- * Répartition des dossiers par situation matrimoniale, pour graphe en barres.
- */
-function ueb_admin_stats_par_situation_matrimoniale() {
-    return ueb_admin_stats_generique( 'ueb_situations_matrimoniales', 'situation_matrimoniale_id', 'libelle' );
-}
-
-/**
- * Répartition des dossiers par statut socio-professionnel, pour graphe en barres.
- */
-function ueb_admin_stats_par_statut_socio() {
-    return ueb_admin_stats_generique( 'ueb_statuts_socio_professionnels', 'statut_socio_professionnel_id', 'libelle' );
-}
-
-/**
- * Répartition des dossiers par sport préféré (top 10), pour graphe en barres.
- */
-function ueb_admin_stats_par_sport() {
-    return ueb_admin_stats_generique( 'ueb_sports', 'sport_prefere_id', 'libelle', 10 );
-}
-
-/**
- * Répartition des dossiers par art pratiqué (top 10), pour graphe en barres.
- */
-function ueb_admin_stats_par_art() {
-    return ueb_admin_stats_generique( 'ueb_arts', 'art_pratique_id', 'libelle', 10 );
-}
-
-/**
- * Répartition des dossiers par statut étudiant (CEMAC / hors CEMAC), pour graphe en camembert.
+ * Répartition croisée faculté x sexe, pour le graphe en barres empilées
+ * "chart-faculte-sexe" (attendu par page-administration.php, jamais
+ * implémenté auparavant).
  *
- * NOTE : dépend de la table ueb_statuts_etudiant (schéma) — si le nom
- * réel en base diffère (ueb_statuts_etudiants, avec un "s", utilisé par
- * ailleurs dans ajax-functions.php et db-seed.php), cette stat peut
- * remonter vide.
+ * @return array Liste d'objets { label, hommes, femmes }.
  */
-function ueb_admin_stats_par_statut_etudiant() {
-    return ueb_admin_stats_generique( 'ueb_statuts_etudiants', 'statut_etudiant_id', 'libelle' );
+function ueb_admin_stats_faculte_sexe( $filters = array() ) {
+    global $wpdb;
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT f.nom_fr AS label,
+                   SUM(CASE WHEN p.sexe = 'M' THEN 1 ELSE 0 END) AS hommes,
+                   SUM(CASE WHEN p.sexe = 'F' THEN 1 ELSE 0 END) AS femmes
+            FROM ueb_preinscriptions p
+            JOIN ueb_facultes f ON f.id = p.faculte_id
+            WHERE {$clause['where']}
+            GROUP BY f.id, f.nom_fr
+            ORDER BY f.nom_fr ASC";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
+}
+
+function ueb_admin_stats_evolution( $filters = array() ) {
+    global $wpdb;
+    $clause = ueb_admin_build_where( $filters );
+    $sql = "SELECT DATE(date_creation) AS label, COUNT(*) AS total
+            FROM ueb_preinscriptions p WHERE {$clause['where']}
+            GROUP BY DATE(date_creation) ORDER BY label ASC";
+    if ( $clause['params'] ) {
+        $sql = $wpdb->prepare( $sql, $clause['params'] );
+    }
+    return $wpdb->get_results( $sql );
 }
 
 /**
- * Répartition des dossiers par type de formation (classique / pro), pour graphe en camembert.
+ * Chiffres clés affichés en haut du dashboard (cartes KPI), désormais
+ * cohérents avec les filtres actifs : "total" et "aujourd'hui" ne portent
+ * plus toujours sur l'ensemble de la base, mais sur le sous-ensemble filtré.
  */
-function ueb_admin_stats_par_type_formation() {
+function ueb_admin_chiffres_cles( $filters = array() ) {
     global $wpdb;
-    return $wpdb->get_results(
-        "SELECT type_formation AS label, COUNT(*) AS total
-         FROM ueb_preinscriptions GROUP BY type_formation"
-    );
-}
+    $clause = ueb_admin_build_where( $filters );
 
-/**
- * Répartition des dossiers par situation de handicap (oui/non), pour graphe en camembert.
- */
-function ueb_admin_stats_par_handicap() {
-    global $wpdb;
-    return $wpdb->get_results(
-        "SELECT handicap AS label, COUNT(*) AS total
-         FROM ueb_preinscriptions WHERE handicap IS NOT NULL GROUP BY handicap"
-    );
-}
+    $sql_total = "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE {$clause['where']}";
+    $sql_today = "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE {$clause['where']} AND DATE(p.date_creation) = CURDATE()";
 
-/**
- * Répartition des dossiers par sexe, pour graphe en camembert.
- */
-function ueb_admin_stats_par_sexe() {
-    global $wpdb;
-    return $wpdb->get_results(
-        "SELECT sexe AS label, COUNT(*) AS total FROM ueb_preinscriptions
-         WHERE sexe IS NOT NULL GROUP BY sexe"
-    );
-}
+    if ( $clause['params'] ) {
+        $sql_total = $wpdb->prepare( $sql_total, $clause['params'] );
+        $sql_today = $wpdb->prepare( $sql_today, $clause['params'] );
+    }
 
-/**
- * Évolution du nombre d'inscriptions par jour, pour graphe en courbe.
- */
-function ueb_admin_stats_evolution() {
-    global $wpdb;
-    return $wpdb->get_results(
-        "SELECT DATE(date_creation) AS label, COUNT(*) AS total
-         FROM ueb_preinscriptions GROUP BY DATE(date_creation) ORDER BY label ASC"
-    );
-}
-
-/**
- * Chiffres clés affichés en haut du dashboard (cartes KPI) :
- * total de dossiers et dossiers créés aujourd'hui.
- */
-function ueb_admin_chiffres_cles() {
-    global $wpdb;
     return array(
-        'total'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_preinscriptions" ),
-        'aujourdhui' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_preinscriptions WHERE DATE(date_creation) = CURDATE()" ),
+        'total'      => (int) $wpdb->get_var( $sql_total ),
+        'aujourdhui' => (int) $wpdb->get_var( $sql_today ),
     );
 }
 
 /**
- * Taux de dossiers par faculté, en pourcentage du total de dossiers.
- * Utilisé pour la carte KPI "Taux par faculté" en haut du dashboard.
+ * Taux de dossiers par faculté, en pourcentage du total FILTRÉ (pas du
+ * total absolu), pour rester cohérent avec le reste du dashboard quand
+ * un filtre est actif.
  *
  * @return array Liste d'objets { label, total, pourcentage }.
  */
-function ueb_admin_taux_par_faculte() {
-    global $wpdb;
-
-    $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_preinscriptions" );
-    $rows  = ueb_admin_stats_par_faculte();
-
+function ueb_admin_taux_par_faculte( $filters = array() ) {
+    $rows  = ueb_admin_stats_par_faculte( $filters );
+    $total = array_sum( wp_list_pluck( $rows, 'total' ) );
     foreach ( $rows as $row ) {
         $row->pourcentage = $total > 0 ? round( ( $row->total / $total ) * 100, 1 ) : 0;
     }
-
     return $rows;
 }

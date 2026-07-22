@@ -137,26 +137,57 @@ function ueb_admin_build_where( $filters ) {
  * @param array $filters
  * @return array { rows: array<object>, total: int }
  */
-function ueb_admin_get_dossiers_filtres( $filters ) {
+function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $par_page = 25 ) {
     global $wpdb;
 
     $clause = ueb_admin_build_where( $filters );
+    $where  = $clause['where'];
+    $params = $clause['params'];
+
+    // Recherche texte libre : nom, prénom, ou numéro de dossier.
+    $recherche = trim( (string) $recherche );
+    if ( '' !== $recherche ) {
+        $like     = '%' . $wpdb->esc_like( $recherche ) . '%';
+        $where   .= ' AND (p.nom LIKE %s OR p.prenom LIKE %s OR p.numero_dossier LIKE %s)';
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+    }
+
+    // Total de résultats (pour la pagination), indépendant du LIMIT/OFFSET.
+    $sql_total = "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE {$where}";
+    if ( $params ) {
+        $sql_total = $wpdb->prepare( $sql_total, $params );
+    }
+    $total = (int) $wpdb->get_var( $sql_total );
+
+    $page     = max( 1, absint( $page ) );
+    $par_page = max( 1, absint( $par_page ) );
+    $offset   = ( $page - 1 ) * $par_page;
 
     $sql = "SELECT p.numero_dossier, p.nom, p.prenom, p.sexe, p.date_creation,
                    f.nom_fr AS faculte_nom, fi1.libelle AS filiere1_libelle
             FROM ueb_preinscriptions p
             LEFT JOIN ueb_facultes f   ON f.id  = p.faculte_id
             LEFT JOIN ueb_filieres fi1 ON fi1.id = p.filiere_1_id
-            WHERE {$clause['where']}
-            ORDER BY p.date_creation DESC";
+            WHERE {$where}
+            ORDER BY p.date_creation DESC
+            LIMIT %d OFFSET %d";
 
-    if ( $clause['params'] ) {
-        $sql = $wpdb->prepare( $sql, $clause['params'] );
-    }
+    $params_avec_limite   = $params;
+    $params_avec_limite[] = $par_page;
+    $params_avec_limite[] = $offset;
 
+    $sql  = $wpdb->prepare( $sql, $params_avec_limite );
     $rows = $wpdb->get_results( $sql );
 
-    return array( 'rows' => $rows, 'total' => count( $rows ) );
+    return array(
+        'rows'      => $rows,
+        'total'     => $total,
+        'page'      => $page,
+        'par_page'  => $par_page,
+        'nb_pages'  => (int) ceil( $total / $par_page ),
+    );
 }
 
 /**

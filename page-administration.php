@@ -90,128 +90,189 @@ get_header();
 <?php else : ?>
 
     <!-- ===== TABLEAU DE BORD ===== -->
-    <div class="admin-dashboard">
-        <div class="admin-dashboard-header">
-            <h1>Tableau de bord — Préinscriptions</h1>
-            <a href="<?php echo esc_url( wp_logout_url( get_permalink() ) ); ?>" class="btn btn-secondary">Déconnexion</a>
+    <div class="admin-shell">
+
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-brand">
+                <span class="admin-sidebar-mark">UEB</span>
+                <span class="admin-sidebar-title">Gestion préinscriptions</span>
+            </div>
+
+            <nav class="admin-sidebar-nav" role="tablist">
+                <button type="button" class="admin-tab-btn active" data-tab="stats" role="tab">
+                    <span class="admin-sidebar-icon">&#9673;</span> Vue d'ensemble
+                </button>
+                <button type="button" class="admin-tab-btn" data-tab="liste" role="tab">
+                    <span class="admin-sidebar-icon">&#9776;</span> Dossiers
+                </button>
+            </nav>
+
+            <div class="admin-sidebar-footer">
+                <div class="admin-sidebar-user">
+                    <span class="admin-sidebar-user-avatar"><?php echo esc_html( mb_substr( wp_get_current_user()->display_name, 0, 1 ) ); ?></span>
+                    <span class="admin-sidebar-user-name"><?php echo esc_html( wp_get_current_user()->display_name ); ?></span>
+                </div>
+                <a href="<?php echo esc_url( wp_logout_url( get_permalink() ) ); ?>" class="admin-sidebar-logout">Déconnexion</a>
+            </div>
+        </aside>
+
+        <div class="admin-main">
+
+            <header class="admin-topbar">
+                <div>
+                    <h1 id="admin-page-title">Vue d'ensemble</h1>
+                    <p class="admin-subtitle">Préinscriptions — Université d'Ébolowa</p>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button type="button" id="admin-filter-toggle" class="admin-filter-toggle-btn">
+                        Filtres <span id="admin-filter-count" class="admin-filter-badge" hidden>0</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ===== ONGLET STATISTIQUES (vue par défaut) ===== -->
+            <div id="admin-tab-stats" class="admin-tab-panel active" role="tabpanel">
+                <div id="admin-kpi-grid" class="admin-kpi-grid"></div>
+
+                <div class="admin-charts-grid">
+                    <div class="admin-chart-card"><canvas id="chart-faculte"></canvas></div>
+                    <div class="admin-chart-card"><canvas id="chart-filiere"></canvas></div>
+                    <div class="admin-chart-card"><canvas id="chart-region"></canvas></div>
+                    <div class="admin-chart-card"><canvas id="chart-sexe"></canvas></div>
+                    <div class="admin-chart-card"><canvas id="chart-faculte-sexe"></canvas></div>
+                    <div class="admin-chart-card admin-chart-card--wide"><canvas id="chart-evolution"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ===== ONGLET LISTE DES DOSSIERS ===== -->
+            <div id="admin-tab-liste" class="admin-tab-panel" role="tabpanel">
+                <div class="admin-liste-toolbar">
+                    <input type="search" id="admin-recherche" class="admin-recherche-input" placeholder="Rechercher un nom, prénom ou numéro de dossier…">
+                    <div id="admin-results-count" class="admin-results-count">Chargement…</div>
+                </div>
+                <div id="admin-liste-container"></div>
+                <div id="admin-pagination" class="admin-pagination"></div>
+            </div>
+
         </div>
-        <p class="admin-welcome">Bienvenue, <?php echo esc_html( wp_get_current_user()->display_name ); ?>.</p>
+    </div>
 
-        <!-- ===== FILTRES (partagés par les deux onglets) ===== -->
+    <!-- ===== TIROIR DE FILTRES (partagé par les deux vues) ===== -->
+    <div id="admin-filter-overlay" class="admin-filter-overlay" hidden></div>
+    <aside id="admin-filter-drawer" class="admin-filter-drawer" aria-hidden="true">
+        <div class="admin-filter-drawer-header">
+            <h2>Filtres</h2>
+            <button type="button" id="admin-filter-close" class="admin-filter-close" aria-label="Fermer les filtres">&times;</button>
+        </div>
+
         <form id="admin-filter-form" class="admin-filter-form">
-            <div class="admin-filter-grid">
 
-                <div class="admin-filter-field">
-                    <label for="filter-faculte">Faculté</label>
-                    <select id="filter-faculte"><option value="">Chargement…</option></select>
+            <div class="admin-filter-section">
+                <h3>Formation</h3>
+                <div class="admin-filter-grid">
+                    <div class="admin-filter-field">
+                        <label for="filter-faculte">Faculté</label>
+                        <select id="filter-faculte"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-diplome_admission">Diplôme d'admission</label>
+                        <select id="filter-diplome_admission"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-specialite_diplome">Série / Spécialité</label>
+                        <select id="filter-specialite_diplome" disabled><option value="">— Choisir faculté et diplôme —</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-type_formation">Type de formation</label>
+                        <select id="filter-type_formation"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-filiere">Filière (1er, 2e ou 3e choix)</label>
+                        <select id="filter-filiere" disabled><option value="">— Choisir d'abord une faculté —</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-niveau_lmd">Niveau LMD</label>
+                        <select id="filter-niveau_lmd"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-mention">Mention</label>
+                        <select id="filter-mention"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-statut_etudiant">Statut étudiant</label>
+                        <select id="filter-statut_etudiant"><option value="">Chargement…</option></select>
+                    </div>
                 </div>
-                <div class="admin-filter-field">
-                    <label for="filter-diplome_admission">Diplôme d'admission</label>
-                    <select id="filter-diplome_admission"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-specialite_diplome">Série / Spécialité</label>
-                    <select id="filter-specialite_diplome" disabled><option value="">— Choisir faculté et diplôme —</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-type_formation">Type de formation</label>
-                    <select id="filter-type_formation"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-filiere">Filière (1er, 2e ou 3e choix)</label>
-                    <select id="filter-filiere" disabled><option value="">— Choisir d'abord une faculté —</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-niveau_lmd">Niveau LMD</label>
-                    <select id="filter-niveau_lmd"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-mention">Mention</label>
-                    <select id="filter-mention"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-statut_etudiant">Statut étudiant</label>
-                    <select id="filter-statut_etudiant"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-sexe">Sexe</label>
-                    <select id="filter-sexe"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-handicap">Situation de handicap</label>
-                    <select id="filter-handicap"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-nationalite">Nationalité</label>
-                    <select id="filter-nationalite"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-premiere_langue">Première langue</label>
-                    <select id="filter-premiere_langue"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-situation_matrimoniale">Situation matrimoniale</label>
-                    <select id="filter-situation_matrimoniale"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-statut_socio_professionnel">Statut socio-professionnel</label>
-                    <select id="filter-statut_socio_professionnel"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-region_origine">Région d'origine</label>
-                    <select id="filter-region_origine"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-departement_origine">Département d'origine</label>
-                    <select id="filter-departement_origine" disabled><option value="">— Choisir d'abord une région —</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-commune_origine">Commune d'origine</label>
-                    <select id="filter-commune_origine" disabled><option value="">— Choisir d'abord un département —</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-sport_prefere">Sport préféré</label>
-                    <select id="filter-sport_prefere"><option value="">Chargement…</option></select>
-                </div>
-                <div class="admin-filter-field">
-                    <label for="filter-art_pratique">Art pratiqué</label>
-                    <select id="filter-art_pratique"><option value="">Chargement…</option></select>
-                </div>
+            </div>
 
+            <div class="admin-filter-section">
+                <h3>Profil</h3>
+                <div class="admin-filter-grid">
+                    <div class="admin-filter-field">
+                        <label for="filter-sexe">Sexe</label>
+                        <select id="filter-sexe"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-handicap">Situation de handicap</label>
+                        <select id="filter-handicap"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-nationalite">Nationalité</label>
+                        <select id="filter-nationalite"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-premiere_langue">Première langue</label>
+                        <select id="filter-premiere_langue"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-situation_matrimoniale">Situation matrimoniale</label>
+                        <select id="filter-situation_matrimoniale"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-statut_socio_professionnel">Statut socio-professionnel</label>
+                        <select id="filter-statut_socio_professionnel"><option value="">Chargement…</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-filter-section">
+                <h3>Origine géographique</h3>
+                <div class="admin-filter-grid">
+                    <div class="admin-filter-field">
+                        <label for="filter-region_origine">Région d'origine</label>
+                        <select id="filter-region_origine"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-departement_origine">Département d'origine</label>
+                        <select id="filter-departement_origine" disabled><option value="">— Choisir d'abord une région —</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-commune_origine">Commune d'origine</label>
+                        <select id="filter-commune_origine" disabled><option value="">— Choisir d'abord un département —</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-filter-section">
+                <h3>Centres d'intérêt</h3>
+                <div class="admin-filter-grid">
+                    <div class="admin-filter-field">
+                        <label for="filter-sport_prefere">Sport préféré</label>
+                        <select id="filter-sport_prefere"><option value="">Chargement…</option></select>
+                    </div>
+                    <div class="admin-filter-field">
+                        <label for="filter-art_pratique">Art pratiqué</label>
+                        <select id="filter-art_pratique"><option value="">Chargement…</option></select>
+                    </div>
+                </div>
             </div>
 
             <div class="admin-filter-actions">
-                <button type="submit" class="btn btn-primary">Filtrer</button>
+                <button type="submit" class="btn btn-primary">Appliquer les filtres</button>
                 <button type="button" id="admin-filter-reset" class="btn btn-secondary">Réinitialiser</button>
             </div>
         </form>
-
-        <!-- ===== ONGLETS ===== -->
-        <div class="admin-tabs" role="tablist">
-            <button type="button" class="admin-tab-btn active" data-tab="liste" role="tab">Liste des préinscrits</button>
-            <button type="button" class="admin-tab-btn" data-tab="stats" role="tab">Statistiques</button>
-        </div>
-
-        <!-- ===== ONGLET LISTE ===== -->
-        <div id="admin-tab-liste" class="admin-tab-panel active" role="tabpanel">
-            <div id="admin-results-count" class="admin-results-count">Chargement…</div>
-            <div id="admin-liste-container"></div>
-        </div>
-
-        <!-- ===== ONGLET STATISTIQUES ===== -->
-        <div id="admin-tab-stats" class="admin-tab-panel" role="tabpanel">
-            <div id="admin-kpi-grid" class="admin-kpi-grid"></div>
-
-            <div class="admin-charts-grid">
-                <div class="admin-chart-card"><canvas id="chart-faculte"></canvas></div>
-                <div class="admin-chart-card"><canvas id="chart-filiere"></canvas></div>
-                <div class="admin-chart-card"><canvas id="chart-region"></canvas></div>
-                <div class="admin-chart-card"><canvas id="chart-sexe"></canvas></div>
-                <div class="admin-chart-card"><canvas id="chart-faculte-sexe"></canvas></div>
-                <div class="admin-chart-card admin-chart-card--wide"><canvas id="chart-evolution"></canvas></div>
-            </div>
-        </div>
-    </div>
+    </aside>
 
 <?php endif; ?>
 
