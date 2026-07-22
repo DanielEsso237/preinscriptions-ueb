@@ -11,12 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /*
  * Numéro de dossier : priorité session > cookie persistant > génération.
- * - Session : évite une régénération à chaque refresh pendant la même visite.
- * - Cookie (30 jours) : survit à la fermeture du navigateur, sur le même appareil.
- * - Changer d'appareil (ex. téléphone -> PC) n'est PAS couvert par session/cookie :
- *   c'est volontaire, le candidat utilise alors le panneau "Continuer ma
- *   préinscription" (numéro saisi manuellement), qui fonctionne sur
- *   n'importe quel appareil puisque le numéro est stocké côté serveur.
  */
 $ueb_numero_dossier = null;
 
@@ -24,9 +18,6 @@ if ( ! empty( $_SESSION['ueb_numero_dossier_en_cours'] ) ) {
     $ueb_numero_dossier = $_SESSION['ueb_numero_dossier_en_cours'];
 } elseif ( ! empty( $_COOKIE['ueb_numero_dossier'] ) ) {
     $numero_candidat = sanitize_text_field( wp_unslash( $_COOKIE['ueb_numero_dossier'] ) );
-    // On ne réutilise le numéro que s'il existe VRAIMENT en base (brouillon en cours).
-    // Un dossier déjà soumis n'a plus de ligne de progression (supprimée à la
-    // soumission finale, voir ueb_handle_db_save), donc il ne sera jamais réutilisé ici.
     if ( null !== ueb_recuperer_progression( $numero_candidat ) ) {
         $ueb_numero_dossier = $numero_candidat;
     }
@@ -40,10 +31,6 @@ if ( false === $ueb_numero_dossier ) {
     error_log( '[UEB Préinscription] Échec d\'initialisation du dossier sur page-preinscription.php' );
 } else {
     $_SESSION['ueb_numero_dossier_en_cours'] = $ueb_numero_dossier;
-    // NOTE sécurité : le cookie n'est pas une preuve d'identité, un candidat
-    // pourrait en théorie le modifier pour tomber sur le numéro de quelqu'un
-    // d'autre. Risque accepté ici (dossier "brouillon" non sensible avant
-    // soumission) ; à documenter comme limite connue du projet.
     setcookie(
         'ueb_numero_dossier',
         $ueb_numero_dossier,
@@ -127,22 +114,8 @@ get_header();
             ?>
             <form id="form-preinscription" method="post" action="" novalidate>
                 <?php echo $nonce_field; ?>
-                <!--
-                    NOTE : un seul champ "action" doit exister dans tout le formulaire
-                    (sa valeur "generate_pdf" est ajoutée juste avant le bouton de
-                    soumission, à l'étape 5). Avoir deux champs hidden avec le même
-                    name="action" causait un bug : seule la dernière valeur du DOM
-                    était envoyée dans $_POST, donc ueb_handle_db_save() (Oriol) et
-                    ueb_handle_pdf_generation() (Yann) réagissent tous les deux à
-                    "generate_pdf", via template_redirect avec des priorités
-                    différentes (5 puis 10).
-                -->
                 <input type="hidden" id="numero_dossier" name="numero_dossier" value="<?php echo esc_attr( $ueb_numero_dossier ?: '' ); ?>">
                 <input type="hidden" id="serie_diplome" name="serie_diplome">
-                <!-- Niveau LMD réel envoyé au serveur : rempli par le JS
-                     (updateNiveauDepuisDiplome), déduit du diplôme d'admission.
-                     Le select visible (#niveau_lmd_select, plus bas) n'a pas
-                     de name : c'est ce hidden qui porte la valeur soumise. -->
                 <input type="hidden" id="niveau_lmd" name="niveau_lmd">
 
                 <!-- ===== ÉTAPE 1 : FORMATION ===== -->
@@ -154,7 +127,7 @@ get_header();
 
                     <div class="form-grid">
 
-                        <!-- Faculté — peuplé via AJAX (ueb_get_facultes) -->
+                        <!-- Faculté -->
                         <div class="form-group full">
                             <label for="faculte">Faculté / École <span class="required">*</span><span class="field-trans">Faculty / School</span></label>
                             <select id="faculte" name="faculte" required disabled>
@@ -162,7 +135,7 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Diplôme d'admission — peuplé via AJAX (ueb_get_diplomes) -->
+                        <!-- Diplôme d'admission -->
                         <div class="form-group full">
                             <label for="diplome_admission">Diplôme d'admission <span class="required">*</span><span class="field-trans">Admission diploma</span></label>
                             <select id="diplome_admission" name="diplome_admission" required disabled>
@@ -170,9 +143,7 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Série / Spécialité — select dynamique par faculté + diplôme.
-                             Masqué automatiquement par le JS pour les diplômes qui n'ont
-                             pas de "série" (relevés de notes, licence, master). -->
+                        <!-- Série / Spécialité -->
                         <div class="form-group full" id="serie-container">
                             <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span><span class="field-trans">Diploma series / specialty</span></label>
                             <select id="serie_diplome_select" required disabled>
@@ -181,7 +152,7 @@ get_header();
                             <span class="field-hint">La liste des séries s'adapte selon la faculté et le diplôme choisis.</span>
                         </div>
 
-                        <!-- Type de formation — visible uniquement pour FS -->
+                        <!-- Type de formation -->
                         <div class="form-group full" id="type-formation-group" style="display:none;">
                             <label for="type_formation">Type de formation <span class="required">*</span><span class="field-trans">Training type</span></label>
                             <select id="type_formation" name="type_formation">
@@ -223,10 +194,7 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Niveau LMD — déduit automatiquement du diplôme d'admission
-                             (champ verrouillé, cf. .field-locked). Pas de "name" ici :
-                             la valeur réellement soumise est le hidden #niveau_lmd
-                             déclaré plus haut, rempli par updateNiveauDepuisDiplome(). -->
+                        <!-- Niveau LMD -->
                         <div class="form-group full">
                             <label for="niveau_lmd_select">Niveau LMD <span class="required">*</span><span class="field-trans">LMD level</span></label>
                             <select id="niveau_lmd_select" required disabled>
@@ -235,27 +203,42 @@ get_header();
                             <span class="field-hint">Déduit automatiquement de ton diplôme d'admission.</span>
                         </div>
 
-                        <!-- Année d'obtention -->
-                        <div class="form-group full">
-                            <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
-                            <input type="number" id="annee_obtention" name="annee_obtention" min="1990" max="2025" placeholder="Ex : 2024" required>
-                        </div>
-
-                        <!-- Moyenne obtenue -->
-                        <div class="form-group">
+                        <!-- Moyenne obtenue — réels dans [10, 20] -->
+                        <div class="form-group align-top">
                             <label for="moyenne_diplome">Moyenne obtenue au diplôme <span class="required">*</span><span class="field-trans">Average obtained</span></label>
-                            <input type="number" id="moyenne_diplome" name="moyenne_diplome" step="0.01" min="0" max="20" placeholder="Ex : 13.5" required>
+                            <input
+                                type="number"
+                                id="moyenne_diplome"
+                                name="moyenne_diplome"
+                                step="0.01"
+                                min="10"
+                                max="20"
+                                placeholder="Ex : 13.50"
+                                required
+                            >
+                            <span class="field-hint">Valeur comprise entre 10 et 20.</span>
                         </div>
 
-                        <!-- Mention — peuplé via AJAX (ueb_get_mentions) -->
-                        <div class="form-group">
+                        <!-- Mention -->
+                        <div class="form-group align-top">
                             <label for="mention">Mention <span class="required">*</span><span class="field-trans">Mention / Honors</span></label>
                             <select id="mention" name="mention" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
                         </div>
 
-                        <!-- Statut de l'étudiant — peuplé via AJAX (ueb_get_statuts_etudiant) -->
+                        <!-- Année d'obtention — SELECT 1980..2026 -->
+                        <div class="form-group full">
+                            <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
+                            <select id="annee_obtention" name="annee_obtention" required>
+                                <option value="">— Choisir une année —</option>
+                                <?php for ( $y = 2026; $y >= 1980; $y-- ) : ?>
+                                    <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+
+                        <!-- Statut de l'étudiant -->
                         <div class="form-group full">
                             <label for="statut_etudiant">Statut <span class="required">*</span><span class="field-trans">Student status</span></label>
                             <select id="statut_etudiant" name="statut_etudiant" required disabled>
@@ -315,7 +298,6 @@ get_header();
                             <input type="text" id="lieu_naissance" name="lieu_naissance" placeholder="Ville / Village" required>
                         </div>
 
-                        <!-- Nationalité — peuplé via AJAX (ueb_get_nationalites) -->
                         <div class="form-group">
                             <label for="nationalite">Nationalité <span class="required">*</span><span class="field-trans">Nationality</span></label>
                             <select id="nationalite" name="nationalite" required disabled>
@@ -323,10 +305,6 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Première langue — peuplé via AJAX (ueb_get_langues) -->
-                        <!-- .full : seule sur sa ligne (le champ suivant, situation_matrimoniale,
-                             est en .full et saute à la ligne), donc pleine largeur pour éviter
-                             une case vide à côté. -->
                         <div class="form-group full">
                             <label for="premiere_langue">Première langue <span class="required">*</span><span class="field-trans">First language</span></label>
                             <select id="premiere_langue" name="premiere_langue" required disabled>
@@ -334,7 +312,6 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Situation matrimoniale — peuplé via AJAX (ueb_get_situations_matrimoniales) -->
                         <div class="form-group full">
                             <label for="situation_matrimoniale">Situation matrimoniale <span class="required">*</span><span class="field-trans">Marital status</span></label>
                             <select id="situation_matrimoniale" name="situation_matrimoniale" required disabled>
@@ -342,7 +319,6 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Statut socio-professionnel — peuplé via AJAX (ueb_get_statuts_socio_pro) -->
                         <div class="form-group full">
                             <label for="statut_socio_professionnel">Statut socio-professionnel <span class="required">*</span><span class="field-trans">Socio-professional status</span></label>
                             <select id="statut_socio_professionnel" name="statut_socio_professionnel" required disabled>
@@ -400,7 +376,6 @@ get_header();
                             <input type="text" id="adresse" name="adresse" placeholder="Quartier, ville" required>
                         </div>
 
-                        <!-- Région d'origine — peuplé via AJAX (ueb_get_regions) -->
                         <div class="form-group">
                             <label for="region_origine">Région d'origine <span class="required">*</span><span class="field-trans">Region of origin</span></label>
                             <select id="region_origine" name="region_origine" required disabled>
@@ -408,7 +383,6 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Département d'origine — dépend de la région -->
                         <div class="form-group">
                             <label for="departement_origine">Département d'origine <span class="required">*</span><span class="field-trans">Department of origin</span></label>
                             <select id="departement_origine" name="departement_origine" required disabled>
@@ -416,7 +390,6 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Commune d'origine — dépend du département (remplace l'ancien champ "arrondissement") -->
                         <div class="form-group full">
                             <label for="commune_origine">Commune d'origine <span class="required">*</span><span class="field-trans">Municipality of origin</span></label>
                             <select id="commune_origine" name="commune_origine" required disabled>
