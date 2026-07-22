@@ -139,6 +139,11 @@ get_header();
                 -->
                 <input type="hidden" id="numero_dossier" name="numero_dossier" value="<?php echo esc_attr( $ueb_numero_dossier ?: '' ); ?>">
                 <input type="hidden" id="serie_diplome" name="serie_diplome">
+                <!-- Niveau LMD réel envoyé au serveur : rempli par le JS
+                     (updateNiveauDepuisDiplome), déduit du diplôme d'admission.
+                     Le select visible (#niveau_lmd_select, plus bas) n'a pas
+                     de name : c'est ce hidden qui porte la valeur soumise. -->
+                <input type="hidden" id="niveau_lmd" name="niveau_lmd">
 
                 <!-- ===== ÉTAPE 1 : FORMATION ===== -->
                 <fieldset class="form-step active" data-step="1">
@@ -165,7 +170,9 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Série / Spécialité — select dynamique par faculté + diplôme -->
+                        <!-- Série / Spécialité — select dynamique par faculté + diplôme.
+                             Masqué automatiquement par le JS pour les diplômes qui n'ont
+                             pas de "série" (relevés de notes, licence, master). -->
                         <div class="form-group full" id="serie-container">
                             <label for="serie_diplome_select">Série / Spécialité du diplôme <span class="required">*</span><span class="field-trans">Diploma series / specialty</span></label>
                             <select id="serie_diplome_select" required disabled>
@@ -202,8 +209,8 @@ get_header();
 
                         <!-- 2e choix de filière -->
                         <div class="form-group full">
-                            <label for="filiere_2">2e choix de filière <span class="field-optional">(optionnel)</span><span class="field-trans">2nd choice of program</span></label>
-                            <select id="filiere_2" name="filiere_2" disabled>
+                            <label for="filiere_2">2e choix de filière <span class="required">*</span><span class="field-trans">2nd choice of program</span></label>
+                            <select id="filiere_2" name="filiere_2" required disabled>
                                 <option value="">— Aucun deuxième choix —</option>
                             </select>
                         </div>
@@ -216,12 +223,16 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Niveau LMD — désormais un vrai select, peuplé via AJAX (ueb_get_niveaux_lmd) -->
+                        <!-- Niveau LMD — déduit automatiquement du diplôme d'admission
+                             (champ verrouillé, cf. .field-locked). Pas de "name" ici :
+                             la valeur réellement soumise est le hidden #niveau_lmd
+                             déclaré plus haut, rempli par updateNiveauDepuisDiplome(). -->
                         <div class="form-group full">
-                            <label for="niveau_lmd">Niveau LMD (Choisissez le niveau où vous souhaitez vous préinscrire) <span class="required">*</span><span class="field-trans">LMD level (Select the level for which you wish to pre-register.)</span></label>
-                            <select id="niveau_lmd" name="niveau_lmd" required disabled>
-                                <option value="">— Chargement... —</option>
+                            <label for="niveau_lmd_select">Niveau LMD <span class="required">*</span><span class="field-trans">LMD level</span></label>
+                            <select id="niveau_lmd_select" required disabled>
+                                <option value="">— Choisir d'abord le diplôme d'admission —</option>
                             </select>
+                            <span class="field-hint">Déduit automatiquement de ton diplôme d'admission.</span>
                         </div>
 
                         <!-- Année d'obtention -->
@@ -229,19 +240,6 @@ get_header();
                             <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
                             <input type="number" id="annee_obtention" name="annee_obtention" min="1990" max="2025" placeholder="Ex : 2024" required>
                         </div>
-
-                        <div class="form-group full">
-                             <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
-                            <select id="annee_obtention" name="annee_obtention" required>
-                                <option value="">— Choisir l'année —</option>
-                                <?php for ( $a = date('Y'); $a >= 1970; $a-- ) : ?>
-                                    <option value="<?php echo esc_attr( $a ); ?>"><?php echo esc_html( $a ); ?></option>
-                                 <?php endfor; ?>
-                            </select>
-                        </div>
-
-
-                        
 
                         <!-- Moyenne obtenue -->
                         <div class="form-group">

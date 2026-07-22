@@ -44,6 +44,23 @@
        CACHES (évite de refaire des appels identiques)
        ================================================================ */
     let facultesCache = [];
+    let diplomesCache = [];
+    let niveauxCache  = [];
+
+    /* Codes stables définis dans inc/db-seed.php : diplôme -> niveau LMD
+       auquel il donne accès. Utilisé pour verrouiller automatiquement le
+       champ "Niveau LMD" dès que le diplôme d'admission est choisi. */
+    const DIPLOME_VERS_NIVEAU = {
+        bac: 'L1', gce_ol: 'L1',
+        releve_n1: 'L2', releve_n2: 'L3',
+        licence: 'M1', releve_m1: 'M2',
+        master: 'DOC'
+    };
+
+    // Diplômes pour lesquels "Série / Spécialité" a un sens (séries du
+    // bac / GCE O-Level). Pour les autres (relevés de notes, licence,
+    // master), ce champ est masqué et non requis.
+    const DIPLOMES_AVEC_SERIE = ['bac', 'gce_ol'];
 
     // Listes "brutes" des filières (avant filtrage croisé), mises à jour
     // à chaque changement de faculté/type de formation, et relues par
@@ -56,6 +73,11 @@
         return f ? f.code : '';
     }
 
+    function getDiplomeCode(diplomeId) {
+        const d = diplomesCache.find(function (x) { return String(x.id) === String(diplomeId); });
+        return d ? d.code : '';
+    }
+
     /* ================================================================
        ÉLÉMENTS DOM
        ================================================================ */
@@ -66,9 +88,12 @@
     const selectFiliere2  = document.getElementById('filiere_2');
     const selectFiliere3  = document.getElementById('filiere_3');
     const serieSelect     = document.getElementById('serie_diplome_select');
+    const serieContainer  = document.getElementById('serie-container');
     const proNotice       = document.getElementById('pro-filiere-notice');
     const typeGroup       = document.getElementById('type-formation-group');
     const serieHidden     = document.getElementById('serie_diplome');
+    const niveauSelect    = document.getElementById('niveau_lmd_select');
+    const niveauHidden    = document.getElementById('niveau_lmd');
 
     const selectRegion       = document.getElementById('region_origine');
     const selectDepartement  = document.getElementById('departement_origine');
@@ -107,6 +132,7 @@
     });
 
     const diplomesPromise = uebFetch('ueb_get_diplomes').then(function (data) {
+        diplomesCache = data;
         fillSelect(selectDiplome, data, '— Choisir —', true);
         return data;
     });
@@ -131,8 +157,11 @@
         return data;
     });
 
+    // Niveau LMD : plus rempli directement dans un select libre — le champ
+    // est verrouillé et déduit du diplôme d'admission (cf.
+    // updateNiveauDepuisDiplome ci-dessous). On garde seulement le cache.
     const niveauxPromise = uebFetch('ueb_get_niveaux_lmd').then(function (data) {
-        fillSelect(document.getElementById('niveau_lmd'), data, '— Choisir —', true);
+        niveauxCache = data;
         return data;
     });
 
@@ -163,12 +192,25 @@
 
     /* ================================================================
        SÉRIE / SPÉCIALITÉ — dépend de faculté + diplôme
+       Masqué et non requis pour les diplômes hors DIPLOMES_AVEC_SERIE
+       (relevés de notes, licence, master : pas de "série" au sens bac).
        ================================================================ */
     function updateSeries() {
-        const faculteId = selectFaculte.value;
-        const diplomeId = selectDiplome.value;
+        const faculteId   = selectFaculte.value;
+        const diplomeId   = selectDiplome.value;
+        const diplomeCode = getDiplomeCode(diplomeId);
 
         if (serieHidden) serieHidden.value = '';
+
+        if (diplomeCode && DIPLOMES_AVEC_SERIE.indexOf(diplomeCode) === -1) {
+            if (serieContainer) serieContainer.style.display = 'none';
+            serieSelect.required = false;
+            fillSelect(serieSelect, [], '', false);
+            return;
+        }
+
+        if (serieContainer) serieContainer.style.display = '';
+        serieSelect.required = true;
 
         if (!faculteId || !diplomeId) {
             fillSelect(serieSelect, [], "— Choisir d'abord la faculté et le diplôme —", false);
@@ -181,6 +223,28 @@
             .then(function (data) {
                 fillSelect(serieSelect, data, '— Choisir la série —', true);
             });
+    }
+
+    /* ================================================================
+       NIVEAU LMD — déduit automatiquement du diplôme d'admission choisi
+       (champ verrouillé, cf. classe CSS .field-locked). Le select
+       #niveau_lmd_select n'a volontairement pas de name : c'est le champ
+       hidden #niveau_lmd qui porte la valeur soumise au serveur.
+       ================================================================ */
+    function updateNiveauDepuisDiplome() {
+        const code   = DIPLOME_VERS_NIVEAU[getDiplomeCode(selectDiplome.value)] || '';
+        const trouve = niveauxCache.find(function (n) { return n.code === code; });
+
+        if (!trouve) {
+            fillSelect(niveauSelect, [], '— Choisir d\'abord le diplôme d\'admission —', false);
+            if (niveauHidden) niveauHidden.value = '';
+            return;
+        }
+
+        fillSelect(niveauSelect, [trouve], '', false);
+        niveauSelect.value = trouve.id;
+        niveauSelect.classList.add('field-locked');
+        if (niveauHidden) niveauHidden.value = trouve.id;
     }
 
     /* ================================================================
@@ -295,7 +359,11 @@
         updateTypeFormation();
     });
 
-    selectDiplome.addEventListener('change', updateSeries);
+    selectDiplome.addEventListener('change', function () {
+        updateSeries();
+        updateNiveauDepuisDiplome();
+    });
+
     selectType.addEventListener('change', updateFilieres);
 
     serieSelect.addEventListener('change', function () {
@@ -571,6 +639,12 @@
             const opt = sel.options[sel.selectedIndex];
             return opt ? opt.text : '';
         }
+        if (fieldName === 'niveau_lmd') {
+            const sel = document.getElementById('niveau_lmd_select');
+            if (!sel) return '';
+            const opt = sel.options[sel.selectedIndex];
+            return opt ? opt.text : '';
+        }
         if (fieldName === 'type_formation') {
             return selectType.value === 'pro' ? 'Formation Professionnelle (LP)' : 'Formation Initiale (Classique)';
         }
@@ -783,10 +857,9 @@
             if (elSit) elSit.value = donnees.situation_matrimoniale;
         }
 
-        if (donnees.niveau_lmd) {
-            const elNiveau = document.getElementById('niveau_lmd');
-            if (elNiveau) elNiveau.value = donnees.niveau_lmd;
-        }
+        // Niveau LMD : ne se restaure plus directement — il est verrouillé
+        // et sera recalculé par updateNiveauDepuisDiplome() une fois le
+        // diplôme d'admission remis ci-dessous.
 
         if (donnees.mention) {
             const elMention = document.getElementById('mention');
@@ -816,12 +889,21 @@
         if (donnees.faculte) selectFaculte.value = donnees.faculte;
         if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
 
+        // Recalcule le niveau LMD verrouillé à partir du diplôme qui vient
+        // d'être restauré (diplomesCache / niveauxCache sont prêts, on est
+        // après le Promise.all ci-dessus).
+        updateNiveauDepuisDiplome();
+
         const type = donnees.type_formation || 'classique';
         const faculteCode = getFaculteCode(donnees.faculte);
         typeGroup.style.display = (faculteCode === 'FS') ? '' : 'none';
         selectType.value = type;
 
-        if (donnees.faculte && donnees.diplome_admission) {
+        const diplomeCodeResume = getDiplomeCode(donnees.diplome_admission);
+
+        if (donnees.faculte && donnees.diplome_admission && DIPLOMES_AVEC_SERIE.indexOf(diplomeCodeResume) !== -1) {
+            if (serieContainer) serieContainer.style.display = '';
+            serieSelect.required = true;
             const series = await uebFetch('ueb_get_specialites', {
                 faculte_id: donnees.faculte,
                 diplome_id: donnees.diplome_admission
@@ -831,6 +913,9 @@
                 serieSelect.value = donnees.serie_diplome;
                 if (serieHidden) serieHidden.value = donnees.serie_diplome;
             }
+        } else if (serieContainer) {
+            serieContainer.style.display = 'none';
+            serieSelect.required = false;
         }
 
         if (donnees.faculte) {

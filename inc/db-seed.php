@@ -490,7 +490,12 @@ SQL,
         'ueb_diplomes_admission' => <<<SQL
 INSERT IGNORE INTO ueb_diplomes_admission (code, libelle) VALUES
     ('bac', 'Baccalauréat'),
-    ('gce_ol', 'GCE O-Level');
+    ('gce_ol', 'GCE O-Level'),
+    ('releve_n1', 'Relevé de notes Niveau 1'),
+    ('releve_n2', 'Relevé de notes Niveau 2'),
+    ('licence', 'Licence'),
+    ('releve_m1', 'Relevé de notes Master 1'),
+    ('master', 'Master');
 SQL,
         'ueb_specialites_diplome' => <<<SQL
 INSERT IGNORE INTO ueb_specialites_diplome (code, libelle, faculte_id, diplome_id) VALUES
