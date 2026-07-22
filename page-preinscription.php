@@ -218,7 +218,7 @@ get_header();
 
                         <!-- Niveau LMD — désormais un vrai select, peuplé via AJAX (ueb_get_niveaux_lmd) -->
                         <div class="form-group full">
-                            <label for="niveau_lmd">Niveau LMD <span class="required">*</span><span class="field-trans">LMD level</span></label>
+                            <label for="niveau_lmd">Niveau LMD (Choisissez le niveau où vous souhaitez vous préinscrire) <span class="required">*</span><span class="field-trans">LMD level (Select the level for which you wish to pre-register.)</span></label>
                             <select id="niveau_lmd" name="niveau_lmd" required disabled>
                                 <option value="">— Chargement... —</option>
                             </select>
@@ -229,6 +229,19 @@ get_header();
                             <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
                             <input type="number" id="annee_obtention" name="annee_obtention" min="1990" max="2025" placeholder="Ex : 2024" required>
                         </div>
+
+                        <div class="form-group full">
+                             <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
+                            <select id="annee_obtention" name="annee_obtention" required>
+                                <option value="">— Choisir l'année —</option>
+                                <?php for ( $a = date('Y'); $a >= 1990; $a-- ) : ?>
+                                    <option value="<?php echo esc_attr( $a ); ?>"><?php echo esc_html( $a ); ?></option>
+                                 <?php endfor; ?>
+                            </select>
+                        </div>
+
+
+                        
 
                         <!-- Moyenne obtenue -->
                         <div class="form-group">
