@@ -227,9 +227,6 @@
 
     /* ================================================================
        NIVEAU LMD — déduit automatiquement du diplôme d'admission choisi
-       (champ verrouillé, cf. classe CSS .field-locked). Le select
-       #niveau_lmd_select n'a volontairement pas de name : c'est le champ
-       hidden #niveau_lmd qui porte la valeur soumise au serveur.
        ================================================================ */
     function updateNiveauDepuisDiplome() {
         const code   = DIPLOME_VERS_NIVEAU[getDiplomeCode(selectDiplome.value)] || '';
@@ -266,13 +263,6 @@
 
     /* ================================================================
        FILTRAGE CROISÉ DES 3 CHOIX DE FILIÈRE
-       ------------------------------------------------------------
-       Reconstruit les options de filiere_1 / filiere_2 / filiere_3 à
-       partir des listes "brutes" (filiere1Data / filiere23Data), en
-       retirant de chaque select les filières déjà choisies dans LES
-       AUTRES selects (une même filière ne peut pas être choisie deux
-       fois). La valeur actuellement sélectionnée d'un select est
-       toujours conservée si elle reste valide.
        ================================================================ */
     function refreshFiliereCrossFilter() {
         const configs = [
@@ -301,16 +291,12 @@
         });
     }
 
-    // Dès qu'un des 3 choix change, on réapplique le filtrage sur les
-    // deux autres (et sur lui-même, sans effet néfaste).
     [selectFiliere1, selectFiliere2, selectFiliere3].forEach(function (select) {
         select.addEventListener('change', refreshFiliereCrossFilter);
     });
 
     /* ================================================================
        FILIÈRES — dépend de faculté + type de formation
-       (1er choix : selon le type ; 2e et 3e choix : toujours la liste
-       "classique" de la faculté)
        ================================================================ */
     function updateFilieres() {
         const faculteId = selectFaculte.value;
@@ -340,8 +326,6 @@
             .then(function (data) {
                 filiere1Data = data;
 
-                // 2e et 3e choix de filière : toujours les filières "classique"
-                // de la faculté (même en formation pro).
                 if (type === 'pro') {
                     return uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
                         .then(function (data2) {
@@ -439,9 +423,7 @@
     document.querySelectorAll('input[type="tel"]').forEach(enforceTelInput);
 
     /* ================================================================
-       TÉLÉPHONES MULTIPLES (candidat uniquement — les numéros du père,
-       de la mère et du tuteur sont désormais des champs simples, gérés
-       comme n'importe quel autre input du formulaire)
+       TÉLÉPHONES MULTIPLES
        ================================================================ */
     function makeTelRow(name, required) {
         const row = document.createElement('div');
@@ -487,7 +469,7 @@
     }
 
     /* ================================================================
-       NAVIGATION ENTRE ÉTAPES (5 étapes désormais)
+       NAVIGATION ENTRE ÉTAPES
        ================================================================ */
     function showStep(n) {
         steps.forEach(function (s) { s.classList.remove('active'); });
@@ -612,19 +594,25 @@
     };
 
     const SECTIONS = {
-    formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
-    etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
-    contact : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur'],
-    divers    : ['sport_prefere',,'numero_certificat_medical','art_pratique','lieu_obtention_certificat'],
+        formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
+        etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
+        contact   : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur'],
+        divers    : ['sport_prefere','numero_certificat_medical','art_pratique','lieu_obtention_certificat'],
     };
-
-    
 
     const SECTION_TITLES = {
         formation : 'Formation choisie',
         etatCivil : 'État civil',
         contact   : 'Contact & origine',
         divers    : 'Informations diverses',
+    };
+
+    // Correspondance section → numéro d'étape du formulaire
+    const SECTION_ETAPE = {
+        formation : 1,
+        etatCivil : 2,
+        contact   : 3,
+        divers    : 4,
     };
 
     function getFieldValue(fieldName) {
@@ -674,13 +662,63 @@
         Object.keys(SECTIONS).forEach(function (key) {
             const section = document.createElement('div');
             section.className = 'recap-section';
+
+            // En-tête : titre + bouton Modifier
+            const header = document.createElement('div');
+            header.style.cssText = [
+                'display:flex',
+                'align-items:center',
+                'justify-content:space-between',
+                'margin-bottom:10px',
+                'padding-bottom:7px',
+                'border-bottom:1.5px solid var(--ueb-bordure)',
+            ].join(';');
+
             const title = document.createElement('div');
-            title.className   = 'recap-section-title';
+            title.className = 'recap-section-title';
+            // Retire la bordure-bottom du titre (déjà sur le header)
+            title.style.cssText = 'margin:0;padding:0;border:none';
             title.textContent = SECTION_TITLES[key];
-            section.appendChild(title);
+
+            const btnModifier = document.createElement('button');
+            btnModifier.type = 'button';
+            btnModifier.textContent = '✏ Modifier';
+            btnModifier.setAttribute('aria-label', 'Modifier ' + SECTION_TITLES[key]);
+            btnModifier.style.cssText = [
+                'background:transparent',
+                'border:1.5px solid var(--ueb-vert)',
+                'color:var(--ueb-vert)',
+                'border-radius:6px',
+                'padding:4px 14px',
+                'font-size:.76rem',
+                'font-weight:700',
+                'cursor:pointer',
+                'font-family:inherit',
+                'flex-shrink:0',
+                'transition:background .15s ease,color .15s ease',
+            ].join(';');
+
+            btnModifier.addEventListener('mouseenter', function () {
+                this.style.background = 'var(--ueb-vert)';
+                this.style.color = '#fff';
+            });
+            btnModifier.addEventListener('mouseleave', function () {
+                this.style.background = 'transparent';
+                this.style.color = 'var(--ueb-vert)';
+            });
+            btnModifier.addEventListener('click', function () {
+                showStep(SECTION_ETAPE[key]);
+            });
+
+            header.appendChild(title);
+            header.appendChild(btnModifier);
+            section.appendChild(header);
+
+            // Grille des champs
             const grid = document.createElement('div');
             grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
             SECTIONS[key].forEach(function (fieldName) {
+                if (!fieldName) return;
                 const value = getFieldValue(fieldName);
                 const item  = document.createElement('div');
                 item.className = 'recap-item';
@@ -695,10 +733,7 @@
     }
 
     /* ================================================================
-       ÉVÉNEMENTS
-       ================================================================ */
-    /* ================================================================
-       COLLECTE DES DONNÉES DU FORMULAIRE (tous les champs, toutes étapes)
+       COLLECTE DES DONNÉES DU FORMULAIRE
        ================================================================ */
     function collectFormData() {
         const data = {};
@@ -712,7 +747,7 @@
                 return;
             }
             if (el.type === 'checkbox') {
-                return; // consent exclu, pas d'autre checkbox dans le formulaire
+                return;
             }
             if (el.name.slice(-2) === '[]') {
                 const key = el.name.slice(0, -2);
@@ -727,8 +762,7 @@
     }
 
     /* ================================================================
-       SAUVEGARDE DE LA PROGRESSION — non bloquante (erreur silencieuse
-       en console, la navigation continue dans tous les cas)
+       SAUVEGARDE DE LA PROGRESSION
        ================================================================ */
     function saveProgression(etape) {
         const numeroDossierEl = document.getElementById('numero_dossier');
@@ -742,16 +776,10 @@
             etape: etape,
             donnees: JSON.stringify(donnees)
         });
-        // uebFetch logue déjà toute erreur en console ; on n'attend pas
-        // la réponse et on ne bloque jamais la navigation ici.
     }
 
     /* ================================================================
-       SAUVEGARDE AUTOMATIQUE SUR PERTE DE FOCUS (blur), avec anti-rebond
-       pour ne pas déclencher un appel réseau à chaque frappe. Complète la
-       sauvegarde sur "Suivant" : accord du chef de projet (Esso Daniel)
-       pour éviter la perte de champs non validés en cas de fermeture
-       accidentelle de l'onglet ou de coupure réseau.
+       SAUVEGARDE AUTOMATIQUE SUR PERTE DE FOCUS (blur)
        ================================================================ */
     let autoSaveTimeout = null;
 
@@ -765,12 +793,14 @@
     form.addEventListener('blur', function (e) {
         const el = e.target;
         if (!el || !el.name) return;
-        // Ignore les clics sur les boutons/labels, ne cible que les vrais champs.
         const tag = el.tagName;
         if (tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return;
         scheduleAutoSave();
-    }, true); // capture=true, car "blur" ne bubble pas nativement
+    }, true);
 
+    /* ================================================================
+       ÉVÉNEMENTS DE NAVIGATION
+       ================================================================ */
     form.querySelectorAll('.btn-next').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const next = parseInt(btn.dataset.next, 10);
@@ -833,9 +863,6 @@
 
         fillTelRows('telephones-container', 'telephone[]', donnees.telephone);
 
-        // Les listes facultés/diplômes/régions/statuts/niveaux/mentions/
-        // langues/sports/arts sont déjà en cours de chargement depuis
-        // l'arrivée sur la page : on attend qu'elles soient prêtes.
         await Promise.all([
             facultesPromise, diplomesPromise, regionsPromise, statutsPromise,
             nationalitesPromise, situationsPromise, niveauxPromise, mentionsPromise,
@@ -856,10 +883,6 @@
             const elSit = document.getElementById('situation_matrimoniale');
             if (elSit) elSit.value = donnees.situation_matrimoniale;
         }
-
-        // Niveau LMD : ne se restaure plus directement — il est verrouillé
-        // et sera recalculé par updateNiveauDepuisDiplome() une fois le
-        // diplôme d'admission remis ci-dessous.
 
         if (donnees.mention) {
             const elMention = document.getElementById('mention');
@@ -889,9 +912,6 @@
         if (donnees.faculte) selectFaculte.value = donnees.faculte;
         if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
 
-        // Recalcule le niveau LMD verrouillé à partir du diplôme qui vient
-        // d'être restauré (diplomesCache / niveauxCache sont prêts, on est
-        // après le Promise.all ci-dessus).
         updateNiveauDepuisDiplome();
 
         const type = donnees.type_formation || 'classique';
@@ -932,8 +952,6 @@
                 ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique' })
                 : filiere1Data;
 
-            // Premier passage : peuple les 3 selects avec la liste complète
-            // pour pouvoir y injecter les valeurs sauvegardées.
             refreshFiliereCrossFilter();
             if (donnees.filiere_1 && selectFiliere1.querySelector('option[value="' + donnees.filiere_1 + '"]')) {
                 selectFiliere1.value = donnees.filiere_1;
@@ -944,9 +962,6 @@
             if (donnees.filiere_3 && selectFiliere3.querySelector('option[value="' + donnees.filiere_3 + '"]')) {
                 selectFiliere3.value = donnees.filiere_3;
             }
-            // Second passage : réapplique le filtrage croisé maintenant que
-            // les 3 valeurs sont replacées (retire les doublons des autres
-            // listes, comme lors d'une saisie normale).
             refreshFiliereCrossFilter();
         }
 
