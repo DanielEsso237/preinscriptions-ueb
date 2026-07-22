@@ -494,28 +494,44 @@ INSERT IGNORE INTO ueb_diplomes_admission (code, libelle) VALUES
 SQL,
         'ueb_specialites_diplome' => <<<SQL
 INSERT IGNORE INTO ueb_specialites_diplome (code, libelle, faculte_id, diplome_id) VALUES
-    ('C', 'Série C — Mathématiques et Sciences Physiques', (SELECT id FROM ueb_facultes WHERE code = 'FS'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('D', 'Série D — Sciences Naturelles', (SELECT id FROM ueb_facultes WHERE code = 'FS'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('TI', 'Série TI — Technique Industrielle', (SELECT id FROM ueb_facultes WHERE code = 'FS'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('F', 'Série F — Sciences Techniques', (SELECT id FROM ueb_facultes WHERE code = 'FS'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('GCE_OL_SCI', 'GCE O/L — Sciences', (SELECT id FROM ueb_facultes WHERE code = 'FS'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
-    ('A', 'Série A — Lettres, Philosophie, Sciences Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('B', 'Série B — Sciences Économiques et Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('GCE_OL_ART', 'GCE O/L — Arts & Humanities', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
-    ('GCE_OL_SOC', 'GCE O/L — Social Sciences', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
-    ('B', 'Série B — Sciences Économiques et Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('G', 'Série G — Techniques de Gestion', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('TI', 'Série TI — Technique Industrielle', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('C', 'Série C — Mathématiques et Sciences Physiques', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('D', 'Série D — Sciences Naturelles', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('GCE_OL_COM', 'GCE O/L — Commerce / Economics', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
-    ('GCE_OL_GEN', 'GCE O/L — General', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
-    ('A', 'Série A — Lettres, Philosophie, Sciences Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('B', 'Série B — Sciences Économiques et Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('C', 'Série C — Mathématiques et Sciences Physiques', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('D', 'Série D — Sciences Naturelles', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('G', 'Série G — Techniques de Gestion', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
-    ('GCE_OL_ALL', 'GCE O/L — Toutes séries', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol'));
+    -- ===== FS — Bac =====
+    ('C',           'Série C — Mathématiques et Sciences Physiques',     (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('D',           'Série D — Sciences Naturelles',                     (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('E',           'Série E — Mathématiques et Technique',              (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('F',           'Série F — Sciences Techniques',                     (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('G_FS',        'Série G — Techniques de Gestion',                  (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('TI',          'Série TI — Technique Informatique',                (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    -- ===== FS — GCE O/L =====
+    ('GCE_OL_SCI',  'GCE O/L — Sciences',                               (SELECT id FROM ueb_facultes WHERE code = 'FS'),    (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
+    -- ===== FALSH — Bac =====
+    ('A',           'Série A — Lettres, Philosophie, Sciences Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('B',           'Série B — Sciences Économiques et Sociales',        (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('C_FALSH',     'Série C — Mathématiques et Sciences Physiques',     (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('D_FALSH',     'Série D — Sciences Naturelles',                     (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('G_FALSH',     'Série G — Techniques de Gestion',                  (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('TI_FALSH',    'Série TI — Technique Informatique',                (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    -- ===== FALSH — GCE O/L =====
+    ('GCE_OL_ART',  'GCE O/L — Arts & Humanities',                      (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
+    ('GCE_OL_SOC',  'GCE O/L — Social Sciences',                        (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
+    -- ===== FSEG — Bac =====
+    ('A_FSEG',      'Série A — Lettres, Philosophie, Sciences Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('B_FSEG',      'Série B — Sciences Économiques et Sociales',        (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('C_FSEG',      'Série C — Mathématiques et Sciences Physiques',     (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('D_FSEG',      'Série D — Sciences Naturelles',                     (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('G_FSEG',      'Série G — Techniques de Gestion',                  (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('TI_FSEG',     'Série TI — Technique Informatique',                (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    -- ===== FSEG — GCE O/L =====
+    ('GCE_OL_COM',  'GCE O/L — Commerce / Economics',                   (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
+    ('GCE_OL_GEN',  'GCE O/L — General',                                (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol')),
+    -- ===== FSJP — Bac =====
+    ('A_FSJP',      'Série A — Lettres, Philosophie, Sciences Sociales', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('B_FSJP',      'Série B — Sciences Économiques et Sociales',        (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('C_FSJP',      'Série C — Mathématiques et Sciences Physiques',     (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('D_FSJP',      'Série D — Sciences Naturelles',                     (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('G_FSJP',      'Série G — Techniques de Gestion',                  (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    ('TI_FSJP',     'Série TI — Technique Informatique',                (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'bac')),
+    -- ===== FSJP — GCE O/L =====
+    ('GCE_OL_ALL',  'GCE O/L — Toutes séries',                          (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), (SELECT id FROM ueb_diplomes_admission WHERE code = 'gce_ol'));
 SQL,
         'ueb_filieres' => <<<SQL
 INSERT IGNORE INTO ueb_filieres (code, libelle, faculte_id, type_formation) VALUES
@@ -527,6 +543,7 @@ INSERT IGNORE INTO ueb_filieres (code, libelle, faculte_id, type_formation) VALU
     ('BIO', 'Biotechnologie et Pharmacognosie', (SELECT id FROM ueb_facultes WHERE code = 'FS'), 'classique'),
     ('LP_BIO_MED', 'LP Sciences Biomédicales et Médico-Sanitaires', (SELECT id FROM ueb_facultes WHERE code = 'FS'), 'pro'),
     ('LP_BIO_AGR', 'LP Sciences Biologiques Appliquées à l''Agriculture', (SELECT id FROM ueb_facultes WHERE code = 'FS'), 'pro'),
+    ('LP_TBM', 'LP Technologie Bio-Médicale', (SELECT id FROM ueb_facultes WHERE code = 'FS'), 'pro'),
     ('LMF', 'Lettres Modernes Françaises', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), 'classique'),
     ('LEA', 'Langues Étrangères Appliquées', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), 'classique'),
     ('HIST', 'Histoire', (SELECT id FROM ueb_facultes WHERE code = 'FALSH'), 'classique'),

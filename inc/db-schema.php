@@ -63,7 +63,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *              recréation + le reseed automatique.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '1.2' );
+    define( 'UEB_DB_SCHEMA_VERSION', '1.4' );
 }
 
 /**
