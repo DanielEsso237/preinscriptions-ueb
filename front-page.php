@@ -80,18 +80,99 @@ $inscription = esc_url( preinscriptions_inscription_url() );
     <?php endforeach; ?>
 </div></div></section>
 
-<!-- FACULTES -->
+<!-- FACULTES — Carrousel défilant automatique -->
 <section id="facultes"><div class="wrap">
-    <div class="head reveal"><span class="pill">Nos filières</span><h2>Trouve ta faculté</h2><p>Fais défiler pour explorer nos 9 établissements.</p></div>
-    <div class="facscroll">
-        <?php foreach ( preinscriptions_facultes() as $fac ) : ?>
-            <div class="fcard reveal">
-                <div class="top"><span class="lw"><img src="<?php echo esc_url( preinscriptions_img( $fac['logo'] ) ); ?>" alt="Logo <?php echo esc_attr( $fac['abbr'] ); ?>" loading="lazy" decoding="async" width="84" height="84"></span></div>
-                <div class="bd"><div class="ab"><?php echo esc_html( $fac['abbr'] ); ?></div><h3><?php echo esc_html( $fac['name'] ); ?></h3></div>
-            </div>
-        <?php endforeach; ?>
+    <div class="head reveal"><span class="pill">Nos filières</span><h2>Trouve ta faculté</h2><p>Consultes la liste de nos établissements.</p></div>
+
+    <div class="fac-carousel-wrapper">
+        <div class="fac-carousel">
+            <?php
+            $facultes = preinscriptions_facultes();
+            // Double la liste pour un défilement continu sans rupture
+            $all_facs = array_merge( $facultes, $facultes );
+            foreach ( $all_facs as $fac ) : ?>
+                <div class="fcard">
+                    <div class="top"><span class="lw"><img src="<?php echo esc_url( preinscriptions_img( $fac['logo'] ) ); ?>" alt="Logo <?php echo esc_attr( $fac['abbr'] ); ?>" loading="lazy" decoding="async" width="84" height="84"></span></div>
+                    <div class="bd"><div class="ab"><?php echo esc_html( $fac['abbr'] ); ?></div><h3><?php echo esc_html( $fac['name'] ); ?></h3></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 </div></section>
+
+<style>
+/* ===== Carrousel Facultés ===== */
+.fac-carousel-wrapper {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    padding: 1rem 0;
+}
+
+.fac-carousel-wrapper::before,
+.fac-carousel-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.fac-carousel-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg), transparent);
+}
+
+.fac-carousel-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg), transparent);
+}
+
+.fac-carousel {
+    display: flex;
+    gap: 1.5rem;
+    width: max-content;
+    animation: facScroll 30s linear infinite;
+}
+
+.fac-carousel:hover {
+    animation-play-state: paused;
+}
+
+.fac-carousel .fcard {
+    flex: 0 0 auto;
+    width: 220px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    transition: transform .3s ease, box-shadow .3s ease;
+}
+
+.fac-carousel .fcard:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+@keyframes facScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fac-carousel {
+        animation: none;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
+    .fac-carousel .fcard {
+        scroll-snap-align: start;
+    }
+}
+</style>
 
 <!-- CAMPUS -->
 <section id="campus" style="background:#eef4f1"><div class="wrap">
