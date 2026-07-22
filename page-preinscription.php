@@ -234,7 +234,7 @@ get_header();
                              <label for="annee_obtention">Année d'obtention du diplôme <span class="required">*</span><span class="field-trans">Year diploma obtained</span></label>
                             <select id="annee_obtention" name="annee_obtention" required>
                                 <option value="">— Choisir l'année —</option>
-                                <?php for ( $a = date('Y'); $a >= 1990; $a-- ) : ?>
+                                <?php for ( $a = date('Y'); $a >= 1970; $a-- ) : ?>
                                     <option value="<?php echo esc_attr( $a ); ?>"><?php echo esc_html( $a ); ?></option>
                                  <?php endfor; ?>
                             </select>
