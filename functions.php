@@ -136,7 +136,8 @@ function preinscriptions_admin_assets() {
     if ( ! is_user_logged_in() || ! current_user_can( 'voir_preinscriptions' ) ) return;
 
     wp_enqueue_script( 'chartjs', get_template_directory_uri() . '/assets/js/vendor/chart.umd.min.js', array(), '4.4.0', true );
-    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-analytics', get_template_directory_uri() . '/assets/js/admin-analytics.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs', 'preinscriptions-admin-analytics' ), PREINSCRIPTIONS_VERSION, true );
 
     wp_localize_script( 'preinscriptions-admin-dashboard', 'uebAdminDashboard', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),

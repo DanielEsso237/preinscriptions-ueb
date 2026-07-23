@@ -52,8 +52,11 @@ function ueb_admin_ajax_extract_filters() {
 function ueb_admin_ajax_get_dossiers() {
     ueb_admin_ajax_check_access();
 
-    $filters = ueb_admin_ajax_extract_filters();
-    $result  = ueb_admin_get_dossiers_filtres( $filters );
+    $filters   = ueb_admin_ajax_extract_filters();
+    $recherche = isset( $_POST['recherche'] ) ? sanitize_text_field( wp_unslash( $_POST['recherche'] ) ) : '';
+    $page      = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
+
+    $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, $page, 25 );
 
     $rows = array();
     foreach ( $result['rows'] as $row ) {
@@ -68,7 +71,12 @@ function ueb_admin_ajax_get_dossiers() {
         );
     }
 
-    wp_send_json_success( array( 'rows' => $rows, 'total' => $result['total'] ) );
+    wp_send_json_success( array(
+        'rows'     => $rows,
+        'total'    => $result['total'],
+        'page'     => $result['page'],
+        'nb_pages' => $result['nb_pages'],
+    ) );
 }
 add_action( 'wp_ajax_ueb_admin_get_dossiers', 'ueb_admin_ajax_get_dossiers' );
 
