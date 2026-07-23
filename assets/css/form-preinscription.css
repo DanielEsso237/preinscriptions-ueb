@@ -835,3 +835,16 @@ select:focus-visible {
     opacity: .55;
     margin-top: 1px;
 }
+
+
+.recap-label-en {
+    display: block;
+    font-size: .66rem;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ueb-gris);
+    opacity: .55;
+    text-transform: none;
+    letter-spacing: normal;
+    margin-top: 1px;
+}

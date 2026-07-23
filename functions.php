@@ -102,13 +102,13 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/css/form-preinscription.css',
             array( 'preinscriptions-style' ),
-            '2.0'
+            '2.1'
         );
         wp_enqueue_script(
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/js/form-preinscription.js',
             array(),
-            '4.5',
+            '4.6',
             true
         );
 
