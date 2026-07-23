@@ -593,6 +593,54 @@
         lieu_obtention_certificat : "Lieu d'obtention du certificat",
     };
 
+    // Traductions anglaises des mêmes libellés, affichées en petit texte
+    // gris semi-transparent sous le label français dans le récap (étape 5).
+    // Reprend les mêmes traductions que les <span class="field-trans">
+    // déjà présentes dans page-preinscription.php, pour rester cohérent
+    // avec le reste du formulaire.
+    const LABELS_EN = {
+        faculte               : 'Faculty / School',
+        serie_diplome         : 'Diploma series / specialty',
+        diplome_admission     : 'Admission diploma',
+        niveau_lmd            : 'LMD level',
+        type_formation        : 'Training type',
+        filiere_1             : '1st choice of program',
+        filiere_2             : '2nd choice of program',
+        filiere_3             : '3rd choice of program',
+        annee_obtention       : 'Year diploma obtained',
+        moyenne_diplome       : 'Average obtained',
+        mention               : 'Mention / Honors',
+        statut_etudiant       : 'Student status',
+        nom                   : 'Last name',
+        prenom                : 'First name(s)',
+        sexe                  : 'Gender',
+        date_naissance        : 'Date of birth',
+        lieu_naissance        : 'Place of birth',
+        nationalite           : 'Nationality',
+        premiere_langue       : 'First language',
+        situation_matrimoniale: 'Marital status',
+        statut_socio_professionnel: 'Socio-professional status',
+        handicap              : 'Disability status',
+        email                 : 'Email address',
+        telephone             : 'Phone number(s)',
+        adresse               : 'Current address',
+        region_origine        : 'Region of origin',
+        departement_origine   : 'Department of origin',
+        commune_origine       : 'Municipality of origin',
+        nom_pere              : "Father's name",
+        numero_pere           : "Father's phone number",
+        profession_pere       : "Father's occupation",
+        nom_mere              : "Mother's name",
+        numero_mere           : "Mother's phone number",
+        profession_mere       : "Mother's occupation",
+        nom_tuteur            : "Guardian's name",
+        numero_tuteur         : "Guardian's phone number",
+        sport_prefere         : 'Favorite sport',
+        art_pratique          : 'Art practiced',
+        numero_certificat_medical : 'Medical certificate number',
+        lieu_obtention_certificat : 'Place certificate obtained',
+    };
+
     const SECTIONS = {
         formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
         etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
@@ -719,11 +767,15 @@
             grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
             SECTIONS[key].forEach(function (fieldName) {
                 if (!fieldName) return;
-                const value = getFieldValue(fieldName);
-                const item  = document.createElement('div');
+                const value    = getFieldValue(fieldName);
+                const labelFr  = LABELS[fieldName] || fieldName;
+                const labelEn  = LABELS_EN[fieldName] || '';
+                const item     = document.createElement('div');
                 item.className = 'recap-item';
                 item.innerHTML =
-                    '<span class="recap-label">' + (LABELS[fieldName] || fieldName) + '</span>' +
+                    '<span class="recap-label">' + labelFr +
+                        (labelEn ? '<span class="recap-label-en">' + labelEn + '</span>' : '') +
+                    '</span>' +
                     '<span class="recap-value">' + (value || '') + '</span>';
                 grid.appendChild(item);
             });
