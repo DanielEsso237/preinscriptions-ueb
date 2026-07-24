@@ -84,7 +84,7 @@ function ueb_admin_stats_par_nationalite( $filters = array() ) {
 }
 
 function ueb_admin_stats_par_langue( $filters = array() ) {
-    return ueb_admin_stats_generique( 'ueb_langues', 'premiere_langue_id', $filters, 'nom' );
+    return ueb_admin_stats_generique( 'ueb_langues', 'premiere_langue_id', $filters, 'libelle' );
 }
 
 function ueb_admin_stats_par_situation_matrimoniale( $filters = array() ) {
@@ -110,7 +110,7 @@ function ueb_admin_stats_par_art( $filters = array() ) {
  * n'existe pas et faisait planter cette stat silencieusement.
  */
 function ueb_admin_stats_par_statut_etudiant( $filters = array() ) {
-    return ueb_admin_stats_generique( 'ueb_statuts_etudiant', 'statut_etudiant_id', $filters, 'libelle' );
+    return ueb_admin_stats_generique( 'ueb_statuts_etudiants', 'statut_etudiant_id', $filters, 'libelle' );
 }
 
 function ueb_admin_stats_par_type_formation( $filters = array() ) {

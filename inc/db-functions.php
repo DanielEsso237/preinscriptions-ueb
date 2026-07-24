@@ -49,6 +49,9 @@ function ueb_handle_db_save() {
         'profession_mere'        => 'sanitize_text_field',
         'nom_tuteur'             => 'sanitize_text_field',
         'numero_tuteur'          => 'sanitize_text_field',
+        'nom_urgence'            => 'sanitize_text_field',
+        'numero_urgence'         => 'sanitize_text_field',
+        'adresse_urgence'        => 'sanitize_text_field',
         'numero_certificat_medical'  => 'sanitize_text_field',
         'lieu_obtention_certificat'  => 'sanitize_text_field',
     );
@@ -121,6 +124,9 @@ function ueb_handle_db_save() {
       'profession_mere'                => $data['profession_mere'],
       'nom_tuteur'                     => $data['nom_tuteur'],
       'numero_tuteur'                  => $data['numero_tuteur'],
+      'nom_urgence'                    => $data['nom_urgence'],
+      'numero_urgence'                 => $data['numero_urgence'],
+      'adresse_urgence'                => $data['adresse_urgence'],
       'sport_prefere_id'               => $data['sport_prefere'],
       'art_pratique_id'                => $data['art_pratique'],
       'numero_certificat_medical'      => $data['numero_certificat_medical'],
@@ -132,6 +138,7 @@ function ueb_handle_db_save() {
       '%s','%s','%s','%s','%s','%d','%d','%d','%d','%s',
       '%s','%s','%d','%d','%d',
       '%s','%s','%s','%s','%s','%s','%s','%s',
+      '%s','%s','%s',
       '%d','%d','%s','%s',
     );
 

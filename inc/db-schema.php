@@ -76,9 +76,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 *         changement de structure de table (données uniquement), mais
 *         UEB_DB_SCHEMA_VERSION est quand même incrémentée car
 *         db-seed.php réutilise cette constante pour son propre reseed.
+ * - 2.3 : ajout de 3 colonnes à ueb_preinscriptions pour la personne à
+ *         contacter en cas d'urgence (nom_urgence, numero_urgence,
+ *         adresse_urgence), distincte du tuteur. Ces champs remplacent
+ *         nom_tuteur/numero_tuteur sur la page 2 (fiche médicale) du
+ *         PDF, qui utilisait ces champs par défaut faute de mieux.
+ *         ATTENTION : comme à chaque changement de structure, chaque dev
+ *         doit DROP TABLE ueb_preinscriptions_telephones et
+ *         ueb_preinscriptions, DELETE FROM wp_options les options
+ *         ueb_db_version / ueb_data_version, puis désactiver/réactiver
+ *         le thème (aucune vraie donnée candidat en local à ce stade).
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.2' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.4' );
  }
 
 /**
@@ -334,6 +344,14 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     profession_mere VARCHAR(150) DEFAULT NULL,
     nom_tuteur VARCHAR(150) DEFAULT NULL,
     numero_tuteur VARCHAR(20) DEFAULT NULL,
+    nom_urgence VARCHAR(150) DEFAULT NULL,
+    numero_urgence VARCHAR(20)  DEFAULT NULL,
+    adresse_urgence VARCHAR(255) DEFAULT NULL,
+
+    -- Personne à contacter en cas d'urgence --
+    nom_urgence VARCHAR(150) DEFAULT NULL,
+    numero_urgence VARCHAR(20) DEFAULT NULL,
+    adresse_urgence VARCHAR(255) DEFAULT NULL,
 
     -- Divers / visite médicale --
     sport_prefere_id INT UNSIGNED DEFAULT NULL,
