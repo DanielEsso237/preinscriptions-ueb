@@ -587,6 +587,9 @@
         profession_mere       : 'Profession de la mère',
         nom_tuteur            : 'Nom du tuteur',
         numero_tuteur         : 'Numéro du tuteur',
+        nom_urgence           : 'Personne à contacter en cas d\'urgence',
+        numero_urgence        : 'Numéro à contacter en cas d\'urgence',
+        adresse_urgence       : 'Adresse de la personne à contacter',
         sport_prefere         : 'Sport préféré',
         art_pratique          : 'Art pratiqué',
         numero_certificat_medical : 'N° certificat médical',
@@ -635,6 +638,9 @@
         profession_mere       : "Mother's occupation",
         nom_tuteur            : "Guardian's name",
         numero_tuteur         : "Guardian's phone number",
+        nom_urgence           : 'Emergency contact name',
+        numero_urgence        : 'Emergency contact phone',
+        adresse_urgence       : 'Emergency contact address',
         sport_prefere         : 'Favorite sport',
         art_pratique          : 'Art practiced',
         numero_certificat_medical : 'Medical certificate number',
@@ -644,7 +650,7 @@
     const SECTIONS = {
         formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
         etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
-        contact   : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur'],
+        contact   : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur','nom_urgence','numero_urgence','adresse_urgence'],
         divers    : ['sport_prefere','numero_certificat_medical','art_pratique','lieu_obtention_certificat'],
     };
 
@@ -894,6 +900,7 @@
             'nom_pere', 'numero_pere', 'profession_pere',
             'nom_mere', 'numero_mere', 'profession_mere',
             'nom_tuteur', 'numero_tuteur',
+            'nom_urgence', 'numero_urgence', 'adresse_urgence',
             'annee_obtention', 'moyenne_diplome',
             'numero_certificat_medical', 'lieu_obtention_certificat'
         ];

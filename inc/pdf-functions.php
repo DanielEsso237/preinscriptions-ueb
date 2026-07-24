@@ -26,6 +26,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * diverses), chaque section de la fiche affiche, sous le libellé français
  * de chaque champ, sa traduction anglaise en petit texte gris semi-
  * transparent — cf. ueb_pdf_section_fiche().
+ *
+ * Depuis le ticket "contact d'urgence" (v2.3 du schéma), la personne à
+ * contacter en cas d'urgence est un bloc dédié (nom_urgence,
+ * numero_urgence, adresse_urgence), distinct du tuteur : la page 2
+ * (fiche médicale) affiche ce contact d'urgence, et non plus le tuteur.
  */
 
 /**
@@ -126,6 +131,11 @@ function ueb_handle_pdf_generation() {
     $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
     $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
 
+    // Personne à contacter en cas d'urgence — distincte du tuteur.
+    $nom_urgence     = sanitize_text_field( $posted['nom_urgence'] ?? '' );
+    $numero_urgence  = sanitize_text_field( $posted['numero_urgence'] ?? '' );
+    $adresse_urgence = sanitize_text_field( $posted['adresse_urgence'] ?? '' );
+
     // Informations diverses.
     $numero_certificat_medical = sanitize_text_field( $posted['numero_certificat_medical'] ?? '' );
     $lieu_obtention_certificat = sanitize_text_field( $posted['lieu_obtention_certificat'] ?? '' );
@@ -201,6 +211,9 @@ function ueb_handle_pdf_generation() {
         'profession_mere'        => $profession_mere,
         'nom_tuteur'             => $nom_tuteur,
         'numero_tuteur'          => $numero_tuteur,
+        'nom_urgence'            => $nom_urgence,
+        'numero_urgence'         => $numero_urgence,
+        'adresse_urgence'        => $adresse_urgence,
         'sport_prefere'          => ueb_pdf_lookup( 'ueb_sports', $sport_id, 'libelle' ),
         'art_pratique'           => ueb_pdf_lookup( 'ueb_arts', $art_id, 'libelle' ),
         'numero_certificat_medical' => $numero_certificat_medical,
@@ -744,12 +757,14 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'lieu',       'Adresse',           strtoupper( $d['adresse'] ) ),
     ), $y );
 
-    /* --- Personne à contacter en cas d'urgence --- */
+    /* --- Personne à contacter en cas d'urgence ---
+       Utilise le bloc urgence dédié (nom_urgence / numero_urgence /
+       adresse_urgence), distinct du tuteur (cf. ticket contact urgence). */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
-        array( 'personne',  'Nom et Prénom',       $d['nom_tuteur'] ),
-        array( 'telephone', 'Téléphone (urgence)', $d['numero_tuteur'] ),
-        array( 'lieu',      'Adresse (urgence)',   '' ),
+        array( 'personne',  'Nom et Prénom',       $d['nom_urgence'] ),
+        array( 'telephone', 'Téléphone (urgence)', $d['numero_urgence'] ),
+        array( 'lieu',      'Adresse (urgence)',   $d['adresse_urgence'] ),
     ), $y );
 
     /* --- Notes importantes --- */

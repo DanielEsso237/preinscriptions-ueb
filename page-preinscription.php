@@ -433,6 +433,20 @@ get_header();
                             <input type="text" id="profession_mere" name="profession_mere" placeholder="Ex : Commerçante">
                         </div>
 
+                        <!-- Personne à contacter en cas d'urgence -->
+                        <div class="form-group">
+                            <label for="nom_urgence">Personne à contacter en cas d'urgence <span class="required">*</span><span class="field-trans">Emergency contact name</span></label>
+                            <input type="text" id="nom_urgence" name="nom_urgence" placeholder="Nom complet" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="numero_urgence">Numéro à contacter en cas d'urgence <span class="required">*</span><span class="field-trans">Emergency contact phone</span></label>
+                            <input type="tel" id="numero_urgence" name="numero_urgence" placeholder="6X XX XX XX XX" required>
+                        </div>
+                        <div class="form-group full">
+                            <label for="adresse_urgence">Adresse de la personne à contacter <span class="field-optional">(optionnel)</span><span class="field-trans">Emergency contact address</span></label>
+                            <input type="text" id="adresse_urgence" name="adresse_urgence" placeholder="Quartier, ville">
+                        </div>
+
                     </div>
 
                     <div class="form-nav">
