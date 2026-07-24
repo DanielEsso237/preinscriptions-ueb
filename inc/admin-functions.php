@@ -26,13 +26,13 @@ function ueb_admin_get_reference_lists() {
     global $wpdb;
 
     return array(
-        'facultes'                => $wpdb->get_results( "SELECT id, nom_fr AS libelle FROM ueb_facultes ORDER BY nom_fr ASC" ),
+        'facultes'                 => $wpdb->get_results( "SELECT id, nom_fr AS libelle FROM ueb_facultes ORDER BY nom_fr ASC" ),
         'diplomes'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_diplomes_admission ORDER BY libelle ASC" ),
         'niveaux_lmd'              => $wpdb->get_results( "SELECT id, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ),
         'mentions'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_mentions ORDER BY ordre ASC" ),
-        'statuts_etudiant'         => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiant ORDER BY libelle ASC" ),
+        'statuts_etudiant'         => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiants ORDER BY libelle ASC" ),
         'nationalites'             => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_nationalites ORDER BY nom ASC" ),
-        'langues'                  => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_langues ORDER BY nom ASC" ),
+        'langues'                  => $wpdb->get_results( "SELECT id, libelle FROM ueb_langues ORDER BY libelle ASC" ),
         'situations_matrimoniales' => $wpdb->get_results( "SELECT id, libelle FROM ueb_situations_matrimoniales ORDER BY libelle ASC" ),
         'statuts_socio'            => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_socio_professionnels ORDER BY libelle ASC" ),
         'regions'                  => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_regions ORDER BY nom ASC" ),
