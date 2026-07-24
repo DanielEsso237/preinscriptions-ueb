@@ -21,10 +21,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 function ueb_get_reseaux_sociaux() {
     global $wpdb;
 
+    // Les tables ueb_* sont créées sans le préfixe WordPress (cf. db-schema.php).
     $rows = $wpdb->get_results(
-        "SELECT plateforme, url, icone 
-         FROM {$wpdb->prefix}ueb_reseaux_sociaux 
-         WHERE actif = 1 
+        "SELECT plateforme, url, icone
+         FROM ueb_reseaux_sociaux
+         WHERE actif = 1
          ORDER BY ordre ASC",
         ARRAY_A
     );

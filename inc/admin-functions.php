@@ -30,9 +30,9 @@ function ueb_admin_get_reference_lists() {
         'diplomes'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_diplomes_admission ORDER BY libelle ASC" ),
         'niveaux_lmd'              => $wpdb->get_results( "SELECT id, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ),
         'mentions'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_mentions ORDER BY ordre ASC" ),
-        'statuts_etudiant'         => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiant ORDER BY libelle ASC" ),
+        'statuts_etudiant'         => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiants ORDER BY libelle ASC" ),
         'nationalites'             => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_nationalites ORDER BY nom ASC" ),
-        'langues'                  => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_langues ORDER BY nom ASC" ),
+        'langues'                  => $wpdb->get_results( "SELECT id, libelle FROM ueb_langues ORDER BY libelle ASC" ),
         'situations_matrimoniales' => $wpdb->get_results( "SELECT id, libelle FROM ueb_situations_matrimoniales ORDER BY libelle ASC" ),
         'statuts_socio'            => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_socio_professionnels ORDER BY libelle ASC" ),
         'regions'                  => $wpdb->get_results( "SELECT id, nom AS libelle FROM ueb_regions ORDER BY nom ASC" ),
@@ -137,7 +137,27 @@ function ueb_admin_build_where( $filters ) {
  * @param array $filters
  * @return array { rows: array<object>, total: int }
  */
-function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $par_page = 25 ) {
+/**
+ * Colonnes sur lesquelles le tableau des dossiers accepte d'être trié.
+ * Liste blanche stricte : la clé vient du clic utilisateur sur un en-tête,
+ * la valeur est injectée telle quelle dans l'ORDER BY (un identifiant SQL ne
+ * peut pas passer par un placeholder $wpdb->prepare).
+ *
+ * @return array<string,string>
+ */
+function ueb_admin_colonnes_triables() {
+    return array(
+        'numero_dossier' => 'p.numero_dossier',
+        'nom'            => 'p.nom',
+        'prenom'         => 'p.prenom',
+        'sexe'           => 'p.sexe',
+        'faculte'        => 'f.nom_fr',
+        'filiere'        => 'fi1.libelle',
+        'date_creation'  => 'p.date_creation',
+    );
+}
+
+function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $par_page = 25, $orderby = 'date_creation', $order = 'DESC' ) {
     global $wpdb;
 
     $clause = ueb_admin_build_where( $filters );
@@ -165,13 +185,20 @@ function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $
     $par_page = max( 1, absint( $par_page ) );
     $offset   = ( $page - 1 ) * $par_page;
 
+    // Tri : la colonne passe par la liste blanche, le sens est réduit à
+    // ASC/DESC. Tri secondaire stable sur l'id pour que la pagination ne
+    // rejoue jamais deux fois la même ligne en cas d'ex aequo.
+    $colonnes = ueb_admin_colonnes_triables();
+    $col_sql  = isset( $colonnes[ $orderby ] ) ? $colonnes[ $orderby ] : $colonnes['date_creation'];
+    $sens_sql = 'ASC' === strtoupper( (string) $order ) ? 'ASC' : 'DESC';
+
     $sql = "SELECT p.numero_dossier, p.nom, p.prenom, p.sexe, p.date_creation,
                    f.nom_fr AS faculte_nom, fi1.libelle AS filiere1_libelle
             FROM ueb_preinscriptions p
             LEFT JOIN ueb_facultes f   ON f.id  = p.faculte_id
             LEFT JOIN ueb_filieres fi1 ON fi1.id = p.filiere_1_id
             WHERE {$where}
-            ORDER BY p.date_creation DESC
+            ORDER BY {$col_sql} {$sens_sql}, p.id DESC
             LIMIT %d OFFSET %d";
 
     $params_avec_limite   = $params;

@@ -1,31 +1,288 @@
 /* =========================================================================
    DASHBOARD ADMIN — page-administration.php
-   Sidebar + barre du haut + tiroir de filtres + cartes KPI + graphiques.
-   Réutilise la palette du thème : vert #1a4a2e, or #c9a227, gris #6b7280,
-   fond crème #f7f7f5. Typographies Sora (titres) / Inter (corps), déjà
-   chargées sitewide.
+   Style « Data-Dense Dashboard » : grille dense, cartes KPI, graphiques
+   lisibles, tableau scannable. Palette institutionnelle UEB (vert #1a4a2e,
+   or #c9a227) déclinée en thème clair ET sombre via tokens sémantiques.
+   Typographies Sora (titres) / Inter (corps), déjà chargées sitewide.
+
+   Sommaire
+     1.  Tokens de thème (clair / sombre)
+     2.  Base & utilitaires
+     3.  Écran de connexion
+     4.  Coquille : sidebar + zone principale
+     5.  Barre du haut
+     6.  Cartes KPI
+     7.  Graphiques
+     8.  Tableau des dossiers
+     9.  Tiroir de filtres
+     10. Modale de détail
+     11. États : squelettes, vide, erreur
+     12. Animations
+     13. Responsive
+     14. Accessibilité (mouvement réduit, focus, impression)
    ========================================================================= */
 
-.admin-page {
-    padding: 0;
+/* -------------------------------------------------------------------------
+   1. TOKENS DE THÈME
+   Le thème clair est la valeur par défaut. Le thème sombre s'applique soit
+   par préférence système, soit — et c'est prioritaire — via l'attribut
+   data-ueb-theme posé sur <html> par le bouton de bascule (mémorisé en
+   localStorage). Les deux sélecteurs explicites permettent de forcer un
+   thème quel que soit le réglage système.
+   ------------------------------------------------------------------------- */
+:root {
+    /* Surfaces */
+    --ueb-bg:            #f2f5f2;
+    --ueb-surface:       #ffffff;
+    --ueb-surface-2:     #f8faf8;
+    --ueb-surface-hover: #eef4f0;
+    --ueb-border:        #e2e7e3;
+    --ueb-border-strong: #cfd6d1;
+
+    /* Texte */
+    --ueb-text:          #14201a;
+    --ueb-text-soft:     #4a5750;
+    --ueb-text-muted:    #6b7a72;
+
+    /* Marque */
+    --ueb-primary:       #1a4a2e;
+    --ueb-primary-soft:  #2c6b45;
+    --ueb-primary-wash:  rgba(26, 74, 46, .08);
+    --ueb-on-primary:    #ffffff;
+    --ueb-accent:        #a8821a;   /* or assombri : 4.5:1 sur blanc */
+    --ueb-accent-bright: #c9a227;   /* or de marque, réservé aux aplats */
+    --ueb-accent-wash:   rgba(201, 162, 39, .14);
+    --ueb-on-accent:     #123a24;
+
+    /* Navigation */
+    --ueb-nav-bg:        #123a24;
+    --ueb-nav-text:      rgba(255, 255, 255, .74);
+    --ueb-nav-text-hi:   #ffffff;
+    --ueb-nav-hover:     rgba(255, 255, 255, .08);
+    --ueb-nav-active-bg: var(--ueb-accent-bright);
+    --ueb-nav-active-tx: #123a24;
+    --ueb-nav-border:    rgba(255, 255, 255, .13);
+
+    /* Sémantique */
+    --ueb-danger:        #b3261e;
+    --ueb-danger-wash:   #fdecea;
+    --ueb-success:       #1f6f43;
+
+    /* Séries de graphiques — lues par le JS via getComputedStyle, pour que
+       Chart.js suive automatiquement le thème actif. */
+    --ueb-chart-1: #1a4a2e;
+    --ueb-chart-2: #c9a227;
+    --ueb-chart-3: #2f6f8f;
+    --ueb-chart-4: #8a4b2a;
+    --ueb-chart-5: #5c8a3a;
+    --ueb-chart-6: #6b4a86;
+    --ueb-chart-7: #9c6b2e;
+    --ueb-chart-8: #2f7d6b;
+    --ueb-chart-grid: rgba(20, 32, 26, .09);
+    --ueb-chart-tick: #6b7a72;
+
+    /* Élévation */
+    --ueb-shadow-sm: 0 1px 2px rgba(16, 32, 24, .05);
+    --ueb-shadow:    0 1px 3px rgba(16, 32, 24, .07), 0 6px 16px -8px rgba(16, 32, 24, .12);
+    --ueb-shadow-lg: 0 12px 32px -12px rgba(16, 32, 24, .28);
+
+    /* Géométrie */
+    --ueb-radius-sm: 8px;
+    --ueb-radius:    12px;
+    --ueb-radius-lg: 16px;
+
+    /* Mouvement — un seul jeu de durées/courbes pour tout le dashboard,
+       pour que tout le monde bouge au même rythme.
+       - ease   : sortie amortie, la courbe par défaut
+       - spring : léger dépassement, réservé aux apparitions et aux icônes
+       - ease-in: entrées inversées, pour les disparitions
+       Les sorties durent ~65 % d'une entrée : une interface qui se referme
+       vite paraît plus réactive qu'une interface symétrique. */
+    --ueb-ease:      cubic-bezier(.22, .61, .36, 1);
+    --ueb-ease-in:   cubic-bezier(.55, .06, .68, .19);
+    --ueb-spring:    cubic-bezier(.34, 1.28, .64, 1);
+    --ueb-fast:      140ms;
+    --ueb-normal:    220ms;
+    --ueb-slow:      320ms;
+    --ueb-exit:      150ms;
+    /* Pas de la cascade : un cran entre deux éléments voisins. */
+    --ueb-stagger:   45ms;
+
+    color-scheme: light;
 }
 
-/* ---------------------------------------------------------------------
-   ÉCRAN DE CONNEXION (inchangé dans l'esprit, juste recentré)
-   --------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-ueb-theme="light"]) {
+        --ueb-bg:            #0d1310;
+        --ueb-surface:       #151d18;
+        --ueb-surface-2:     #1a231e;
+        --ueb-surface-hover: #1f2b24;
+        --ueb-border:        #263229;
+        --ueb-border-strong: #35453a;
+
+        --ueb-text:          #e7ede9;
+        --ueb-text-soft:     #b3c0b8;
+        --ueb-text-muted:    #8d9d94;
+
+        --ueb-primary:       #5cb37e;
+        --ueb-primary-soft:  #7cc79a;
+        --ueb-primary-wash:  rgba(92, 179, 126, .14);
+        --ueb-on-primary:    #08130d;
+        --ueb-accent:        #e2bd46;
+        --ueb-accent-bright: #e2bd46;
+        --ueb-accent-wash:   rgba(226, 189, 70, .16);
+        --ueb-on-accent:     #14200f;
+
+        --ueb-nav-bg:        #0a100c;
+        --ueb-nav-text:      rgba(231, 237, 233, .7);
+        --ueb-nav-text-hi:   #ffffff;
+        --ueb-nav-hover:     rgba(255, 255, 255, .07);
+        --ueb-nav-active-bg: #e2bd46;
+        --ueb-nav-active-tx: #14200f;
+        --ueb-nav-border:    rgba(255, 255, 255, .1);
+
+        --ueb-danger:        #f2837b;
+        --ueb-danger-wash:   #2a1512;
+        --ueb-success:       #5cb37e;
+
+        --ueb-chart-1: #5cb37e;
+        --ueb-chart-2: #e2bd46;
+        --ueb-chart-3: #6bb6d8;
+        --ueb-chart-4: #e0916a;
+        --ueb-chart-5: #a8d16a;
+        --ueb-chart-6: #b598e0;
+        --ueb-chart-7: #d9a86a;
+        --ueb-chart-8: #63c9b4;
+        --ueb-chart-grid: rgba(231, 237, 233, .1);
+        --ueb-chart-tick: #8d9d94;
+
+        --ueb-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+        --ueb-shadow:    0 1px 3px rgba(0, 0, 0, .45), 0 8px 20px -10px rgba(0, 0, 0, .6);
+        --ueb-shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, .7);
+
+        color-scheme: dark;
+    }
+}
+
+/* Bascule manuelle — gagne toujours sur la préférence système. */
+:root[data-ueb-theme="dark"] {
+    --ueb-bg:            #0d1310;
+    --ueb-surface:       #151d18;
+    --ueb-surface-2:     #1a231e;
+    --ueb-surface-hover: #1f2b24;
+    --ueb-border:        #263229;
+    --ueb-border-strong: #35453a;
+
+    --ueb-text:          #e7ede9;
+    --ueb-text-soft:     #b3c0b8;
+    --ueb-text-muted:    #8d9d94;
+
+    --ueb-primary:       #5cb37e;
+    --ueb-primary-soft:  #7cc79a;
+    --ueb-primary-wash:  rgba(92, 179, 126, .14);
+    --ueb-on-primary:    #08130d;
+    --ueb-accent:        #e2bd46;
+    --ueb-accent-bright: #e2bd46;
+    --ueb-accent-wash:   rgba(226, 189, 70, .16);
+    --ueb-on-accent:     #14200f;
+
+    --ueb-nav-bg:        #0a100c;
+    --ueb-nav-text:      rgba(231, 237, 233, .7);
+    --ueb-nav-text-hi:   #ffffff;
+    --ueb-nav-hover:     rgba(255, 255, 255, .07);
+    --ueb-nav-active-bg: #e2bd46;
+    --ueb-nav-active-tx: #14200f;
+    --ueb-nav-border:    rgba(255, 255, 255, .1);
+
+    --ueb-danger:        #f2837b;
+    --ueb-danger-wash:   #2a1512;
+    --ueb-success:       #5cb37e;
+
+    --ueb-chart-1: #5cb37e;
+    --ueb-chart-2: #e2bd46;
+    --ueb-chart-3: #6bb6d8;
+    --ueb-chart-4: #e0916a;
+    --ueb-chart-5: #a8d16a;
+    --ueb-chart-6: #b598e0;
+    --ueb-chart-7: #d9a86a;
+    --ueb-chart-8: #63c9b4;
+    --ueb-chart-grid: rgba(231, 237, 233, .1);
+    --ueb-chart-tick: #8d9d94;
+
+    --ueb-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --ueb-shadow:    0 1px 3px rgba(0, 0, 0, .45), 0 8px 20px -10px rgba(0, 0, 0, .6);
+    --ueb-shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, .7);
+
+    color-scheme: dark;
+}
+
+/* -------------------------------------------------------------------------
+   2. BASE & UTILITAIRES
+   ------------------------------------------------------------------------- */
+.admin-page {
+    padding: 0;
+    background: var(--ueb-bg);
+    color: var(--ueb-text);
+    transition: background var(--ueb-normal) var(--ueb-ease),
+                color var(--ueb-normal) var(--ueb-ease);
+}
+
+.admin-page *,
+.admin-page *::before,
+.admin-page *::after { box-sizing: border-box; }
+
+/* Chiffres alignés : indispensable pour que les KPI et les colonnes de
+   données ne « sautent » pas quand la valeur change. */
+.admin-page .tabular { font-variant-numeric: tabular-nums; }
+
+.admin-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.admin-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.admin-icon--sm { width: 15px; height: 15px; }
+.admin-icon--lg { width: 22px; height: 22px; }
+
+/* Focus visible homogène sur tout le dashboard. */
+.admin-page :focus-visible {
+    outline: 2px solid var(--ueb-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* -------------------------------------------------------------------------
+   3. ÉCRAN DE CONNEXION
+   ------------------------------------------------------------------------- */
 .admin-login-wrap {
     max-width: 420px;
     margin: 4rem auto;
-    background: #ffffff;
+    background: var(--ueb-surface);
     padding: 2.5rem;
-    border-radius: 14px;
-    box-shadow: 0 2px 18px rgba(0,0,0,.07);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius-lg);
+    box-shadow: var(--ueb-shadow);
+    animation: ueb-rise var(--ueb-slow) var(--ueb-ease) both;
 }
 .admin-login-wrap h1 {
     font-family: 'Sora', sans-serif;
     font-size: 1.3rem;
     margin: 0 0 1.75rem;
-    color: #1a1a1a;
+    color: var(--ueb-text);
 }
 .admin-login-form .form-group { margin-bottom: 1.1rem; }
 .admin-login-form label {
@@ -33,150 +290,215 @@
     margin-bottom: .35rem;
     font-weight: 600;
     font-size: .85rem;
-    color: #6b7280;
+    color: var(--ueb-text-soft);
 }
 .admin-login-form input {
     width: 100%;
-    padding: .65rem .85rem;
-    border: 1px solid #d8d8d4;
-    border-radius: 8px;
-    font-size: .95rem;
-    box-sizing: border-box;
+    padding: .7rem .85rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    font-size: 1rem;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
 }
 .admin-login-form input:focus {
     outline: none;
-    border-color: #1a4a2e;
-    box-shadow: 0 0 0 3px rgba(26,74,46,.12);
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
 }
 .admin-login-form .btn { width: 100%; margin-top: .5rem; }
+
 .admin-error {
-    background: #fdecea;
-    color: #7a2e2e;
-    padding: .7rem 1rem;
-    border-radius: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    background: var(--ueb-danger-wash);
+    color: var(--ueb-danger);
+    padding: .75rem 1rem;
+    border-radius: var(--ueb-radius-sm);
     margin-bottom: 1.2rem;
     font-size: .88rem;
+    animation: ueb-shake 420ms var(--ueb-ease) both;
 }
 
-/* ---------------------------------------------------------------------
-   COQUILLE GÉNÉRALE : sidebar + zone principale
-   --------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------
+   4. COQUILLE : SIDEBAR + ZONE PRINCIPALE
+   ------------------------------------------------------------------------- */
+/* Le dashboard occupe tout l'écran (en-tête et pied de site sont retirés
+   pour les comptes autorisés, cf. ueb_est_dashboard_plein_ecran()). La barre
+   d'administration WordPress, elle, reste fixée en haut : on retranche sa
+   hauteur pour que rien ne déborde sous le pli. */
 .admin-shell {
+    --ueb-chrome: var(--wp-admin--admin-bar--height, 0px);
     display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: calc(100vh - 160px);
-    background: #f7f7f5;
+    grid-template-columns: 248px minmax(0, 1fr);
+    min-height: calc(100dvh - var(--ueb-chrome));
+    background: var(--ueb-bg);
 }
 
-/* ---------------------------------------------------------------------
-   SIDEBAR
-   --------------------------------------------------------------------- */
 .admin-sidebar {
-    background: #123a24;
-    color: #ffffff;
+    background: var(--ueb-nav-bg);
+    color: var(--ueb-nav-text-hi);
     display: flex;
     flex-direction: column;
     padding: 1.5rem 0;
+    position: sticky;
+    top: var(--ueb-chrome, 0px);
+    height: calc(100dvh - var(--ueb-chrome, 0px));
+    z-index: 20;
 }
 
 .admin-sidebar-brand {
     display: flex;
-    flex-direction: column;
-    gap: .15rem;
-    padding: 0 1.5rem 1.5rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid rgba(255,255,255,.12);
+    align-items: center;
+    gap: .7rem;
+    padding: 0 1.35rem 1.35rem;
+    margin-bottom: .9rem;
+    border-bottom: 1px solid var(--ueb-nav-border);
 }
+.admin-sidebar-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--ueb-accent-bright);
+    color: var(--ueb-on-accent);
+    display: grid;
+    place-items: center;
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    font-size: .82rem;
+    letter-spacing: .02em;
+    flex-shrink: 0;
+}
+.admin-sidebar-brand-text { display: flex; flex-direction: column; min-width: 0; }
 .admin-sidebar-mark {
     font-family: 'Sora', sans-serif;
     font-weight: 700;
-    font-size: 1.3rem;
-    letter-spacing: .04em;
-    color: #c9a227;
+    font-size: 1.02rem;
+    letter-spacing: .02em;
+    color: #ffffff;
+    line-height: 1.2;
 }
 .admin-sidebar-title {
-    font-size: .78rem;
-    color: rgba(255,255,255,.65);
+    font-size: .74rem;
+    color: var(--ueb-nav-text);
+    line-height: 1.3;
 }
 
 .admin-sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: .2rem;
-    padding: 0 .9rem;
+    padding: 0 .8rem;
     flex: 1;
 }
+.admin-sidebar-heading {
+    font-size: .66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--ueb-nav-text);
+    opacity: .65;
+    padding: .5rem .85rem .35rem;
+}
 .admin-sidebar-nav .admin-tab-btn {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: .65rem;
+    gap: .7rem;
+    width: 100%;
     background: transparent;
     border: none;
-    border-radius: 8px;
-    padding: .7rem .85rem;
-    font-size: .9rem;
+    border-radius: var(--ueb-radius-sm);
+    padding: .68rem .85rem;
+    font-family: inherit;
+    font-size: .89rem;
     font-weight: 600;
-    color: rgba(255,255,255,.75);
+    color: var(--ueb-nav-text);
     cursor: pointer;
     text-align: left;
-    transition: background .15s ease, color .15s ease;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
 }
-.admin-sidebar-icon { font-size: 1rem; opacity: .8; }
 .admin-sidebar-nav .admin-tab-btn:hover {
-    background: rgba(255,255,255,.06);
-    color: #ffffff;
+    background: var(--ueb-nav-hover);
+    color: var(--ueb-nav-text-hi);
 }
 .admin-sidebar-nav .admin-tab-btn.active {
-    background: #c9a227;
-    color: #123a24;
+    background: var(--ueb-nav-active-bg);
+    color: var(--ueb-nav-active-tx);
 }
-.admin-sidebar-nav .admin-tab-btn.active .admin-sidebar-icon { opacity: 1; }
+/* Marqueur latéral de l'onglet actif : renforce l'état sans reposer
+   uniquement sur la couleur. */
+.admin-sidebar-nav .admin-tab-btn.active::before {
+    content: '';
+    position: absolute;
+    left: -.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 22px;
+    border-radius: 0 3px 3px 0;
+    background: var(--ueb-nav-active-bg);
+}
 
 .admin-sidebar-footer {
-    padding: 1rem 1.5rem 0;
-    border-top: 1px solid rgba(255,255,255,.12);
+    padding: 1rem 1.35rem 0;
+    border-top: 1px solid var(--ueb-nav-border);
     margin-top: 1rem;
 }
 .admin-sidebar-user {
     display: flex;
     align-items: center;
     gap: .6rem;
-    margin-bottom: .7rem;
+    margin-bottom: .75rem;
+    min-width: 0;
 }
 .admin-sidebar-user-avatar {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: #c9a227;
-    color: #123a24;
+    background: var(--ueb-accent-bright);
+    color: var(--ueb-on-accent);
     font-weight: 700;
     font-size: .85rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     text-transform: uppercase;
     flex-shrink: 0;
 }
+.admin-sidebar-user-meta { display: flex; flex-direction: column; min-width: 0; }
 .admin-sidebar-user-name {
-    font-size: .85rem;
+    font-size: .84rem;
+    font-weight: 600;
     color: #ffffff;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.admin-sidebar-logout {
-    display: inline-block;
-    font-size: .82rem;
-    color: rgba(255,255,255,.6);
-    text-decoration: none;
+.admin-sidebar-user-role {
+    font-size: .7rem;
+    color: var(--ueb-nav-text);
 }
-.admin-sidebar-logout:hover { color: #ffffff; text-decoration: underline; }
+.admin-sidebar-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .81rem;
+    color: var(--ueb-nav-text);
+    text-decoration: none;
+    padding: .35rem 0;
+    transition: color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-sidebar-logout:hover { color: #ffffff; }
 
-/* ---------------------------------------------------------------------
-   ZONE PRINCIPALE
-   --------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------
+   5. BARRE DU HAUT
+   ------------------------------------------------------------------------- */
 .admin-main {
-    padding: 1.75rem 2rem 3rem;
+    padding: 1.6rem 1.9rem 3rem;
     min-width: 0;
 }
 
@@ -186,340 +508,1112 @@
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.6rem;
 }
 .admin-topbar h1 {
     font-family: 'Sora', sans-serif;
-    font-size: 1.5rem;
-    margin: 0 0 .25rem;
-    color: #1a1a1a;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    margin: 0 0 .2rem;
+    color: var(--ueb-text);
 }
 .admin-subtitle {
     margin: 0;
-    color: #6b7280;
+    color: var(--ueb-text-muted);
     font-size: .88rem;
+}
+.admin-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
 }
 
-.admin-filter-toggle-btn {
+/* Boutons de la barre du haut — même gabarit, rôles différenciés. */
+.admin-tbtn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: .5rem;
-    background: #ffffff;
-    border: 1px solid #1a4a2e;
-    color: #1a4a2e;
+    min-height: 40px;
+    padding: .55rem 1rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    color: var(--ueb-text);
+    font-family: inherit;
+    font-size: .86rem;
     font-weight: 600;
-    font-size: .88rem;
-    padding: .6rem 1.2rem;
     border-radius: 999px;
     cursor: pointer;
-    transition: background .15s ease;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                transform var(--ueb-fast) var(--ueb-ease);
 }
-.admin-filter-toggle-btn:hover { background: #eef4f1; }
+.admin-tbtn:hover {
+    background: var(--ueb-surface-hover);
+    border-color: var(--ueb-primary);
+}
+.admin-tbtn:active { transform: scale(.97); }
+.admin-tbtn--icon {
+    width: 40px;
+    padding: 0;
+    flex-shrink: 0;
+}
+.admin-tbtn--primary {
+    background: var(--ueb-primary);
+    border-color: var(--ueb-primary);
+    color: var(--ueb-on-primary);
+}
+.admin-tbtn--primary:hover {
+    background: var(--ueb-primary-soft);
+    border-color: var(--ueb-primary-soft);
+}
+.admin-tbtn[disabled] { opacity: .45; cursor: not-allowed; }
+.admin-tbtn[disabled]:hover { background: var(--ueb-surface); border-color: var(--ueb-border-strong); }
+
 .admin-filter-badge {
-    background: #c9a227;
-    color: #123a24;
-    font-size: .72rem;
+    background: var(--ueb-accent-bright);
+    color: var(--ueb-on-accent);
+    font-size: .7rem;
     font-weight: 700;
-    padding: .1rem .45rem;
+    padding: .08rem .42rem;
     border-radius: 999px;
-    min-width: 1.1rem;
+    min-width: 1.15rem;
     text-align: center;
+    animation: ueb-pop var(--ueb-normal) var(--ueb-ease) both;
+}
+
+/* Icône soleil/lune : une seule est visible selon le thème actif. */
+.admin-theme-icon--sun { display: none; }
+:root[data-ueb-theme="dark"] .admin-theme-icon--sun { display: block; }
+:root[data-ueb-theme="dark"] .admin-theme-icon--moon { display: none; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-ueb-theme="light"]) .admin-theme-icon--sun { display: block; }
+    :root:not([data-ueb-theme="light"]) .admin-theme-icon--moon { display: none; }
 }
 
 .admin-tab-panel { display: none; }
-.admin-tab-panel.active { display: block; }
+/* Le panneau entre par le côté d'où l'on vient : aller vers « Dossiers »
+   (plus bas dans la navigation) fait glisser depuis la droite, revenir vers
+   « Vue d'ensemble » depuis la gauche. Le sens est posé par le JS via
+   --ueb-from ; cette continuité spatiale aide à ne pas se perdre. */
+.admin-tab-panel.active {
+    display: block;
+    animation: ueb-panel-in var(--ueb-slow) var(--ueb-ease) both;
+}
 
-/* ---------------------------------------------------------------------
-   TIROIR DE FILTRES
-   --------------------------------------------------------------------- */
+/* Bandeau récapitulant les filtres actifs, au-dessus du contenu. */
+.admin-active-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-bottom: 1.2rem;
+}
+.admin-active-filters:empty { display: none; }
+.admin-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    padding: .3rem .5rem .3rem .75rem;
+    font-size: .78rem;
+    font-weight: 500;
+    color: var(--ueb-text-soft);
+    animation: ueb-pop var(--ueb-fast) var(--ueb-ease) both;
+}
+.admin-chip b { color: var(--ueb-text); font-weight: 600; }
+.admin-chip-x {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ueb-text-muted);
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-chip-x:hover { background: var(--ueb-danger-wash); color: var(--ueb-danger); }
+
+/* -------------------------------------------------------------------------
+   6. CARTES KPI
+   ------------------------------------------------------------------------- */
+.admin-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: .9rem;
+    margin-bottom: 1.4rem;
+}
+
+.admin-kpi-card {
+    position: relative;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+    padding: 1.1rem 1.2rem;
+    box-shadow: var(--ueb-shadow-sm);
+    overflow: hidden;
+    transition: transform var(--ueb-normal) var(--ueb-ease),
+                box-shadow var(--ueb-normal) var(--ueb-ease),
+                border-color var(--ueb-normal) var(--ueb-ease);
+}
+/* Voile de couleur au survol : remplace le filet latéral, sans occuper de
+   place ni décaler le contenu. Sur un pseudo-élément en opacity pour rester
+   sur le compositeur (aucun repaint du texte). */
+.admin-kpi-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(
+        120% 100% at 100% 0%,
+        var(--ueb-kpi-wash, var(--ueb-primary-wash)),
+        transparent 62%
+    );
+    opacity: 0;
+    transition: opacity var(--ueb-normal) var(--ueb-ease);
+}
+.admin-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ueb-shadow);
+    border-color: var(--ueb-border-strong);
+}
+.admin-kpi-card:hover::after { opacity: 1; }
+
+/* L'icône accompagne le survol : léger grossissement, jamais de rotation
+   (le mouvement doit rester sobre sur un outil de gestion). */
+.admin-kpi-card .admin-kpi-ico {
+    transition: transform var(--ueb-normal) var(--ueb-spring),
+                background-color var(--ueb-normal) var(--ueb-ease);
+}
+.admin-kpi-card:hover .admin-kpi-ico { transform: scale(1.12); }
+
+.admin-kpi-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .55rem;
+}
+.admin-kpi-label {
+    font-size: .74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .045em;
+    color: var(--ueb-text-muted);
+    line-height: 1.3;
+}
+.admin-kpi-ico {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--ueb-kpi-wash, var(--ueb-primary-wash));
+    color: var(--ueb-kpi-accent, var(--ueb-primary));
+    flex-shrink: 0;
+}
+.admin-kpi-value {
+    display: block;
+    font-family: 'Sora', sans-serif;
+    font-size: 1.95rem;
+    font-weight: 700;
+    color: var(--ueb-text);
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+}
+.admin-kpi-unit { font-size: 1.1rem; font-weight: 600; color: var(--ueb-text-muted); }
+.admin-kpi-foot {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-top: .45rem;
+    font-size: .76rem;
+    color: var(--ueb-text-muted);
+}
+.admin-kpi-delta { display: inline-flex; align-items: center; gap: .2rem; font-weight: 600; }
+.admin-kpi-delta--up   { color: var(--ueb-success); }
+.admin-kpi-delta--down { color: var(--ueb-danger); }
+.admin-kpi-delta--flat { color: var(--ueb-text-muted); }
+
+/* Barre de proportion sous les KPI de type « part d'un total ». */
+.admin-kpi-bar {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--ueb-border);
+    margin-top: .6rem;
+    overflow: hidden;
+}
+/* Remplissage par scaleX plutôt que par width : la mise en page n'est pas
+   recalculée à chaque image, l'animation tient sur le compositeur. */
+.admin-kpi-bar span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: var(--ueb-kpi-accent, var(--ueb-primary));
+    transform: scaleX(var(--ueb-part, 0));
+    transform-origin: left center;
+    transition: transform 620ms var(--ueb-ease) 120ms;
+}
+
+/* Mini-courbe de tendance intégrée à la carte. */
+.admin-kpi-spark {
+    display: block;
+    width: 100%;
+    height: 30px;
+    margin-top: .5rem;
+    overflow: visible;
+}
+.admin-kpi-spark path { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.admin-kpi-spark .spark-line { stroke: var(--ueb-kpi-accent, var(--ueb-primary)); }
+.admin-kpi-spark .spark-area { fill: var(--ueb-kpi-wash, var(--ueb-primary-wash)); stroke: none; }
+
+/* La courbe se trace de gauche à droite, l'aire apparaît derrière une fois
+   le tracé bien engagé. --ueb-len est la longueur réelle du chemin, mesurée
+   en JS (getTotalLength) au moment du rendu. */
+.admin-kpi-spark .spark-line {
+    stroke-dasharray: var(--ueb-len, 200);
+    animation: ueb-draw 900ms var(--ueb-ease) 160ms both;
+}
+.admin-kpi-spark .spark-area {
+    animation: ueb-fade 500ms var(--ueb-ease) 480ms both;
+}
+
+/* -------------------------------------------------------------------------
+   7. GRAPHIQUES
+   ------------------------------------------------------------------------- */
+.admin-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.admin-chart-card {
+    grid-column: span 6;
+    display: flex;
+    flex-direction: column;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+    padding: 1.1rem 1.2rem 1rem;
+    box-shadow: var(--ueb-shadow-sm);
+    min-width: 0;
+    transition: transform var(--ueb-normal) var(--ueb-ease),
+                box-shadow var(--ueb-normal) var(--ueb-ease),
+                border-color var(--ueb-normal) var(--ueb-ease);
+}
+.admin-chart-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ueb-shadow);
+    border-color: var(--ueb-border-strong);
+}
+
+/* Placement : l'évolution occupe toute la largeur en tête, les répartitions
+   se répondent deux à deux, le croisement faculté x sexe reprend la largeur. */
+.admin-chart-card--full { grid-column: span 12; }
+.admin-chart-card--third { grid-column: span 4; }
+.admin-chart-card--twothird { grid-column: span 8; }
+
+.admin-chart-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .9rem;
+}
+.admin-chart-title {
+    font-family: 'Sora', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--ueb-text);
+    margin: 0 0 .15rem;
+    letter-spacing: -.01em;
+}
+.admin-chart-sub {
+    font-size: .76rem;
+    color: var(--ueb-text-muted);
+    margin: 0;
+}
+.admin-chart-total {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ueb-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Hauteur fixe : réserve la place avant le rendu Chart.js (pas de saut de
+   mise en page au chargement). */
+.admin-chart-body {
+    position: relative;
+    height: 260px;
+    min-width: 0;
+}
+.admin-chart-card--full .admin-chart-body { height: 300px; }
+.admin-chart-body canvas { display: block; width: 100% !important; height: 100% !important; }
+
+/* -------------------------------------------------------------------------
+   8. TABLEAU DES DOSSIERS
+   ------------------------------------------------------------------------- */
+.admin-liste-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .9rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.admin-search {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+    max-width: 440px;
+}
+.admin-search .admin-icon {
+    position: absolute;
+    left: .8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ueb-text-muted);
+    pointer-events: none;
+}
+.admin-recherche-input {
+    width: 100%;
+    min-height: 42px;
+    padding: .6rem .9rem .6rem 2.4rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    font-family: inherit;
+    font-size: .9rem;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
+}
+.admin-recherche-input::placeholder { color: var(--ueb-text-muted); }
+.admin-recherche-input:focus {
+    outline: none;
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
+}
+.admin-results-count {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-table-wrap {
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+    box-shadow: var(--ueb-shadow-sm);
+    overflow: hidden;
+}
+.admin-table-scroll { overflow-x: auto; }
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .87rem;
+}
+.admin-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--ueb-surface-2);
+    color: var(--ueb-text-soft);
+    font-weight: 600;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .045em;
+    text-align: left;
+    padding: .7rem 1rem;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--ueb-border);
+    z-index: 1;
+}
+/* En-têtes triables : le tri est annoncé via aria-sort, la flèche n'est
+   qu'un renfort visuel. */
+.admin-th-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    transition: color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-th-sort:hover { color: var(--ueb-primary); }
+.admin-th-sort .admin-icon { opacity: .35; transition: opacity var(--ueb-fast) var(--ueb-ease); }
+.admin-th-sort:hover .admin-icon { opacity: .7; }
+th[aria-sort="ascending"] .admin-th-sort,
+th[aria-sort="descending"] .admin-th-sort { color: var(--ueb-primary); }
+th[aria-sort="ascending"] .admin-icon,
+th[aria-sort="descending"] .admin-icon { opacity: 1; }
+th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
+
+.admin-table td {
+    padding: .7rem 1rem;
+    border-top: 1px solid var(--ueb-border);
+    color: var(--ueb-text-soft);
+    vertical-align: middle;
+}
+.admin-table tbody tr {
+    transition: background var(--ueb-fast) var(--ueb-ease);
+}
+.admin-table tbody tr:hover { background: var(--ueb-surface-hover); }
+.admin-table .cell-dossier {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    color: var(--ueb-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.admin-table .cell-nom { color: var(--ueb-text); font-weight: 500; }
+.admin-table .cell-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.admin-table .cell-actions { text-align: right; }
+
+/* Pastille de sexe : lettre + couleur, jamais la couleur seule. */
+.admin-pill {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 .4rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    background: var(--ueb-surface-hover);
+    color: var(--ueb-text-soft);
+    border: 1px solid var(--ueb-border);
+}
+.admin-pill--m { background: rgba(47, 111, 143, .13); color: var(--ueb-chart-3); border-color: transparent; }
+.admin-pill--f { background: var(--ueb-accent-wash); color: var(--ueb-accent); border-color: transparent; }
+
+.admin-btn-voir {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    background: transparent;
+    border: 1px solid var(--ueb-border-strong);
+    color: var(--ueb-text-soft);
+    font-family: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    padding: .35rem .75rem;
+    min-height: 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-btn-voir:hover {
+    background: var(--ueb-primary);
+    border-color: var(--ueb-primary);
+    color: var(--ueb-on-primary);
+}
+.admin-btn-voir:active { transform: scale(.96); }
+/* La flèche avance de 2 px : le mouvement annonce la direction de l'action
+   (ouvrir la fiche) plutôt que de décorer le bouton. */
+.admin-btn-voir .admin-icon {
+    transition: transform var(--ueb-normal) var(--ueb-spring);
+}
+.admin-btn-voir:hover .admin-icon { transform: translateX(2px); }
+
+/* Pagination */
+.admin-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .9rem;
+    margin-top: 1.2rem;
+}
+.admin-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    color: var(--ueb-text-soft);
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: .5rem 1rem;
+    min-height: 38px;
+    border-radius: var(--ueb-radius-sm);
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-page-btn:hover:not(:disabled) {
+    border-color: var(--ueb-primary);
+    color: var(--ueb-primary);
+    background: var(--ueb-surface-hover);
+}
+.admin-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.admin-page-info {
+    font-size: .82rem;
+    color: var(--ueb-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------
+   9. TIROIR DE FILTRES
+   ------------------------------------------------------------------------- */
 .admin-filter-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(18,58,36,.35);
+    background: rgba(9, 20, 14, .5);
+    backdrop-filter: blur(2px);
     z-index: 1000;
+    opacity: 0;
+    transition: opacity var(--ueb-normal) var(--ueb-ease);
 }
+.admin-filter-overlay.is-visible { opacity: 1; }
 
 .admin-filter-drawer {
     position: fixed;
-    top: 0;
+    /* Décalé sous la barre d'administration WordPress, elle-même fixée en
+       haut : sans cela l'en-tête du tiroir passe dessous. */
+    top: var(--wp-admin--admin-bar--height, 0px);
     right: 0;
     bottom: 0;
-    width: min(420px, 92vw);
-    background: #ffffff;
-    box-shadow: -8px 0 30px rgba(0,0,0,.15);
+    width: min(430px, 94vw);
+    background: var(--ueb-surface);
+    border-left: 1px solid var(--ueb-border);
+    box-shadow: var(--ueb-shadow-lg);
     z-index: 1001;
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
-    transition: transform .25s ease;
+    visibility: hidden;
+    /* Fermeture nettement plus rapide que l'ouverture : un panneau qui
+       s'attarde en partant donne une impression de lourdeur. */
+    transition: transform var(--ueb-exit) var(--ueb-ease-in),
+                visibility 0s linear var(--ueb-exit);
 }
-.admin-filter-drawer.is-open { transform: translateX(0); }
+.admin-filter-drawer.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 380ms var(--ueb-spring),
+                visibility 0s;
+}
+
+/* Les sections du tiroir entrent en cascade derrière le panneau, ce qui
+   donne de la profondeur à l'ouverture sans rallonger son temps perçu. */
+.admin-filter-drawer.is-open .admin-filter-section {
+    animation: ueb-rise 320ms var(--ueb-ease) both;
+    animation-delay: calc(120ms + var(--i, 0) * 40ms);
+}
+.admin-filter-drawer .admin-filter-section:nth-child(1) { --i: 0; }
+.admin-filter-drawer .admin-filter-section:nth-child(2) { --i: 1; }
+.admin-filter-drawer .admin-filter-section:nth-child(3) { --i: 2; }
+.admin-filter-drawer .admin-filter-section:nth-child(4) { --i: 3; }
 
 .admin-filter-drawer-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e4e4e0;
+    padding: 1.2rem 1.4rem;
+    border-bottom: 1px solid var(--ueb-border);
     flex-shrink: 0;
 }
 .admin-filter-drawer-header h2 {
     font-family: 'Sora', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.08rem;
     margin: 0;
-    color: #1a1a1a;
+    color: var(--ueb-text);
 }
 .admin-filter-close {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
     background: none;
     border: none;
-    font-size: 1.4rem;
-    line-height: 1;
-    color: #6b7280;
+    border-radius: 50%;
+    color: var(--ueb-text-muted);
     cursor: pointer;
-    padding: .2rem .4rem;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
 }
-.admin-filter-close:hover { color: #1a1a1a; }
+.admin-filter-close:hover { background: var(--ueb-surface-hover); color: var(--ueb-text); }
 
 .admin-filter-form {
     overflow-y: auto;
     flex: 1;
-    padding: 1.25rem 1.5rem;
+    /* Indispensable : sans min-height:0, un enfant flex refuse de devenir
+       plus petit que son contenu, la zone ne défile pas et les boutons
+       d'action sont poussés hors de l'écran. */
+    min-height: 0;
+    padding: 1.1rem 1.4rem;
 }
-
-.admin-filter-section { margin-bottom: 1.6rem; }
+.admin-filter-section { margin-bottom: 1.5rem; }
 .admin-filter-section h3 {
-    font-size: .8rem;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .74rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .04em;
-    color: #c9a227;
-    margin: 0 0 .8rem;
+    letter-spacing: .06em;
+    color: var(--ueb-accent);
+    margin: 0 0 .75rem;
     padding-bottom: .4rem;
-    border-bottom: 1px solid #e4e4e0;
+    border-bottom: 1px solid var(--ueb-border);
 }
-
 .admin-filter-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: .85rem;
+    gap: .8rem;
 }
 .admin-filter-field { display: flex; flex-direction: column; gap: .3rem; }
 .admin-filter-field label {
     font-size: .78rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--ueb-text-soft);
 }
 .admin-filter-field select {
-    padding: .55rem .7rem;
-    border-radius: 7px;
-    border: 1px solid #d8d8d4;
+    width: 100%;
+    min-height: 40px;
+    padding: .5rem .7rem;
+    border-radius: var(--ueb-radius-sm);
+    border: 1px solid var(--ueb-border-strong);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    font-family: inherit;
     font-size: .86rem;
-    background: #ffffff;
-    color: #1a1a1a;
+    cursor: pointer;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
+}
+.admin-filter-field select:focus {
+    outline: none;
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
 }
 .admin-filter-field select:disabled {
-    background: #f2f2ef;
-    color: #6b7280;
-    font-style: italic;
+    background: var(--ueb-surface-2);
+    color: var(--ueb-text-muted);
+    cursor: not-allowed;
+    opacity: .7;
 }
 
 .admin-filter-actions {
     display: flex;
-    gap: .75rem;
-    padding: 1.1rem 1.5rem;
-    border-top: 1px solid #e4e4e0;
+    gap: .7rem;
+    padding: 1rem 1.4rem;
+    border-top: 1px solid var(--ueb-border);
+    background: var(--ueb-surface);
     flex-shrink: 0;
 }
-.admin-filter-actions .btn { flex: 1; padding: .6rem 1rem; text-align: center; }
+.admin-filter-actions .btn { flex: 1; text-align: center; min-height: 42px; }
 
-/* ---------------------------------------------------------------------
-   CARTES KPI — esprit "cachet officiel", cerclage or
-   --------------------------------------------------------------------- */
-.admin-kpi-grid {
+/* -------------------------------------------------------------------------
+   10. MODALE DE DÉTAIL
+   ------------------------------------------------------------------------- */
+.admin-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.75rem;
+    place-items: center;
+    padding: 1.25rem;
 }
-.admin-kpi-card {
-    position: relative;
-    background: #ffffff;
-    border: 1px solid #e4e4e0;
-    border-radius: 12px;
-    padding: 1.25rem 1.4rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,.05);
-    overflow: hidden;
-}
-.admin-kpi-card::before {
-    content: '';
+.admin-modal[hidden] { display: none; }
+.admin-modal-backdrop {
     position: absolute;
-    top: -18px;
-    right: -18px;
-    width: 60px;
-    height: 60px;
-    border: 2px solid rgba(201,162,39,.25);
-    border-radius: 50%;
+    inset: 0;
+    background: rgba(9, 20, 14, .55);
+    backdrop-filter: blur(3px);
+    animation: ueb-fade var(--ueb-normal) var(--ueb-ease) both;
 }
-.admin-kpi-value {
-    display: block;
-    font-family: 'Sora', sans-serif;
-    font-size: 1.9rem;
-    font-weight: 700;
-    color: #1a4a2e;
-    line-height: 1;
-    margin-bottom: .4rem;
-}
-.admin-kpi-label {
-    display: block;
-    font-size: .76rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-    color: #6b7280;
-}
-.admin-kpi-card--small .admin-kpi-value { color: #c9a227; }
-
-/* ---------------------------------------------------------------------
-   GRAPHES (CHART.JS)
-   --------------------------------------------------------------------- */
-.admin-charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.1rem;
-}
-.admin-chart-card {
-    background: #ffffff;
-    border: 1px solid #e4e4e0;
-    border-radius: 12px;
-    padding: 1.1rem;
-    height: 280px;
-    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+.admin-modal-box {
     position: relative;
-}
-.admin-chart-card--wide { grid-column: 1 / -1; height: 300px; }
-
-/* ---------------------------------------------------------------------
-   RECHERCHE + COMPTEUR
-   --------------------------------------------------------------------- */
-.admin-liste-toolbar {
+    width: min(560px, 100%);
+    max-height: min(80vh, 720px);
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius-lg);
+    box-shadow: var(--ueb-shadow-lg);
+    overflow: hidden;
+    animation: ueb-modal-in var(--ueb-normal) var(--ueb-ease) both;
+}
+.admin-modal-header {
+    display: flex;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
+    padding: 1.15rem 1.35rem;
+    border-bottom: 1px solid var(--ueb-border);
 }
-.admin-recherche-input {
-    flex: 1;
-    min-width: 240px;
-    max-width: 420px;
-    padding: .6rem .9rem;
-    border: 1px solid #d1d1cb;
-    border-radius: 8px;
-    font-size: .9rem;
+.admin-modal-header h2 {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.05rem;
+    margin: 0 0 .15rem;
+    color: var(--ueb-text);
 }
-.admin-recherche-input:focus { outline: none; border-color: #1a4a2e; }
-.admin-results-count {
-    font-size: .85rem;
-    font-weight: 600;
-    color: #1a4a2e;
-    white-space: nowrap;
-}
+.admin-modal-header p { margin: 0; font-size: .8rem; color: var(--ueb-text-muted); }
+.admin-modal-body { padding: 1.1rem 1.35rem 1.35rem; overflow-y: auto; }
 
-/* ---------------------------------------------------------------------
-   TABLEAU DES DOSSIERS
-   --------------------------------------------------------------------- */
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #ffffff;
-    border: 1px solid #e4e4e0;
-    border-radius: 10px;
-    overflow: hidden;
-    font-size: .86rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,.05);
-}
-.admin-table thead { background: #1a4a2e; }
-.admin-table th {
-    color: #ffffff;
-    font-weight: 600;
-    font-size: .78rem;
+.admin-detail-group + .admin-detail-group { margin-top: 1.15rem; }
+.admin-detail-group h3 {
+    font-size: .72rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .03em;
-    text-align: left;
-    padding: .75rem 1rem;
-    white-space: nowrap;
+    letter-spacing: .06em;
+    color: var(--ueb-accent);
+    margin: 0 0 .6rem;
 }
-.admin-table td { padding: .65rem 1rem; border-top: 1px solid #f0f0ec; }
-.admin-table tbody tr:nth-child(even) { background: #f7f7f5; }
-.admin-table tbody tr:hover { background: #eef4f1; }
+.admin-detail-list {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) 1fr;
+    gap: .5rem .9rem;
+    margin: 0;
+    font-size: .87rem;
+}
+.admin-detail-list dt { color: var(--ueb-text-muted); }
+.admin-detail-list dd { margin: 0; color: var(--ueb-text); font-weight: 500; }
 
-.admin-btn-voir {
-    background: none;
-    border: 1px solid #c9a227;
-    color: #1a4a2e;
-    font-size: .78rem;
+/* -------------------------------------------------------------------------
+   11. ÉTATS : SQUELETTES, VIDE, ERREUR
+   ------------------------------------------------------------------------- */
+.admin-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--ueb-surface-2);
+    border-radius: var(--ueb-radius-sm);
+}
+.admin-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, .45),
+        transparent
+    );
+    animation: ueb-shimmer 1.4s infinite;
+}
+:root[data-ueb-theme="dark"] .admin-skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .07), transparent);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-ueb-theme="light"]) .admin-skeleton::after {
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .07), transparent);
+    }
+}
+.admin-skeleton--kpi   { height: 116px; border-radius: var(--ueb-radius); }
+.admin-skeleton--chart { height: 100%; border-radius: var(--ueb-radius-sm); }
+.admin-skeleton--row   { height: 44px; margin-bottom: 1px; border-radius: 0; }
+
+.admin-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .6rem;
+    padding: 2.75rem 1.5rem;
+    color: var(--ueb-text-muted);
+}
+.admin-state-ico {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--ueb-surface-hover);
+    color: var(--ueb-text-muted);
+    margin-bottom: .2rem;
+}
+.admin-state-ico .admin-icon { width: 24px; height: 24px; }
+.admin-state h3 {
+    font-family: 'Sora', sans-serif;
+    font-size: .98rem;
     font-weight: 600;
-    padding: .3rem .8rem;
-    border-radius: 999px;
-    cursor: pointer;
-    white-space: nowrap;
+    color: var(--ueb-text);
+    margin: 0;
 }
-.admin-btn-voir:hover { background: #f7f7f5; }
+.admin-state p { margin: 0; font-size: .86rem; max-width: 42ch; line-height: 1.5; }
+.admin-state--error .admin-state-ico { background: var(--ueb-danger-wash); color: var(--ueb-danger); }
 
+/* Le tableau et les graphiques partagent le même conteneur d'état vide. */
 .admin-empty, .admin-loading {
-    background: #ffffff;
-    border: 1px solid #e4e4e0;
-    border-radius: 10px;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
     padding: 2rem;
     text-align: center;
-    color: #6b7280;
+    color: var(--ueb-text-muted);
     font-size: .9rem;
 }
-
-/* ---------------------------------------------------------------------
-   PAGINATION
-   --------------------------------------------------------------------- */
-.admin-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.25rem;
+/* État vide superposé à un graphique : occupe la zone réservée du canvas. */
+.admin-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font-size: .84rem;
+    color: var(--ueb-text-muted);
+    background: var(--ueb-surface);
+    border-radius: var(--ueb-radius-sm);
 }
-.admin-page-btn {
-    background: #ffffff;
-    border: 1px solid #d1d1cb;
-    color: #1a4a2e;
-    font-size: .82rem;
-    font-weight: 600;
-    padding: .5rem 1.1rem;
-    border-radius: 8px;
-    cursor: pointer;
-}
-.admin-page-btn:hover:not(:disabled) { border-color: #1a4a2e; background: #f7f7f5; }
-.admin-page-btn:disabled { opacity: .4; cursor: not-allowed; }
-.admin-page-info { font-size: .82rem; color: #6b7280; }
 
-/* ---------------------------------------------------------------------
-   RESPONSIVE
-   --------------------------------------------------------------------- */
+/* Bandeau de rafraîchissement discret pendant un rechargement AJAX. */
+.admin-main.is-refreshing .admin-kpi-grid,
+.admin-main.is-refreshing .admin-charts-grid,
+.admin-main.is-refreshing .admin-table-wrap {
+    opacity: .55;
+    transition: opacity var(--ueb-fast) var(--ueb-ease);
+}
+
+/* -------------------------------------------------------------------------
+   12. ANIMATIONS
+   ------------------------------------------------------------------------- */
+@keyframes ueb-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+/* Montée d'entrée : la carte arrive du bas en s'ouvrant très légèrement.
+   Le scale part de .98 seulement — au-delà, un dashboard dense donne
+   l'impression de « respirer », ce qui fatigue à l'usage quotidien. */
+@keyframes ueb-rise {
+    from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes ueb-pop {
+    from { opacity: 0; transform: scale(.82); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes ueb-modal-in {
+    from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.96); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes ueb-shimmer {
+    100% { transform: translateX(100%); }
+}
+@keyframes ueb-shake {
+    0%, 100%   { transform: translateX(0); }
+    20%, 60%   { transform: translateX(-4px); }
+    40%, 80%   { transform: translateX(4px); }
+}
+/* Panneau entrant : glissement latéral court, la direction dépend du sens
+   de navigation (--ueb-from, posé par le JS au changement d'onglet). */
+@keyframes ueb-panel-in {
+    from { opacity: 0; transform: translate3d(var(--ueb-from, 12px), 0, 0); }
+    to   { opacity: 1; transform: none; }
+}
+/* Tracé qui se dessine : utilisé par les sparklines des cartes KPI. */
+@keyframes ueb-draw {
+    from { stroke-dashoffset: var(--ueb-len, 200); }
+    to   { stroke-dashoffset: 0; }
+}
+/* Remplissage d'une barre de proportion, sur transform pour éviter de
+   déclencher une remise en page à chaque image. */
+@keyframes ueb-grow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* Entrée échelonnée.
+   Le rang de chaque élément est fourni par --i (posé en JS pour les listes
+   construites dynamiquement), avec repli sur nth-child pour le balisage
+   statique. Le délai est plafonné à 6 crans : au-delà, l'utilisateur attend
+   sans raison que la dernière carte daigne apparaître. */
+.admin-stagger > * {
+    animation: ueb-rise var(--ueb-slow) var(--ueb-spring) both;
+    animation-delay: calc(var(--i, 0) * var(--ueb-stagger));
+}
+.admin-stagger > *:nth-child(1) { --i: 0; }
+.admin-stagger > *:nth-child(2) { --i: 1; }
+.admin-stagger > *:nth-child(3) { --i: 2; }
+.admin-stagger > *:nth-child(4) { --i: 3; }
+.admin-stagger > *:nth-child(5) { --i: 4; }
+.admin-stagger > *:nth-child(6) { --i: 5; }
+.admin-stagger > *:nth-child(n+7) { --i: 6; }
+
+/* Cascade des lignes du tableau : deux fois plus serrée que celle des
+   cartes (25 ms), sinon la dernière ligne d'une page de 25 arriverait une
+   seconde après la première. Plafonnée à 12 rangs. */
+.admin-table tbody tr {
+    animation: ueb-rise 260ms var(--ueb-ease) both;
+    animation-delay: calc(min(var(--i, 0), 12) * 25ms);
+}
+
+/* Bascule de thème : sans transition, tout l'écran change de couleur d'un
+   coup et l'œil perd ses repères. La classe n'est posée que le temps du
+   fondu (voir admin-dashboard.js) — la garder en permanence ferait payer
+   une transition à chaque survol de ligne du tableau. */
+.ueb-theming,
+.ueb-theming *:not(canvas) {
+    transition: background-color 280ms var(--ueb-ease),
+                border-color 280ms var(--ueb-ease),
+                color 280ms var(--ueb-ease),
+                fill 280ms var(--ueb-ease),
+                stroke 280ms var(--ueb-ease) !important;
+}
+
+/* L'icône soleil/lune pivote au changement : le bouton confirme son effet. */
+#admin-theme-toggle .admin-icon {
+    transition: transform 420ms var(--ueb-spring);
+}
+#admin-theme-toggle:hover .admin-icon { transform: rotate(18deg); }
+#admin-theme-toggle:active .admin-icon { transform: rotate(-25deg) scale(.9); }
+
+/* Fermeture de la modale : reprise à l'envers de son ouverture, en plus
+   court, pour que la fiche paraisse « rentrer » là d'où elle vient. */
+.admin-modal.is-closing .admin-modal-box {
+    animation: ueb-modal-out var(--ueb-exit) var(--ueb-ease-in) both;
+}
+.admin-modal.is-closing .admin-modal-backdrop {
+    animation: ueb-fade var(--ueb-exit) var(--ueb-ease-in) reverse both;
+}
+@keyframes ueb-modal-out {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translate3d(0, 8px, 0) scale(.97); }
+}
+
+/* -------------------------------------------------------------------------
+   13. RESPONSIVE
+   ------------------------------------------------------------------------- */
+@media (max-width: 1180px) {
+    .admin-chart-card--third    { grid-column: span 6; }
+    .admin-chart-card--twothird { grid-column: span 12; }
+}
+
 @media (max-width: 900px) {
     .admin-shell { grid-template-columns: 1fr; }
     .admin-sidebar {
+        position: static;
+        height: auto;
         flex-direction: row;
         align-items: center;
-        padding: .9rem 1rem;
-        gap: 1rem;
+        flex-wrap: wrap;
+        padding: .8rem 1rem;
+        gap: .9rem;
     }
-    .admin-sidebar-brand { padding: 0; margin: 0; border: none; flex-direction: row; align-items: center; gap: .5rem; }
-    .admin-sidebar-nav { flex-direction: row; padding: 0; flex: 1; }
-    .admin-sidebar-footer { padding: 0; margin: 0; border: none; display: flex; align-items: center; }
-    .admin-sidebar-user-name { display: none; }
-    .admin-main { padding: 1.25rem 1rem 2.5rem; }
-    .admin-charts-grid { grid-template-columns: 1fr; }
+    .admin-sidebar-brand {
+        padding: 0;
+        margin: 0;
+        border: none;
+        flex: 0 0 auto;
+    }
+    .admin-sidebar-brand-text { display: none; }
+    .admin-sidebar-heading { display: none; }
+    .admin-sidebar-nav {
+        flex-direction: row;
+        padding: 0;
+        flex: 1 1 auto;
+        gap: .4rem;
+    }
+    .admin-sidebar-nav .admin-tab-btn.active::before { display: none; }
+    .admin-sidebar-footer {
+        padding: 0;
+        margin: 0;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        flex: 0 0 auto;
+    }
+    .admin-sidebar-user { margin: 0; }
+    .admin-sidebar-user-meta { display: none; }
+    .admin-main { padding: 1.2rem 1rem 2.5rem; }
+    .admin-chart-card,
+    .admin-chart-card--third,
+    .admin-chart-card--twothird,
+    .admin-chart-card--full { grid-column: span 12; }
 }
-@media (max-width: 560px) {
-    .admin-table-scroll { overflow-x: auto; }
-    .admin-table { min-width: 640px; }
+
+@media (max-width: 620px) {
+    .admin-topbar h1 { font-size: 1.3rem; }
+    .admin-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .admin-kpi-value { font-size: 1.6rem; }
+    .admin-chart-body { height: 240px; }
+    .admin-table { min-width: 680px; }
+    .admin-liste-toolbar { flex-direction: column; align-items: stretch; }
+    .admin-search { max-width: none; }
+    .admin-results-count { text-align: left; }
+    .admin-detail-list { grid-template-columns: 1fr; gap: .15rem .9rem; }
+    .admin-detail-list dd { margin-bottom: .5rem; }
+}
+
+/* -------------------------------------------------------------------------
+   14. ACCESSIBILITÉ
+   ------------------------------------------------------------------------- */
+/* Mouvement réduit : on neutralise les animations décoratives et les
+   transitions, mais on garde les changements d'état instantanés (rien ne
+   disparaît, tout reste lisible). */
+@media (prefers-reduced-motion: reduce) {
+    .admin-page *,
+    .admin-page *::before,
+    .admin-page *::after {
+        animation-duration: .01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Doit être répété ici : le sélecteur de la bascule de thème est plus
+       spécifique que `.admin-page *`, sa transition !important gagnerait. */
+    .ueb-theming,
+    .ueb-theming *:not(canvas) {
+        transition-duration: .01ms !important;
+        transition-delay: 0ms !important;
+    }
+
+    .admin-skeleton::after { animation: none; opacity: .35; }
+
+    /* Aucun déplacement au survol : seuls la couleur et l'ombre changent. */
+    .admin-kpi-card:hover,
+    .admin-chart-card:hover { transform: none; }
+    .admin-kpi-card:hover .admin-kpi-ico,
+    .admin-btn-voir:hover .admin-icon,
+    #admin-theme-toggle:hover .admin-icon,
+    #admin-theme-toggle:active .admin-icon { transform: none; }
+    .admin-tbtn:active { transform: none; }
+
+    /* Les tracés et barres s'affichent à leur valeur finale, sans parcours. */
+    .admin-kpi-spark .spark-line { stroke-dasharray: none; animation: none; }
+    .admin-kpi-spark .spark-area { animation: none; opacity: 1; }
+}
+
+@media print {
+    .admin-sidebar,
+    .admin-topbar-actions,
+    .admin-filter-drawer,
+    .admin-filter-overlay,
+    .admin-pagination,
+    .cell-actions { display: none !important; }
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-chart-card, .admin-kpi-card, .admin-table-wrap {
+        break-inside: avoid;
+        box-shadow: none;
+    }
 }
