@@ -8,7 +8,7 @@
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 
-<?php if ( ! is_page_template( 'page-preinscription.php' ) ) : ?>
+<?php if ( ! is_page_template( 'page-preinscription.php' ) && ! ueb_est_dashboard_plein_ecran() ) : ?>
 <nav class="bar" aria-label="Navigation principale"><div class="wrap">
     <a href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home" class="brand">
         <img src="<?php echo esc_url( preinscriptions_img( 'logo-ueb.webp' ) ); ?>" alt="Logo de l'Université d'Ébolowa" width="247" height="236">
