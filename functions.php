@@ -147,6 +147,52 @@ function preinscriptions_admin_assets() {
 }
 add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
 
+/**
+ * Le dashboard occupe-t-il tout l'écran ?
+ *
+ * Vrai uniquement sur le tableau de bord ET pour un compte autorisé : la
+ * navigation publique n'a pas de sens autour d'un back-office (la sidebar
+ * porte déjà la navigation et la déconnexion), mais l'écran de connexion,
+ * lui, reste une page du site et garde son en-tête.
+ *
+ * Même principe que page-preinscription.php, qui masque déjà la barre.
+ *
+ * @return bool
+ */
+function ueb_est_dashboard_plein_ecran() {
+    return is_page_template( 'page-administration.php' )
+        && is_user_logged_in()
+        && current_user_can( 'voir_preinscriptions' );
+}
+
+/**
+ * Applique le thème clair/sombre mémorisé AVANT le premier rendu.
+ *
+ * Doit rester un script bloquant inline dans le <head> : si l'attribut
+ * data-ueb-theme n'est posé qu'au chargement de admin-dashboard.js (en
+ * pied de page), la page s'affiche une fraction de seconde dans le mauvais
+ * thème — un flash blanc très visible sur un dashboard sombre.
+ */
+function preinscriptions_admin_theme_boot() {
+    if ( ! is_page_template( 'page-administration.php' ) ) return;
+    ?>
+    <script>
+    (function () {
+        try {
+            var t = localStorage.getItem('ueb-admin-theme');
+            if (t === 'dark' || t === 'light') {
+                document.documentElement.setAttribute('data-ueb-theme', t);
+            }
+        } catch (e) {
+            /* localStorage indisponible (navigation privée stricte) :
+               on laisse la préférence système décider. */
+        }
+    }());
+    </script>
+    <?php
+}
+add_action( 'wp_head', 'preinscriptions_admin_theme_boot', 1 );
+
 /* ── 2. Custom Post Type : preinscription ── */
 function preinscriptions_register_cpt() {
     register_post_type( 'preinscription', array(
@@ -196,3 +242,4 @@ require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
 require_once( get_template_directory() . '/inc/admin-ajax-functions.php' );
+require_once( get_template_directory() . '/inc/social-medias-functions.php' );

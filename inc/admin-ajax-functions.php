@@ -37,9 +37,12 @@ function ueb_admin_ajax_extract_filters() {
         'sport_prefere', 'art_pratique', 'filiere', 'type_formation', 'sexe', 'handicap',
     );
 
+    // $_REQUEST et non $_POST : l'export CSV est déclenché par une navigation
+    // GET (pour que le navigateur gère le téléchargement), les autres appels
+    // restent en POST. Les valeurs sont sanitizées dans les deux cas.
     $filters = array();
     foreach ( $keys as $key ) {
-        $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+        $filters[ $key ] = isset( $_REQUEST[ $key ] ) ? sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) ) : '';
     }
 
     return $filters;
@@ -55,8 +58,10 @@ function ueb_admin_ajax_get_dossiers() {
     $filters   = ueb_admin_ajax_extract_filters();
     $recherche = isset( $_POST['recherche'] ) ? sanitize_text_field( wp_unslash( $_POST['recherche'] ) ) : '';
     $page      = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
+    $orderby   = isset( $_POST['orderby'] ) ? sanitize_key( wp_unslash( $_POST['orderby'] ) ) : 'date_creation';
+    $order     = isset( $_POST['order'] ) ? sanitize_key( wp_unslash( $_POST['order'] ) ) : 'desc';
 
-    $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, $page, 25 );
+    $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, $page, 25, $orderby, $order );
 
     $rows = array();
     foreach ( $result['rows'] as $row ) {
@@ -76,9 +81,61 @@ function ueb_admin_ajax_get_dossiers() {
         'total'    => $result['total'],
         'page'     => $result['page'],
         'nb_pages' => $result['nb_pages'],
+        'orderby'  => $orderby,
+        'order'    => $order,
     ) );
 }
 add_action( 'wp_ajax_ueb_admin_get_dossiers', 'ueb_admin_ajax_get_dossiers' );
+
+/**
+ * Export CSV des dossiers correspondant aux filtres et à la recherche
+ * actifs. Déclenché par une navigation GET (et non fetch) pour laisser le
+ * navigateur gérer le téléchargement.
+ *
+ * Pas de pagination ici : l'export porte sur l'intégralité du résultat
+ * filtré, ce qui est tout l'intérêt du bouton.
+ */
+function ueb_admin_ajax_export_csv() {
+    ueb_admin_ajax_check_access();
+
+    $filters   = ueb_admin_ajax_extract_filters();
+    $recherche = isset( $_REQUEST['recherche'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['recherche'] ) ) : '';
+    $orderby   = isset( $_REQUEST['orderby'] ) ? sanitize_key( wp_unslash( $_REQUEST['orderby'] ) ) : 'date_creation';
+    $order     = isset( $_REQUEST['order'] ) ? sanitize_key( wp_unslash( $_REQUEST['order'] ) ) : 'desc';
+
+    // 1 page de très grande taille = tout le résultat filtré.
+    $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, 1, 100000, $orderby, $order );
+
+    $nom_fichier = 'preinscriptions-ueb-' . date_i18n( 'Y-m-d-Hi' ) . '.csv';
+
+    nocache_headers();
+    header( 'Content-Type: text/csv; charset=utf-8' );
+    header( 'Content-Disposition: attachment; filename="' . $nom_fichier . '"' );
+
+    $sortie = fopen( 'php://output', 'w' );
+
+    // BOM UTF-8 : sans lui, Excel sous Windows affiche « Ã© » au lieu de « é ».
+    fwrite( $sortie, "\xEF\xBB\xBF" );
+
+    // Séparateur point-virgule : convention des Excel configurés en français.
+    fputcsv( $sortie, array( 'N° dossier', 'Nom', 'Prénom', 'Sexe', 'Faculté', 'Filière (1er choix)', 'Date de création' ), ';' );
+
+    foreach ( $result['rows'] as $row ) {
+        fputcsv( $sortie, array(
+            $row->numero_dossier,
+            $row->nom,
+            $row->prenom,
+            $row->sexe,
+            $row->faculte_nom,
+            $row->filiere1_libelle,
+            $row->date_creation,
+        ), ';' );
+    }
+
+    fclose( $sortie );
+    exit;
+}
+add_action( 'wp_ajax_ueb_admin_export_csv', 'ueb_admin_ajax_export_csv' );
 
 function ueb_admin_ajax_get_dossier_detail() {
     ueb_admin_ajax_check_access();
@@ -128,6 +185,7 @@ function ueb_admin_ajax_get_stats() {
     $filters = ueb_admin_ajax_extract_filters();
 
     wp_send_json_success( array(
+        'kpis'        => ueb_admin_kpis( $filters ),
         'chiffres'    => ueb_admin_chiffres_cles( $filters ),
         'tauxFaculte' => ueb_admin_taux_par_faculte( $filters ),
         'parFaculte'  => ueb_admin_stats_par_faculte( $filters ),

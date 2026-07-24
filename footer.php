@@ -28,6 +28,7 @@ if ( empty( $reseaux ) ) {
 
 </main>
 
+<?php if ( ! ueb_est_dashboard_plein_ecran() ) : ?>
 <footer class="site-footer"><div class="wrap">
     <div class="fgrid">
         <div>
@@ -70,6 +71,7 @@ if ( empty( $reseaux ) ) {
         </div>
     </div>
 </div></footer>
+<?php endif; ?>
 
 <?php wp_footer(); ?>
 </body>
