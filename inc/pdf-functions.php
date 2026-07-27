@@ -26,11 +26,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * diverses), chaque section de la fiche affiche, sous le libellé français
  * de chaque champ, sa traduction anglaise en petit texte gris semi-
  * transparent — cf. ueb_pdf_section_fiche().
- *
- * Depuis le ticket "contact d'urgence" (v2.3 du schéma), la personne à
- * contacter en cas d'urgence est un bloc dédié (nom_urgence,
- * numero_urgence, adresse_urgence), distinct du tuteur : la page 2
- * (fiche médicale) affiche ce contact d'urgence, et non plus le tuteur.
  */
 
 /**
@@ -131,11 +126,6 @@ function ueb_handle_pdf_generation() {
     $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
     $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
 
-    // Personne à contacter en cas d'urgence — distincte du tuteur.
-    $nom_urgence     = sanitize_text_field( $posted['nom_urgence'] ?? '' );
-    $numero_urgence  = sanitize_text_field( $posted['numero_urgence'] ?? '' );
-    $adresse_urgence = sanitize_text_field( $posted['adresse_urgence'] ?? '' );
-
     // Informations diverses.
     $numero_certificat_medical = sanitize_text_field( $posted['numero_certificat_medical'] ?? '' );
     $lieu_obtention_certificat = sanitize_text_field( $posted['lieu_obtention_certificat'] ?? '' );
@@ -211,9 +201,6 @@ function ueb_handle_pdf_generation() {
         'profession_mere'        => $profession_mere,
         'nom_tuteur'             => $nom_tuteur,
         'numero_tuteur'          => $numero_tuteur,
-        'nom_urgence'            => $nom_urgence,
-        'numero_urgence'         => $numero_urgence,
-        'adresse_urgence'        => $adresse_urgence,
         'sport_prefere'          => ueb_pdf_lookup( 'ueb_sports', $sport_id, 'libelle' ),
         'art_pratique'           => ueb_pdf_lookup( 'ueb_arts', $art_id, 'libelle' ),
         'numero_certificat_medical' => $numero_certificat_medical,
@@ -496,17 +483,13 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     /* --- Titre + numéro de dossier --- */
     ueb_pdf_txt( $pdf, 37, 30, 'FICHE DE PRÉINSCRIPTION', 15.5, 'B', $c['vert_titre'], 'C', 130 );
 
-    ueb_pdf_ligne( $pdf, 82, 40.5, 99, 40.5, $c['gris'], 0.2 );
-    ueb_pdf_txt( $pdf, 99.5, 38.7, '✂', 7, '', $c['gris'] );
-    ueb_pdf_ligne( $pdf, 106, 40.5, 123, 40.5, $c['gris'], 0.2 );
-
     $pdf->SetFont( 'dejavusans', 'B', 10.5 );
     $w1 = $pdf->GetStringWidth( 'N° Dossier :  ' );
     $pdf->SetFont( 'dejavusans', 'B', 11 );
     $w2 = $pdf->GetStringWidth( $d['numero_dossier'] );
     $x0 = 37 + ( 130 - $w1 - $w2 ) / 2;
-    ueb_pdf_txt( $pdf, $x0, 43, 'N° Dossier :  ', 10.5, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, $x0 + $w1, 42.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
+    ueb_pdf_txt( $pdf, $x0, 38, 'N° Dossier :  ', 10.5, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, $x0 + $w1, 37.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
 
     /* --- QR code + année académique --- */
     $etab = $d['faculte_code'] !== '' ? $d['faculte_code'] : ueb_pdf_sans_accents( $d['faculte'] );
@@ -527,7 +510,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 168, 52,   $d['annee_academique'], 7, 'B', $c['noir'], 'C', 40 );
 
     /* --- Sections (démarrent plus haut, gap réduit entre sections) --- */
-    $y = 59;
+    $y = 55;
 
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
         array( 'Faculté', 'Faculty', $d['faculte'],
@@ -636,10 +619,9 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     // Colonne droite
     ueb_pdf_txt( $pdf, 126, $ct + 7, 'Niveau :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 140, $ct + 7, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
-    ueb_pdf_txt( $pdf, 138, $ct + 11, 'Avis', 8, 'B', $c['noir'], 'C', 44 );
-    ueb_pdf_txt( $pdf, 138, $ct + 14.5, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
+    ueb_pdf_txt( $pdf, 138, $ct + 11.5, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
-    $pdf->Rect( 138, $ct + 17.5, 44, 6.5 );
+    $pdf->Rect( 138, $ct + 14.5, 44, 9.5 );
 
     // QR Code
     $qr_coupon = 'Code : ' . $d['numero_dossier'] . "\n"
@@ -757,14 +739,12 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'lieu',       'Adresse',           strtoupper( $d['adresse'] ) ),
     ), $y );
 
-    /* --- Personne à contacter en cas d'urgence ---
-       Utilise le bloc urgence dédié (nom_urgence / numero_urgence /
-       adresse_urgence), distinct du tuteur (cf. ticket contact urgence). */
+    /* --- Personne à contacter en cas d'urgence --- */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
-        array( 'personne',  'Nom et Prénom',       $d['nom_urgence'] ),
-        array( 'telephone', 'Téléphone (urgence)', $d['numero_urgence'] ),
-        array( 'lieu',      'Adresse (urgence)',   $d['adresse_urgence'] ),
+        array( 'personne',  'Nom et Prénom',       $d['nom_tuteur'] ),
+        array( 'telephone', 'Téléphone (urgence)', $d['numero_tuteur'] ),
+        array( 'lieu',      'Adresse (urgence)',   '' ),
     ), $y );
 
     /* --- Notes importantes --- */
