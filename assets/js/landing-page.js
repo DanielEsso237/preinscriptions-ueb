@@ -95,4 +95,24 @@
     }, 5000);
   });
 
+
+  /* --- Bouton "retour en haut" --- */
+  (function () {
+    var btn = document.getElementById('back-to-top');
+    if (!btn) return;
+    var seuil = 480;
+
+    function toggle() {
+      var y = window.scrollY || document.documentElement.scrollTop;
+      btn.classList.toggle('show', y > seuil);
+    }
+
+    toggle();
+    window.addEventListener('scroll', toggle, { passive: true });
+
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    });
+  })();
+
 })();

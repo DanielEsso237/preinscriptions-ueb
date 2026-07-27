@@ -130,10 +130,10 @@ function preinscriptions_campus() {
  */
 function preinscriptions_etapes() {
     return array(
-        array( 'title' => 'Crée ton compte',     'desc' => 'Inscris-toi avec ton e-mail et accède à ton espace candidat.' ),
-        array( 'title' => 'Complète le dossier', 'desc' => 'Tes infos, ta filière et tes pièces justificatives.' ),
-        array( 'title' => 'Paie les frais',      'desc' => 'Paiement en ligne sécurisé en quelques clics.' ),
-        array( 'title' => 'Suis ton dossier',    'desc' => 'Accusé de réception et suivi en temps réel.' ),
+        array( 'title' => 'Reçois ton numéro',  'desc' => 'Un numéro de dossier t\'est attribué automatiquement. Note-le pour reprendre ta préinscription à tout moment.' ),
+        array( 'title' => 'Remplis le formulaire', 'desc' => 'Tes infos, ta filière et tes choix en quelques minutes.' ),
+        array( 'title' => 'Télécharge ta fiche', 'desc' => 'Récupère ta fiche de préinscription et ton coupon récépissé en PDF.' ),
+        array( 'title' => 'Dépose ton dossier',  'desc' => 'Paie les frais en agence, imprime tes documents et dépose-les au campus.' ),
     );
 }
 

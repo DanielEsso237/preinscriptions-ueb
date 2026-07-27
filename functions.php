@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.2' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.3' );
 }
 
 /**
