@@ -82,7 +82,7 @@ $inscription = esc_url( preinscriptions_inscription_url() );
 
 <!-- FACULTES — Carrousel défilant automatique -->
 <section id="facultes"><div class="wrap">
-    <div class="head reveal"><span class="pill">Nos filières</span><h2>Trouve ta faculté</h2><p>Consultes la liste de nos établissements.</p></div>
+    <div class="head reveal"><span class="pill">Nos facultés</span><h2>Trouve ta faculté</h2><p>Consultes la liste de nos établissements.</p></div>
 
     <div class="fac-carousel-wrapper">
         <div class="fac-carousel">
@@ -226,7 +226,7 @@ $inscription = esc_url( preinscriptions_inscription_url() );
 <!-- CTA FINAL -->
 <section class="ctafin"><div class="wrap reveal">
     <h2>On t'attend à l'UEB.</h2>
-    <p>Les places sont limitées par filière. Lance ta préinscription dès maintenant.</p>
+    <p>Lance ta préinscription dès maintenant.</p>
     <a class="btn btn-primary" href="<?php echo $inscription; ?>">Commencer ma préinscription</a>
 </div></section>
 
