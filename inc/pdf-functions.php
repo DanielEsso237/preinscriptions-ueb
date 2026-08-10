@@ -47,6 +47,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * 3. En-tête page 2 (médicale) = même structure que page 1, titre "FICHE CMS"
  * 4. Section "FORMATION CHOISIE" : ordre Faculté, Type, Niveau LMD, 1er, 2e, 3e, Diplôme, Série, Moyenne, Mention, Année, Statut
  * 5. Coupon : numéro de compte récupère le nom réel de la faculté choisie
+ *
+ * PATCH v4 — 2 corrections :
+ * 1. Page 1 : suppression du ciseau décoratif entre le titre et le N° Dossier
+ * 2. Page 2 (CMS) : "CODE DE PRÉINSCRIPTION" remplacé par "N° Dossier"
+ *    avec le même style que la page 1 (texte noir + numéro en orange)
+ *
+ * PATCH v4+ : crédit groupe @Nexus en bas de page
+ * Texte : "@Nexus: Nous developpons vos solutions"
  */
 
 /**
@@ -564,24 +572,21 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $c = ueb_pdf_couleurs();
     $nr = '(non renseigné)';
     $pdf->AddPage();
-    $pdf->Rect( 0, 0, 210, 2.5, 'F', array(), $c['vert'] );
     ueb_pdf_entete_bilingue( $pdf, 6 );
     /* --- Cadre PHOTO --- */
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
     $pdf->Rect( 8, 28, 22, 24 );
     ueb_pdf_txt( $pdf, 8, 38.5, 'PHOTO', 6.5, '', $c['gris'], 'C', 22 );
-    /* --- Titre + numéro de dossier --- */
+    /* --- Titre --- */
     ueb_pdf_txt( $pdf, 37, 30, 'FICHE DE PRÉINSCRIPTION', 15.5, 'B', $c['vert_titre'], 'C', 130 );
-    ueb_pdf_ligne( $pdf, 82, 40.5, 99, 40.5, $c['gris'], 0.2 );
-    ueb_pdf_txt( $pdf, 99.5, 38.7, '✂', 7, '', $c['gris'] );
-    ueb_pdf_ligne( $pdf, 106, 40.5, 123, 40.5, $c['gris'], 0.2 );
+    /* --- N° Dossier --- */
     $pdf->SetFont( 'dejavusans', 'B', 10.5 );
     $w1 = $pdf->GetStringWidth( 'N° Dossier : ' );
     $pdf->SetFont( 'dejavusans', 'B', 11 );
     $w2 = $pdf->GetStringWidth( $d['numero_dossier'] );
     $x0 = 37 + ( 130 - $w1 - $w2 ) / 2;
-    ueb_pdf_txt( $pdf, $x0, 43, 'N° Dossier : ', 10.5, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, $x0 + $w1, 42.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
+    ueb_pdf_txt( $pdf, $x0, 41, 'N° Dossier : ', 10.5, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, $x0 + $w1, 40.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
     /* --- QR + année académique --- */
     $etab = $d['faculte_code'] !== '' ? $d['faculte_code'] : ueb_pdf_sans_accents( $d['faculte'] );
     $qr_fiche = 'Dossier : ' . $d['numero_dossier'] . "\n"
@@ -597,22 +602,14 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_qr_stylise( $pdf, $qr_fiche, 178, 27, 20 );
     ueb_pdf_txt( $pdf, 168, 48.3, 'Année académique', 7, 'B', $c['noir'], 'C', 40 );
     ueb_pdf_txt( $pdf, 168, 52, $d['annee_academique'], 7, 'B', $c['noir'], 'C', 40 );
-    /* ── SECTIONS ──
-       POINT 4 : ordre Formation modifié :
-         Ligne 1 : Faculté | Diplôme d'admission
-         Ligne 2 : Type de formation | Série / Spécialité
-         Ligne 3 : Niveau LMD | Moyenne obtenue ← Niveau LMD remonté ici
-         Ligne 4 : 1er choix | Mention
-         Ligne 5 : 2e choix | Année d'obtention
-         Ligne 6 : 3e choix | Statut
-    */
+    /* ── SECTIONS ── */
     $y = 57;
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
         array( 'Faculté', 'Faculty', $d['faculte'],
                "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
         array( 'Type de formation', 'Training type', $d['type_formation'],
                'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
-        array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'], // ← remonté
+        array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'],
                'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
         array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
                'Mention', 'Mention / Honors', $d['mention'] ),
@@ -670,22 +667,15 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->Rect( 12, $y_sig + 3.5, 51, 7 );
     $pdf->Rect( 139, $y_sig + 3.5, 51, 7 );
     $y_bas_fiche = $y_sig + 3.5 + 7;
-    /* ── POINT 2 : ligne de découpe — ✂ centré verticalement sur le trait ──
-       On fixe d'abord $y_decoupe, puis on place le ciseau avec SetXY
-       exactement sur cette valeur Y (pas $y_decoupe - 0.6 comme avant,
-       qui décalait le glyphe vers le haut).
-       La hauteur du glyphe ✂ en taille 9pt est ~3.2mm ; on remonte de la
-       moitié pour le centrer sur le trait : offset = -1.6mm. */
+    /* --- Ligne de découpe + ciseau aligné --- */
     $y_decoupe = $y_bas_fiche + 3;
     if ( $y_decoupe > 296 - 39 - 5 ) {
         $y_decoupe = 296 - 39 - 5;
     }
-    // Ciseau : SetXY explicite pour coller le baseline au trait
     $pdf->SetFont( 'dejavusans', '', 9 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
-    $pdf->SetXY( 3.5, $y_decoupe - 1.6 ); // centré verticalement sur $y_decoupe
+    $pdf->SetXY( 3.5, $y_decoupe - 1.6 );
     $pdf->Cell( 7, 3.2, '✂', 0, 0, 'C' );
-    // Trait interrompu — même Y que le ciseau
     ueb_pdf_ligne( $pdf, 11, $y_decoupe, 206, $y_decoupe, $c['noir'], 0.3, '2.2,1.6' );
     /* ── COUPON RÉCÉPISSÉ ── */
     $ct = $y_decoupe + 2.5;
@@ -696,7 +686,6 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->RoundedRect( 4, $ct, 202, $coupon_h, 1.5, '1111', 'D',
         array( 'width' => 0.5, 'dash' => 0, 'color' => $c['vert'] ) );
     ueb_pdf_txt( $pdf, 55, $ct + 3, 'RÉCÉPISSÉ DE DÉPÔT', 11.5, 'B', $c['vert_titre'], 'C', 100 );
-    // Infos candidat (colonne gauche)
     ueb_pdf_txt( $pdf, 10, $ct + 7, 'Code :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 21.5, $ct + 7, $d['numero_dossier'], 8, 'B', $c['orange'] );
     ueb_pdf_txt( $pdf, 10, $ct + 11.5, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
@@ -705,14 +694,11 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 23, $ct + 16, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 10, $ct + 20.5, 'Établissement :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 36.5, $ct + 20.5, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
-    // Niveau + signature (colonne droite) — POINT 1 : "Avis" supprimé
     ueb_pdf_txt( $pdf, 126, $ct + 7, 'Niveau :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 140, $ct + 7, $d['niveau_lmd'], 8, 'B', $c['vert_titre'] );
-    // "Avis" retiré — on place directement la zone signature
     ueb_pdf_txt( $pdf, 138, $ct + 11, "Signature de l'Administration", 8, 'B', $c['noir'], 'C', 44 );
     $pdf->SetLineStyle( array( 'width' => 0.25, 'dash' => '1.6,1.4', 'color' => $c['gris'] ) );
-    $pdf->Rect( 138, $ct + 14.5, 44, 9 ); // zone agrandie (gain de la ligne "Avis")
-    // QR code coupon
+    $pdf->Rect( 138, $ct + 14.5, 44, 9 );
     $qr_coupon = 'Code : ' . $d['numero_dossier'] . "\n"
         . 'Nom : ' . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
         . 'Fil : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
@@ -721,11 +707,6 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . "Bq : CCABANK\n"
         . 'Compte : 10039-10012-0027277050';
     ueb_pdf_qr_stylise( $pdf, $qr_coupon, 187, $ct + 5, 14 );
-    /* ── Encadré paiement ──
-       POINT 5 : "N°Compte Bancaire" affiche le nom réel de la faculté
-       récupéré dans $d['faculte'] (déjà résolu depuis ueb_facultes dans
-       ueb_handle_pdf_generation), plus "DE GESTION" codé en dur.
-       Format : "<NOM FACULTE> | CCA BANK-10039-10012-0027277050" */
     $pdf->RoundedRect( 9, $ct + 25, 192, 10, 1, '1111', 'D',
         array( 'width' => 0.3, 'dash' => 0, 'color' => $c['noir'] ) );
     ueb_pdf_ligne( $pdf, 68, $ct + 26, 68, $ct + 34, $c['ligne'], 0.25 );
@@ -738,19 +719,19 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 77, $ct + 30.8, '.....................', 6.4, '', $c['noir'] );
     ueb_pdf_icone( $pdf, 'banque', 117, $ct + 27.3, 6 );
     ueb_pdf_txt( $pdf, 126, $ct + 26.3, '*N°Compte Bancaire :', 6.6, 'B', $c['noir'] );
-    // Nom de la faculté depuis $d['faculte'] (ex. "Faculté des Sciences")
     $faculte_compte = $d['faculte'] !== '' ? strtoupper( $d['faculte'] ) : 'FACULTÉ';
     $pdf->SetFont( 'dejavusans', '', 6 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
     $pdf->SetXY( 126, $ct + 29.6 );
     $pdf->MultiCell( 74, 2.9, $faculte_compte . "\nCCA BANK-10039-10012-0027277050", 0, 'L' );
+
+    /* --- Crédit groupe en bas de page --- */
+    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions', 6.5, 'I', $c['gris'], 'C', 210 );
 }
 
 
 /* ============================================================
-   PAGE 2 — FICHE CMS (ex-médicale)
-   POINT 3 : en-tête identique à la page 1 (ueb_pdf_entete_bilingue)
-             avec titre "FICHE CMS" à la place de "FICHE DE PRÉINSCRIPTION"
+   PAGE 2 — FICHE CMS
    ============================================================ */
 
 /**
@@ -795,19 +776,18 @@ function ueb_pdf_boite_medicale( $pdf, $titre, $icone_titre, $largeur_pastille, 
 function ueb_pdf_page_medicale( $pdf, $d ) {
     $c = ueb_pdf_couleurs();
     $pdf->AddPage();
-    /* ── En-tête bilingue (identique page 1) ── */
+    /* ── En-tête bilingue identique page 1 ── */
     ueb_pdf_entete_bilingue( $pdf, 6 );
-    /* ── Titre "FICHE CMS" — même position et style que le titre page 1 ── */
+    /* ── Titre "FICHE CMS" — même style que page 1 ── */
     ueb_pdf_txt( $pdf, 37, 30, 'FICHE CMS', 15.5, 'B', $c['vert_titre'], 'C', 130 );
-    /* --- Bandeau code de préinscription (décalé pour laisser de la place) --- */
+    /* ── N° Dossier — même style que page 1 (noir + orange) */
+    $pdf->SetFont( 'dejavusans', 'B', 10.5 );
+    $w1 = $pdf->GetStringWidth( 'N° Dossier : ' );
     $pdf->SetFont( 'dejavusans', 'B', 11 );
-    $w1 = $pdf->GetStringWidth( 'CODE DE PRÉINSCRIPTION : ' );
     $w2 = $pdf->GetStringWidth( $d['numero_dossier'] );
-    $wb = $w1 + $w2 + 16;
-    $xb = ( 210 - $wb ) / 2;
-    $pdf->RoundedRect( $xb, 40, $wb, 10.5, 1.5, '1111', 'F', array(), $c['vert'] );
-    ueb_pdf_txt( $pdf, $xb + 8, 42.6, 'CODE DE PRÉINSCRIPTION : ', 11, 'B', array( 255, 255, 255 ) );
-    ueb_pdf_txt( $pdf, $xb + 8 + $w1, 42.6, $d['numero_dossier'], 11, 'B', $c['or'] );
+    $x0 = 37 + ( 130 - $w1 - $w2 ) / 2;
+    ueb_pdf_txt( $pdf, $x0, 41, 'N° Dossier : ', 10.5, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, $x0 + $w1, 40.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
     ueb_pdf_txt( $pdf, 0, 55,
         '(Imprimez ces deux fiches et apportez-les au Centre médico-social lors de la visite médicale)',
         9, 'I', $c['gris'], 'C', 210 );
@@ -818,7 +798,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         $date_fr = date( 'd/m/Y', $ts );
     }
     $sexe_label = $d['sexe'] === 'M' ? 'MASCULIN' : ( $d['sexe'] === 'F' ? 'FÉMININ' : '' );
-    $y = 64;
+    $y = 62;
     $y = ueb_pdf_boite_medicale( $pdf, 'INFORMATIONS PERSONNELLES', 'personne', 76, array(
         array( 'personne', 'Nom(s)', strtoupper( $d['nom'] ) ),
         array( 'personne', 'Prénom(s)', strtoupper( $d['prenom'] ) ),
@@ -828,7 +808,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         array( 'genre', 'Sexe', $sexe_label ),
         array( 'lieu', 'Adresse', strtoupper( $d['adresse'] ) ),
     ), $y );
-    /* --- Personne à contacter en cas d'urgence --- */
+    /* --- Personne à contacter --- */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
         array( 'personne', 'Nom et Prénom', $d['nom_tuteur'] ),
@@ -852,6 +832,9 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ueb_pdf_icone( $pdf, 'coeur', 101.5, $yf - 3.5, 7 );
     ueb_pdf_txt( $pdf, 0, $yf + 6, 'Merci de votre collaboration.', 10.5, 'B', $c['noir'], 'C', 210 );
     ueb_pdf_txt( $pdf, 0, $yf + 12, 'Thank you for your cooperation.', 9.5, 'I', $c['gris'], 'C', 210 );
+
+    /* --- Crédit groupe en bas de page --- */
+    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions', 6.5, 'I', $c['gris'], 'C', 210 );
 }
 
 
