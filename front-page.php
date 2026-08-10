@@ -174,26 +174,35 @@ $inscription = esc_url( preinscriptions_inscription_url() );
 }
 </style>
 
-<!-- CAMPUS -->
+<!-- CAMPUS — Onglets a defilement automatique -->
 <section id="campus" style="background:#eef4f1"><div class="wrap">
     <div class="head reveal"><span class="pill">Nos campus</span><h2>Choisis ton site</h2></div>
-    <div class="tabs reveal">
-        <?php $i = 0; foreach ( preinscriptions_campus() as $c ) : ?>
-            <button class="tab<?php echo 0 === $i ? ' active' : ''; ?>" data-t="<?php echo (int) $i; ?>"><?php echo esc_html( $c['name'] ); ?></button>
-        <?php $i++; endforeach; ?>
-    </div>
-    <?php $i = 0; foreach ( preinscriptions_campus() as $c ) : ?>
-        <div class="panel<?php echo 0 === $i ? ' show' : ''; ?>">
-            <div class="img"><img src="<?php echo esc_url( preinscriptions_img( $c['img'] ) ); ?>" alt="<?php echo esc_attr( $c['alt'] ); ?>" loading="lazy" decoding="async" width="1000" height="500"></div>
-            <div class="txt"><h3><?php echo esc_html( $c['name'] ); ?></h3><p><?php echo esc_html( $c['desc'] ); ?></p></div>
+    <?php $campus = preinscriptions_campus(); ?>
+    <div class="campus-auto" data-campus>
+        <div class="tabs reveal" role="tablist" aria-label="Nos campus">
+            <?php $i = 0; foreach ( $campus as $c ) : $on = ( 0 === $i ); ?>
+                <button type="button" class="tab<?php echo $on ? ' active' : ''; ?>" role="tab"
+                        id="campus-tab-<?php echo (int) $i; ?>" aria-controls="campus-panel-<?php echo (int) $i; ?>"
+                        aria-selected="<?php echo $on ? 'true' : 'false'; ?>" tabindex="<?php echo $on ? '0' : '-1'; ?>"
+                        data-t="<?php echo (int) $i; ?>"><?php echo esc_html( $c['name'] ); ?><i class="tab-prog" aria-hidden="true"></i></button>
+            <?php $i++; endforeach; ?>
         </div>
-    <?php $i++; endforeach; ?>
+        <div class="panels">
+            <?php $i = 0; foreach ( $campus as $c ) : $on = ( 0 === $i ); ?>
+                <div class="panel<?php echo $on ? ' show' : ''; ?>" role="tabpanel"
+                     id="campus-panel-<?php echo (int) $i; ?>" aria-labelledby="campus-tab-<?php echo (int) $i; ?>">
+                    <div class="img"><img src="<?php echo esc_url( preinscriptions_img( $c['img'] ) ); ?>" alt="<?php echo esc_attr( $c['alt'] ); ?>" loading="lazy" decoding="async" width="1000" height="500"></div>
+                    <div class="txt"><h3><?php echo esc_html( $c['name'] ); ?></h3><p><?php echo esc_html( $c['desc'] ); ?></p></div>
+                </div>
+            <?php $i++; endforeach; ?>
+        </div>
+    </div>
 </div></section>
 
 <!-- VIE ETUDIANTE -->
 <section class="vie"><div class="wrap">
     <div class="head reveal"><span class="pill">Au quotidien</span><h2>La vie sur le campus</h2></div>
-    <div class="vgrid">
+    <div class="vgrid" data-vswap>
         <?php foreach ( preinscriptions_vie() as $v ) : ?>
             <div class="vt<?php echo ! empty( $v['big'] ) ? ' big' : ''; ?> reveal"><img src="<?php echo esc_url( preinscriptions_img( $v['img'] ) ); ?>" alt="<?php echo esc_attr( $v['alt'] ); ?>" loading="lazy" decoding="async"></div>
         <?php endforeach; ?>

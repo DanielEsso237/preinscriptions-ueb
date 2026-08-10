@@ -48,7 +48,7 @@ get_header();
 <div class="preinscription-page">
 
     <div class="preinscription-hero">
-        <span class="preinscription-eyebrow">● Candidatures ouvertes · 2025–2027</span>
+        <span class="preinscription-eyebrow">● Candidatures ouvertes · 2026–2027</span>
         <h1 class="preinscription-title">Ta préinscription à<br><span class="accent">l'UEB</span> commence ici.</h1>
         <p class="preinscription-subtitle">Remplis ce formulaire en quelques minutes. Nous t'accompagnons à chaque étape.</p>
     </div>
