@@ -9,6 +9,35 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/* Période de préinscription dépassée : on n'initialise même pas de
+   numéro de dossier (inutile de consommer la séquence), et on affiche
+   un message de clôture au lieu du formulaire. */
+if ( preinscriptions_cloture_atteinte() ) {
+    get_header();
+    ?>
+    <div class="countdown-page">
+        <div class="countdown-wrap">
+            <span class="countdown-eyebrow">● Préinscriptions 2026–2027</span>
+            <h1 class="countdown-title">Les préinscriptions sont <span class="accent">closes</span>.</h1>
+            <p class="countdown-subtitle">
+                La période de préinscription (1er septembre – 31 octobre 2026) est terminée.
+                Aucune nouvelle préinscription n'est acceptée au-delà de cette date.
+            </p>
+            <div class="countdown-actions">
+                <a class="btn btn-secondary" href="<?php echo esc_url( get_template_directory_uri() . '/assets/pdf/communique-recteur.pdf' ); ?>" target="_blank" rel="noopener noreferrer">
+                    Lire le communiqué du recteur (PDF)
+                </a>
+                <a class="btn btn-ghost" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+                    &larr; Retour à l'accueil
+                </a>
+            </div>
+        </div>
+    </div>
+    <?php
+    get_footer();
+    return;
+}
+
 /*
  * Numéro de dossier : priorité session > cookie persistant > génération.
  */

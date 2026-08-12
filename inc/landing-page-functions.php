@@ -164,4 +164,63 @@ function preinscriptions_temoignages() {
         array( 'initials' => 'CN', 'quote' => "Le campus est moderne et à taille humaine, je m'y sens bien.",                            'name' => 'Carine N.', 'info' => 'FMSP · L1' ),
         array( 'initials' => 'EB', 'quote' => 'Les enseignants sont disponibles et la vie associative est riche.',                        'name' => 'Éric B.',   'info' => 'ISABEE · L3' ),
     );
+    
 }
+
+/**
+ * Date/heure d'ouverture officielle des préinscriptions.
+ * Un seul endroit à modifier si la date change.
+ */
+if ( ! defined( 'PREINSCRIPTIONS_DATE_OUVERTURE' ) ) {
+    define( 'PREINSCRIPTIONS_DATE_OUVERTURE', '2026-09-01 00:00:00' );
+}
+
+/**
+ * Est-ce que la date d'ouverture est déjà atteinte (heure du serveur) ?
+ *
+ * @return bool
+ */
+function preinscriptions_ouverture_atteinte() {
+    return new DateTimeImmutable( 'now' ) >= new DateTimeImmutable( PREINSCRIPTIONS_DATE_OUVERTURE );
+}
+
+/**
+ * URL de la page de compte à rebours (template page-compte-rebours.php).
+ * Même logique que preinscriptions_inscription_url().
+ *
+ * @return string
+ */
+function preinscriptions_compte_rebours_url() {
+    $url = '#';
+
+    $pages = get_posts( array(
+        'post_type'      => 'page',
+        'post_status'    => 'publish',
+        'meta_key'       => '_wp_page_template',
+        'meta_value'     => 'page-compte-rebours.php',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ) );
+
+    if ( ! empty( $pages ) ) {
+        $url = get_permalink( $pages[0] );
+    }
+
+    return apply_filters( 'preinscriptions_compte_rebours_url', $url );
+}
+
+/**
+ * URL "effective" à utiliser pour tous les boutons de préinscription du
+ * site : pointe vers le compte à rebours tant que l'ouverture n'est pas
+ * atteinte, puis bascule automatiquement vers le vrai formulaire. Aucune
+ * intervention manuelle nécessaire le jour de l'ouverture.
+ *
+ * @return string
+ */
+function preinscriptions_bouton_url() {
+    if ( preinscriptions_ouverture_atteinte() ) {
+        return preinscriptions_inscription_url();
+    }
+    return preinscriptions_compte_rebours_url();
+}
+

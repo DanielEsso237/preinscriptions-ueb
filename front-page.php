@@ -11,7 +11,7 @@
 
 get_header();
 
-$inscription = esc_url( preinscriptions_inscription_url() );
+$inscription = esc_url( preinscriptions_bouton_url() );
 ?>
 
 <!-- HERO -->
