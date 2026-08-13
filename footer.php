@@ -53,8 +53,8 @@ if ( empty( $reseaux ) ) {
             <h4>Contact</h4>
             <ul>
                 <li>Ébolowa, Région du Sud</li>
-                <li><a href="mailto:contact@ueb.cm">contact@ueb.cm</a></li>
-                <li>+237 6 00 00 00 00</li>
+                <li><a href="mailto:info@unv-ebolowa.cm">info@unv-ebolowa.cm</a></li>
+                <li>+237 6 76 29 54 88</li>
             </ul>
         </div>
         <div>
