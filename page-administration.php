@@ -83,6 +83,11 @@ get_header();
     <symbol id="ueb-i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
     <symbol id="ueb-i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
     <symbol id="ueb-i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="ueb-i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <!-- Formats d'export : une feuille commune, un signe distinctif par format. -->
+    <symbol id="ueb-i-file-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/><path d="M14 13h2.5"/><path d="M14 17v-4"/></symbol>
+    <symbol id="ueb-i-file-sheet" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 12h9M8 16h9M11.5 12v7"/></symbol>
+    <symbol id="ueb-i-file-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></symbol>
 </svg>
 
 <div class="admin-page">
@@ -184,10 +189,53 @@ get_header();
                         <svg class="admin-icon admin-theme-icon--sun" aria-hidden="true"><use href="#ueb-i-sun"/></svg>
                     </button>
 
-                    <button type="button" id="admin-export" class="admin-tbtn">
-                        <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-download"/></svg>
-                        Exporter
-                    </button>
+                    <!-- Export de la liste filtrée : le format est un choix,
+                         pas un réglage caché — les trois sont donnés d'emblée. -->
+                    <div class="admin-export" id="admin-export-wrap">
+                        <button type="button" id="admin-export" class="admin-tbtn"
+                                aria-haspopup="menu" aria-expanded="false" aria-controls="admin-export-menu">
+                            <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-download"/></svg>
+                            Exporter
+                            <svg class="admin-icon admin-icon--sm admin-export-caret" aria-hidden="true"><use href="#ueb-i-chevron-down"/></svg>
+                        </button>
+
+                        <div id="admin-export-menu" class="admin-export-menu" role="menu"
+                             aria-labelledby="admin-export" hidden>
+                            <p class="admin-export-menu-title" id="admin-export-menu-title">
+                                Liste des préinscrits
+                                <span>Modèle officiel · sélection affichée</span>
+                            </p>
+
+                            <button type="button" class="admin-export-item" role="menuitem" data-format="pdf">
+                                <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-file-pdf"/></svg>
+                                <span class="admin-export-item-text">
+                                    Document PDF
+                                    <span>Prêt à imprimer et à signer</span>
+                                </span>
+                                <span class="admin-export-ext">PDF</span>
+                            </button>
+
+                            <button type="button" class="admin-export-item" role="menuitem" data-format="excel">
+                                <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-file-sheet"/></svg>
+                                <span class="admin-export-item-text">
+                                    Classeur Excel
+                                    <span>Colonnes filtrables et triables</span>
+                                </span>
+                                <span class="admin-export-ext">XLSX</span>
+                            </button>
+
+                            <button type="button" class="admin-export-item" role="menuitem" data-format="word">
+                                <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-file-doc"/></svg>
+                                <span class="admin-export-item-text">
+                                    Document Word
+                                    <span>Modifiable avant transmission</span>
+                                </span>
+                                <span class="admin-export-ext">DOCX</span>
+                            </button>
+                        </div>
+
+                        <p id="admin-export-status" class="admin-export-status" role="status" aria-live="polite" hidden></p>
+                    </div>
 
                     <button type="button" id="admin-filter-toggle" class="admin-tbtn admin-tbtn--primary"
                             aria-controls="admin-filter-drawer" aria-expanded="false">

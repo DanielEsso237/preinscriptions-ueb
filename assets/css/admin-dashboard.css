@@ -24,11 +24,12 @@
 
 /* -------------------------------------------------------------------------
    1. TOKENS DE THÈME
-   Le thème clair est la valeur par défaut. Le thème sombre s'applique soit
-   par préférence système, soit — et c'est prioritaire — via l'attribut
-   data-ueb-theme posé sur <html> par le bouton de bascule (mémorisé en
-   localStorage). Les deux sélecteurs explicites permettent de forcer un
-   thème quel que soit le réglage système.
+   Le thème clair est le défaut du tableau de bord, sans condition : le
+   réglage système n'est volontairement pas suivi (pas de
+   prefers-color-scheme), car un poste configuré en sombre affichait le
+   dashboard dans un thème que personne n'avait demandé. Le thème sombre
+   s'obtient uniquement par l'attribut data-ueb-theme="dark" posé sur <html>
+   par le bouton de bascule, et mémorisé en localStorage.
    ------------------------------------------------------------------------- */
 :root {
     /* Surfaces */
@@ -111,60 +112,7 @@
     color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-ueb-theme="light"]) {
-        --ueb-bg:            #0d1310;
-        --ueb-surface:       #151d18;
-        --ueb-surface-2:     #1a231e;
-        --ueb-surface-hover: #1f2b24;
-        --ueb-border:        #263229;
-        --ueb-border-strong: #35453a;
-
-        --ueb-text:          #e7ede9;
-        --ueb-text-soft:     #b3c0b8;
-        --ueb-text-muted:    #8d9d94;
-
-        --ueb-primary:       #5cb37e;
-        --ueb-primary-soft:  #7cc79a;
-        --ueb-primary-wash:  rgba(92, 179, 126, .14);
-        --ueb-on-primary:    #08130d;
-        --ueb-accent:        #e2bd46;
-        --ueb-accent-bright: #e2bd46;
-        --ueb-accent-wash:   rgba(226, 189, 70, .16);
-        --ueb-on-accent:     #14200f;
-
-        --ueb-nav-bg:        #0a100c;
-        --ueb-nav-text:      rgba(231, 237, 233, .7);
-        --ueb-nav-text-hi:   #ffffff;
-        --ueb-nav-hover:     rgba(255, 255, 255, .07);
-        --ueb-nav-active-bg: #e2bd46;
-        --ueb-nav-active-tx: #14200f;
-        --ueb-nav-border:    rgba(255, 255, 255, .1);
-
-        --ueb-danger:        #f2837b;
-        --ueb-danger-wash:   #2a1512;
-        --ueb-success:       #5cb37e;
-
-        --ueb-chart-1: #5cb37e;
-        --ueb-chart-2: #e2bd46;
-        --ueb-chart-3: #6bb6d8;
-        --ueb-chart-4: #e0916a;
-        --ueb-chart-5: #a8d16a;
-        --ueb-chart-6: #b598e0;
-        --ueb-chart-7: #d9a86a;
-        --ueb-chart-8: #63c9b4;
-        --ueb-chart-grid: rgba(231, 237, 233, .1);
-        --ueb-chart-tick: #8d9d94;
-
-        --ueb-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
-        --ueb-shadow:    0 1px 3px rgba(0, 0, 0, .45), 0 8px 20px -10px rgba(0, 0, 0, .6);
-        --ueb-shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, .7);
-
-        color-scheme: dark;
-    }
-}
-
-/* Bascule manuelle — gagne toujours sur la préférence système. */
+/* Thème sombre : uniquement sur choix explicite du bouton de bascule. */
 :root[data-ueb-theme="dark"] {
     --ueb-bg:            #0d1310;
     --ueb-surface:       #151d18;
@@ -263,6 +211,71 @@
     outline: 2px solid var(--ueb-accent);
     outline-offset: 2px;
     border-radius: 4px;
+}
+
+/* Boutons .btn du dashboard (connexion, filtres).
+   Ils étaient laissés aux styles du site public : .btn-primary y arrive
+   d'header-footer.css avec une ombre dorée de landing page, et
+   .btn-secondary n'y est pas défini du tout — le bouton « Réinitialiser »
+   retombait donc sur le rendu natif du navigateur, illisible en thème
+   sombre. Ici ils suivent les tokens, donc les deux thèmes. */
+.admin-page .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 44px;
+    padding: .7rem 1.4rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    box-shadow: none;
+    font-family: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease),
+                transform var(--ueb-fast) var(--ueb-ease);
+}
+.admin-page .btn:active { transform: scale(.98); }
+
+.admin-page .btn-primary {
+    background: var(--ueb-primary);
+    border-color: var(--ueb-primary);
+    color: var(--ueb-on-primary);
+    box-shadow: none;
+}
+.admin-page .btn-primary:hover {
+    background: var(--ueb-primary-soft);
+    border-color: var(--ueb-primary-soft);
+    transform: none;
+    box-shadow: none;
+}
+
+.admin-page .btn-secondary {
+    background: var(--ueb-surface);
+    border-color: var(--ueb-border-strong);
+    color: var(--ueb-text);
+}
+.admin-page .btn-secondary:hover {
+    background: var(--ueb-surface-hover);
+    border-color: var(--ueb-primary);
+}
+
+/* Contrôles natifs : sans couleurs explicites, les listes déroulantes et
+   leurs options retombent sur la palette du système, qui n'a aucune raison
+   de suivre le thème choisi ici. */
+.admin-page select,
+.admin-page input,
+.admin-page textarea,
+.admin-page button {
+    color: var(--ueb-text);
+    font-family: inherit;
+}
+.admin-page select option {
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
 }
 
 /* -------------------------------------------------------------------------
@@ -382,7 +395,7 @@
     line-height: 1.2;
 }
 .admin-sidebar-title {
-    font-size: .74rem;
+    font-size: .78rem;
     color: var(--ueb-nav-text);
     line-height: 1.3;
 }
@@ -395,7 +408,7 @@
     flex: 1;
 }
 .admin-sidebar-heading {
-    font-size: .66rem;
+    font-size: .75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .09em;
@@ -479,7 +492,7 @@
     white-space: nowrap;
 }
 .admin-sidebar-user-role {
-    font-size: .7rem;
+    font-size: .76rem;
     color: var(--ueb-nav-text);
 }
 .admin-sidebar-logout {
@@ -575,23 +588,155 @@
 .admin-filter-badge {
     background: var(--ueb-accent-bright);
     color: var(--ueb-on-accent);
-    font-size: .7rem;
+    font-size: .75rem;
     font-weight: 700;
     padding: .08rem .42rem;
     border-radius: 999px;
-    min-width: 1.15rem;
+    min-width: 1.2rem;
     text-align: center;
     animation: ueb-pop var(--ueb-normal) var(--ueb-ease) both;
 }
+
+/* -------------------------------------------------------------------------
+   MENU D'EXPORT (PDF / Excel / Word)
+   Le format est un choix éditorial : les trois options sont visibles d'un
+   coup, avec ce que chacune apporte, plutôt qu'un réglage à deviner.
+   ------------------------------------------------------------------------- */
+.admin-export { position: relative; }
+
+.admin-export-caret {
+    margin-left: -.15rem;
+    transition: transform var(--ueb-fast) var(--ueb-ease);
+}
+.admin-export [aria-expanded="true"] .admin-export-caret { transform: rotate(180deg); }
+
+/* Attente : le bouton reste lisible, seule l'icône tourne. */
+.admin-tbtn.is-busy { cursor: progress; }
+.admin-tbtn.is-busy > .admin-icon:first-child {
+    animation: ueb-export-spin 900ms linear infinite;
+}
+@keyframes ueb-export-spin {
+    to { transform: rotate(360deg); }
+}
+
+.admin-export-menu {
+    position: absolute;
+    top: calc(100% + .5rem);
+    right: 0;
+    z-index: 40;
+    width: min(20rem, calc(100vw - 2rem));
+    padding: .4rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius);
+    box-shadow: var(--ueb-shadow-lg);
+    opacity: 0;
+    transform: translateY(-.35rem) scale(.98);
+    transform-origin: top right;
+    transition: opacity var(--ueb-exit) var(--ueb-ease-in),
+                transform var(--ueb-exit) var(--ueb-ease-in);
+}
+.admin-export-menu.is-open {
+    opacity: 1;
+    transform: none;
+    transition: opacity var(--ueb-normal) var(--ueb-spring),
+                transform var(--ueb-normal) var(--ueb-spring);
+}
+
+.admin-export-menu-title {
+    margin: 0;
+    padding: .5rem .65rem .55rem;
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--ueb-text);
+    border-bottom: 1px solid var(--ueb-border);
+}
+.admin-export-menu-title span {
+    display: block;
+    margin-top: .12rem;
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--ueb-text-muted);
+}
+
+.admin-export-item {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    width: 100%;
+    min-height: 48px;
+    margin-top: .18rem;
+    padding: .55rem .65rem;
+    background: none;
+    border: 0;
+    border-radius: var(--ueb-radius-sm);
+    color: var(--ueb-text);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease);
+}
+.admin-export-item:hover,
+.admin-export-item:focus-visible { background: var(--ueb-surface-hover); }
+.admin-export-item > .admin-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--ueb-primary);
+}
+
+.admin-export-item-text {
+    flex: 1;
+    min-width: 0;
+    font-size: .88rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.admin-export-item-text span {
+    display: block;
+    margin-top: .1rem;
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ueb-text-soft);
+}
+
+.admin-export-ext {
+    flex-shrink: 0;
+    padding: .12rem .45rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--ueb-text-muted);
+}
+
+/* Retour d'état sous le bouton : préparation, succès, échec. */
+.admin-export-status {
+    position: absolute;
+    top: calc(100% + .5rem);
+    right: 0;
+    z-index: 30;
+    max-width: min(20rem, calc(100vw - 2rem));
+    margin: 0;
+    padding: .5rem .75rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-left: 3px solid var(--ueb-text-muted);
+    border-radius: var(--ueb-radius-sm);
+    box-shadow: var(--ueb-shadow);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--ueb-text);
+    animation: ueb-pop var(--ueb-fast) var(--ueb-ease) both;
+}
+.admin-export-status.is-attente { border-left-color: var(--ueb-accent); }
+.admin-export-status.is-succes  { border-left-color: var(--ueb-success); }
+.admin-export-status.is-erreur  { border-left-color: var(--ueb-danger); }
 
 /* Icône soleil/lune : une seule est visible selon le thème actif. */
 .admin-theme-icon--sun { display: none; }
 :root[data-ueb-theme="dark"] .admin-theme-icon--sun { display: block; }
 :root[data-ueb-theme="dark"] .admin-theme-icon--moon { display: none; }
-@media (prefers-color-scheme: dark) {
-    :root:not([data-ueb-theme="light"]) .admin-theme-icon--sun { display: block; }
-    :root:not([data-ueb-theme="light"]) .admin-theme-icon--moon { display: none; }
-}
 
 .admin-tab-panel { display: none; }
 /* Le panneau entre par le côté d'où l'on vient : aller vers « Dossiers »
@@ -703,7 +848,7 @@
     margin-bottom: .55rem;
 }
 .admin-kpi-label {
-    font-size: .74rem;
+    font-size: .78rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .045em;
@@ -934,7 +1079,7 @@
     background: var(--ueb-surface-2);
     color: var(--ueb-text-soft);
     font-weight: 600;
-    font-size: .74rem;
+    font-size: .78rem;
     text-transform: uppercase;
     letter-spacing: .045em;
     text-align: left;
@@ -997,7 +1142,7 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
     height: 24px;
     padding: 0 .4rem;
     border-radius: 999px;
-    font-size: .72rem;
+    font-size: .76rem;
     font-weight: 700;
     background: var(--ueb-surface-hover);
     color: var(--ueb-text-soft);
@@ -1172,7 +1317,7 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
     display: flex;
     align-items: center;
     gap: .45rem;
-    font-size: .74rem;
+    font-size: .78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -1279,7 +1424,7 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
 
 .admin-detail-group + .admin-detail-group { margin-top: 1.15rem; }
 .admin-detail-group h3 {
-    font-size: .72rem;
+    font-size: .78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -1320,11 +1465,6 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
 }
 :root[data-ueb-theme="dark"] .admin-skeleton::after {
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .07), transparent);
-}
-@media (prefers-color-scheme: dark) {
-    :root:not([data-ueb-theme="light"]) .admin-skeleton::after {
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .07), transparent);
-    }
 }
 .admin-skeleton--kpi   { height: 116px; border-radius: var(--ueb-radius); }
 .admin-skeleton--chart { height: 100%; border-radius: var(--ueb-radius-sm); }
