@@ -164,7 +164,6 @@ function preinscriptions_temoignages() {
         array( 'initials' => 'CN', 'quote' => "Le campus est moderne et à taille humaine, je m'y sens bien.",                            'name' => 'Carine N.', 'info' => 'FMSP · L1' ),
         array( 'initials' => 'EB', 'quote' => 'Les enseignants sont disponibles et la vie associative est riche.',                        'name' => 'Éric B.',   'info' => 'ISABEE · L3' ),
     );
-    
 }
 
 /**
@@ -176,12 +175,31 @@ if ( ! defined( 'PREINSCRIPTIONS_DATE_OUVERTURE' ) ) {
 }
 
 /**
+ * Date/heure de clôture officielle des préinscriptions.
+ * Un seul endroit à modifier si la date change.
+ */
+if ( ! defined( 'PREINSCRIPTIONS_DATE_CLOTURE' ) ) {
+    define( 'PREINSCRIPTIONS_DATE_CLOTURE', '2026-10-31 23:59:59' );
+}
+
+/**
  * Est-ce que la date d'ouverture est déjà atteinte (heure du serveur) ?
  *
  * @return bool
  */
 function preinscriptions_ouverture_atteinte() {
     return new DateTimeImmutable( 'now' ) >= new DateTimeImmutable( PREINSCRIPTIONS_DATE_OUVERTURE );
+}
+
+/**
+ * Est-ce que la période de préinscription est terminée (heure du serveur) ?
+ * Utilisée dans page-preinscription.php pour bloquer l'accès au formulaire
+ * après la clôture et afficher un message d'information à la place.
+ *
+ * @return bool
+ */
+function preinscriptions_cloture_atteinte() {
+    return new DateTimeImmutable( 'now' ) >= new DateTimeImmutable( PREINSCRIPTIONS_DATE_CLOTURE );
 }
 
 /**
@@ -223,4 +241,3 @@ function preinscriptions_bouton_url() {
     }
     return preinscriptions_compte_rebours_url();
 }
-
