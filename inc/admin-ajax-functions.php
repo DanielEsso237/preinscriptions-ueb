@@ -37,9 +37,9 @@ function ueb_admin_ajax_extract_filters() {
         'sport_prefere', 'art_pratique', 'filiere', 'type_formation', 'sexe', 'handicap',
     );
 
-    // $_REQUEST et non $_POST : l'export CSV est déclenché par une navigation
-    // GET (pour que le navigateur gère le téléchargement), les autres appels
-    // restent en POST. Les valeurs sont sanitizées dans les deux cas.
+    // $_REQUEST et non $_POST : l'export CSV historique s'appelle en GET
+    // (navigation directe), les exports PDF/Excel/Word et le reste du
+    // dashboard en POST. Les valeurs sont sanitizées dans les deux cas.
     $filters = array();
     foreach ( $keys as $key ) {
         $filters[ $key ] = isset( $_REQUEST[ $key ] ) ? sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) ) : '';
