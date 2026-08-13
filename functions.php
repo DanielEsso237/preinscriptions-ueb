@@ -145,6 +145,28 @@ function preinscriptions_admin_assets() {
         'refs'     => ueb_admin_get_reference_lists(),
     ) );
 }
+
+function preinscriptions_countdown_assets() {
+    if ( ! is_page_template( 'page-compte-rebours.php' ) && ! is_page_template( 'page-preinscription.php' ) ) {
+        return;
+    }
+
+    wp_enqueue_style(
+        'preinscriptions-countdown',
+        get_template_directory_uri() . '/assets/css/compte-rebours.css',
+        array( 'preinscriptions-style' ),
+        PREINSCRIPTIONS_VERSION
+    );
+
+    wp_enqueue_script(
+        'preinscriptions-countdown',
+        get_template_directory_uri() . '/assets/js/compte-rebours.js',
+        array(),
+        PREINSCRIPTIONS_VERSION,
+        true
+    );
+}
+add_action( 'wp_enqueue_scripts', 'preinscriptions_countdown_assets' );
 add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
 
 /**
