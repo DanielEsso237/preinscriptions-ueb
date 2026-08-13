@@ -190,25 +190,31 @@ function ueb_est_dashboard_plein_ecran() {
 /**
  * Applique le thème clair/sombre mémorisé AVANT le premier rendu.
  *
+ * Le thème CLAIR est le défaut du tableau de bord, quelle que soit la
+ * préférence système : c'est un outil de gestion consulté en journée, dont
+ * les documents et les listes se lisent comme du papier. Le thème sombre
+ * reste disponible, mais uniquement sur choix explicite du bouton de
+ * bascule — la préférence système n'est plus suivie.
+ *
  * Doit rester un script bloquant inline dans le <head> : si l'attribut
  * data-ueb-theme n'est posé qu'au chargement de admin-dashboard.js (en
  * pied de page), la page s'affiche une fraction de seconde dans le mauvais
- * thème — un flash blanc très visible sur un dashboard sombre.
+ * thème.
  */
 function preinscriptions_admin_theme_boot() {
     if ( ! is_page_template( 'page-administration.php' ) ) return;
     ?>
     <script>
     (function () {
+        var t = 'light';
         try {
-            var t = localStorage.getItem('ueb-admin-theme');
-            if (t === 'dark' || t === 'light') {
-                document.documentElement.setAttribute('data-ueb-theme', t);
-            }
+            var memo = localStorage.getItem('ueb-admin-theme');
+            if (memo === 'dark' || memo === 'light') t = memo;
         } catch (e) {
             /* localStorage indisponible (navigation privée stricte) :
-               on laisse la préférence système décider. */
+               on reste sur le thème clair. */
         }
+        document.documentElement.setAttribute('data-ueb-theme', t);
     }());
     </script>
     <?php
@@ -264,4 +270,6 @@ require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
 require_once( get_template_directory() . '/inc/admin-ajax-functions.php' );
+require_once( get_template_directory() . '/inc/export-functions.php' );
+require_once( get_template_directory() . '/inc/export-office.php' );
 require_once( get_template_directory() . '/inc/social-medias-functions.php' );

@@ -61,15 +61,15 @@
 
     /* ================================================================
        THÈME CLAIR / SOMBRE
-       La préférence explicite est mémorisée ; en son absence on suit le
-       réglage système (et on continue de le suivre s'il change).
+       Le clair est le défaut, quel que soit le réglage système : le
+       dashboard se lit comme les documents qu'il produit. Le sombre ne
+       s'applique que si l'utilisateur l'a demandé au bouton de bascule,
+       et sa préférence est alors mémorisée.
        ================================================================ */
     var CLE_THEME = 'ueb-admin-theme';
 
     function themeActif() {
-        var force = document.documentElement.getAttribute('data-ueb-theme');
-        if (force) return force;
-        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        return document.documentElement.getAttribute('data-ueb-theme') === 'dark'
             ? 'dark' : 'light';
     }
 
@@ -99,18 +99,6 @@
         boutonTheme.addEventListener('click', function () {
             appliquerTheme(themeActif() === 'dark' ? 'light' : 'dark');
         });
-    }
-
-    if (window.matchMedia) {
-        var mqSombre = window.matchMedia('(prefers-color-scheme: dark)');
-        var onSystemChange = function () {
-            // Ne s'applique que si l'utilisateur n'a jamais tranché lui-même.
-            var choix = null;
-            try { choix = localStorage.getItem(CLE_THEME); } catch (e) { /* ignore */ }
-            if (!choix) document.dispatchEvent(new CustomEvent('uebThemeChange'));
-        };
-        if (mqSombre.addEventListener) mqSombre.addEventListener('change', onSystemChange);
-        else if (mqSombre.addListener) mqSombre.addListener(onSystemChange);
     }
 
     /* ================================================================
@@ -778,21 +766,150 @@
     if (resetBtn) resetBtn.addEventListener('click', reinitialiser);
 
     /* ================================================================
-       EXPORT CSV
+       EXPORT DE LA LISTE (PDF / EXCEL / WORD)
+       Le fichier est demandé en fetch plutôt qu'en navigation directe :
+       c'est le seul moyen de savoir quand il est prêt, donc de montrer un
+       état d'attente honnête et de rattraper une erreur serveur au lieu de
+       remplacer le dashboard par une page blanche.
        ================================================================ */
-    var exportBtn = $('admin-export');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', function () {
-            var params = collectFilters();
-            params.action = 'ueb_admin_export_csv';
-            params.nonce = CFG.nonce;
-            params.recherche = $('admin-recherche').value || '';
-            params.orderby = tri.orderby;
-            params.order = tri.order;
+    var exportWrap   = $('admin-export-wrap');
+    var exportBtn    = $('admin-export');
+    var exportMenu   = $('admin-export-menu');
+    var exportStatus = $('admin-export-status');
+    var exportItems  = exportMenu
+        ? Array.prototype.slice.call(exportMenu.querySelectorAll('.admin-export-item'))
+        : [];
 
-            // Navigation directe : c'est le navigateur qui doit recevoir les
-            // en-têtes de téléchargement, pas fetch().
-            window.location.href = CFG.ajax_url + '?' + new URLSearchParams(params).toString();
+    var LIBELLE_FORMAT = { pdf: 'PDF', excel: 'Excel', word: 'Word' };
+
+    function statutExport(message, type) {
+        if (!exportStatus) return;
+
+        if (!message) {
+            exportStatus.hidden = true;
+            exportStatus.textContent = '';
+            exportStatus.className = 'admin-export-status';
+            return;
+        }
+
+        exportStatus.textContent = message;
+        exportStatus.className = 'admin-export-status' + (type ? ' is-' + type : '');
+        exportStatus.hidden = false;
+    }
+
+    function ouvrirMenuExport() {
+        if (!exportMenu) return;
+        exportMenu.hidden = false;
+        requestAnimationFrame(function () { exportMenu.classList.add('is-open'); });
+        exportBtn.setAttribute('aria-expanded', 'true');
+        if (exportItems[0]) exportItems[0].focus();
+    }
+
+    function fermerMenuExport(rendreFocus) {
+        if (!exportMenu || exportMenu.hidden) return;
+        exportMenu.classList.remove('is-open');
+        exportBtn.setAttribute('aria-expanded', 'false');
+        setTimeout(function () { exportMenu.hidden = true; }, reducedMotion ? 0 : 140);
+        if (rendreFocus) exportBtn.focus();
+    }
+
+    function menuExportOuvert() {
+        return exportMenu && !exportMenu.hidden;
+    }
+
+    /** Nom de fichier proposé par le serveur, sinon repli sur l'extension. */
+    function nomFichierDepuis(entete, format) {
+        var defaut = 'liste-preinscrits-ueb.' + (format === 'excel' ? 'xlsx' : format === 'word' ? 'docx' : 'pdf');
+        if (!entete) return defaut;
+        var m = /filename="?([^";]+)"?/i.exec(entete);
+        return m ? m[1] : defaut;
+    }
+
+    function lancerExport(format) {
+        if (exportBtn.classList.contains('is-busy')) return;
+
+        var params = collectFilters();
+        params.action = 'ueb_admin_export';
+        params.nonce = CFG.nonce;
+        params.format = format;
+        params.recherche = $('admin-recherche').value || '';
+        params.orderby = tri.orderby;
+        params.order = tri.order;
+
+        exportBtn.classList.add('is-busy');
+        exportBtn.setAttribute('aria-busy', 'true');
+        statutExport('Préparation du fichier ' + (LIBELLE_FORMAT[format] || '') + '…', 'attente');
+
+        fetch(CFG.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params)
+        })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                var nom = nomFichierDepuis(r.headers.get('Content-Disposition'), format);
+                return r.blob().then(function (blob) { return { blob: blob, nom: nom }; });
+            })
+            .then(function (fichier) {
+                var url = URL.createObjectURL(fichier.blob);
+                var lien = document.createElement('a');
+                lien.href = url;
+                lien.download = fichier.nom;
+                document.body.appendChild(lien);
+                lien.click();
+                document.body.removeChild(lien);
+                // Laisse au navigateur le temps de démarrer le téléchargement.
+                setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+
+                statutExport('Fichier ' + (LIBELLE_FORMAT[format] || '') + ' téléchargé.', 'succes');
+                setTimeout(function () { statutExport(''); }, 4000);
+            })
+            .catch(function (err) {
+                console.error('Erreur export (' + format + ')', err);
+                statutExport("L'export a échoué. Réessayez dans un instant.", 'erreur');
+                setTimeout(function () { statutExport(''); }, 6000);
+            })
+            .then(function () {
+                exportBtn.classList.remove('is-busy');
+                exportBtn.removeAttribute('aria-busy');
+            });
+    }
+
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', function () {
+            if (menuExportOuvert()) fermerMenuExport(true);
+            else ouvrirMenuExport();
+        });
+
+        exportItems.forEach(function (item, i) {
+            item.addEventListener('click', function () {
+                fermerMenuExport(true);
+                lancerExport(item.getAttribute('data-format'));
+            });
+
+            // Flèches, Début/Fin : navigation attendue dans un menu.
+            item.addEventListener('keydown', function (e) {
+                var suivant = null;
+                if (e.key === 'ArrowDown')      suivant = exportItems[(i + 1) % exportItems.length];
+                else if (e.key === 'ArrowUp')   suivant = exportItems[(i - 1 + exportItems.length) % exportItems.length];
+                else if (e.key === 'Home')      suivant = exportItems[0];
+                else if (e.key === 'End')       suivant = exportItems[exportItems.length - 1];
+
+                if (suivant) {
+                    e.preventDefault();
+                    suivant.focus();
+                }
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && menuExportOuvert()) fermerMenuExport(true);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (menuExportOuvert() && exportWrap && !exportWrap.contains(e.target)) {
+                fermerMenuExport(false);
+            }
         });
     }
 

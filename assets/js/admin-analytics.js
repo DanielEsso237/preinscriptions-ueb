@@ -365,6 +365,14 @@
                                         fillStyle: d.datasets[0].backgroundColor[i],
                                         strokeStyle: 'transparent',
                                         pointStyle: 'circle',
+                                        // Indispensable : Chart.js peint chaque
+                                        // entrée avec legendItem.fontColor, et
+                                        // non avec labels.color. Sans cette
+                                        // ligne le canvas retombe sur son noir
+                                        // par défaut — invisible en thème
+                                        // sombre. labels.color reste défini
+                                        // au-dessus pour le titre de légende.
+                                        fontColor: T.tick,
                                         hidden: false,
                                         index: i
                                     };
