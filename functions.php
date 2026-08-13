@@ -170,21 +170,55 @@ add_action( 'wp_enqueue_scripts', 'preinscriptions_countdown_assets' );
 add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
 
 /**
- * Le dashboard occupe-t-il tout l'écran ?
+ * Assets de la page "Gestion des références" (page-references.php).
+ * Complètement séparée de preinscriptions_admin_assets() ci-dessus :
+ * autre template, autre capacité requise ('manage_options' — vrais
+ * administrateurs WordPress — plutôt que 'voir_preinscriptions'), autre
+ * nonce ('ueb_admin_references'). Réutilise la feuille de style du
+ * dashboard (tokens de couleur + composants communs : boutons, tableau,
+ * modale, états) pour ne pas dupliquer ~1600 lignes de CSS, et ajoute
+ * juste le complément propre à cette page.
+ */
+function preinscriptions_references_assets() {
+    if ( ! is_page_template( 'page-references.php' ) ) return;
+
+    wp_enqueue_style( 'preinscriptions-admin', get_template_directory_uri() . '/assets/css/admin-dashboard.css', array( 'preinscriptions-style' ), PREINSCRIPTIONS_VERSION );
+    wp_enqueue_style( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/css/admin-references.css', array( 'preinscriptions-admin' ), PREINSCRIPTIONS_VERSION );
+
+    if ( ! is_user_logged_in() || ! current_user_can( 'manage_options' ) ) return;
+
+    wp_enqueue_script( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/js/admin-references.js', array(), PREINSCRIPTIONS_VERSION, true );
+
+    wp_localize_script( 'preinscriptions-admin-references', 'uebAdminReferences', array(
+        'ajax_url' => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'ueb_admin_references' ),
+        'registry' => ueb_admin_ref_get_registry_for_js(),
+    ) );
+}
+add_action( 'wp_enqueue_scripts', 'preinscriptions_references_assets' );
+
+/**
+ * Le back-office (dashboard des dossiers OU page de gestion des
+ * références) occupe-t-il tout l'écran ?
  *
- * Vrai uniquement sur le tableau de bord ET pour un compte autorisé : la
- * navigation publique n'a pas de sens autour d'un back-office (la sidebar
- * porte déjà la navigation et la déconnexion), mais l'écran de connexion,
- * lui, reste une page du site et garde son en-tête.
+ * Vrai uniquement sur l'une de ces pages ET pour un compte autorisé sur
+ * cette page précise : la navigation publique n'a pas de sens autour d'un
+ * back-office (la sidebar/topbar porte déjà la navigation et la
+ * déconnexion), mais l'écran de connexion, lui, reste une page du site et
+ * garde son en-tête.
  *
  * Même principe que page-preinscription.php, qui masque déjà la barre.
  *
  * @return bool
  */
 function ueb_est_dashboard_plein_ecran() {
-    return is_page_template( 'page-administration.php' )
-        && is_user_logged_in()
-        && current_user_can( 'voir_preinscriptions' );
+    if ( is_page_template( 'page-administration.php' ) ) {
+        return is_user_logged_in() && current_user_can( 'voir_preinscriptions' );
+    }
+    if ( is_page_template( 'page-references.php' ) ) {
+        return is_user_logged_in() && current_user_can( 'manage_options' );
+    }
+    return false;
 }
 
 /**
@@ -199,10 +233,14 @@ function ueb_est_dashboard_plein_ecran() {
  * Doit rester un script bloquant inline dans le <head> : si l'attribut
  * data-ueb-theme n'est posé qu'au chargement de admin-dashboard.js (en
  * pied de page), la page s'affiche une fraction de seconde dans le mauvais
+ * thème — un flash blanc très visible sur un dashboard sombre.
+ *
+ * Même clé localStorage ('ueb-admin-theme') que le dashboard des dossiers :
+ * un même compte qui navigue entre les deux pages garde sa préférence.
  * thème.
  */
 function preinscriptions_admin_theme_boot() {
-    if ( ! is_page_template( 'page-administration.php' ) ) return;
+    if ( ! is_page_template( 'page-administration.php' ) && ! is_page_template( 'page-references.php' ) ) return;
     ?>
     <script>
     (function () {
@@ -270,6 +308,8 @@ require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
 require_once( get_template_directory() . '/inc/admin-ajax-functions.php' );
+require_once( get_template_directory() . '/inc/admin-references-functions.php' );
+require_once( get_template_directory() . '/inc/admin-references-ajax.php' );
 require_once( get_template_directory() . '/inc/export-functions.php' );
 require_once( get_template_directory() . '/inc/export-office.php' );
 require_once( get_template_directory() . '/inc/social-medias-functions.php' );
