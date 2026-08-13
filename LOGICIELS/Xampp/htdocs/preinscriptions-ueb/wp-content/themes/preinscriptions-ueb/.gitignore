@@ -1,0 +1,11 @@
+/vendor/
+composer.lock
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+/lib/
+
+assets/images/
+test-numero-dossier.php
