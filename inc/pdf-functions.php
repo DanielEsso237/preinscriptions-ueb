@@ -79,15 +79,44 @@ function ueb_pdf_lookup( $table, $id, $column = 'libelle' ) {
 }
 
 /**
- * Calcule l'année académique en cours au format "AAAA-AAAA", avec bascule
- * au 1er octobre (avant octobre : année N-1/N ; à partir d'octobre : N/N+1).
+ * Calcule l'année académique en cours au format "AAAA-AAAA".
+ *
+ * La bascule se fait au 13 août : à partir de cette date on est sur l'année
+ * N/N+1, avant on reste sur N-1/N. Elle tombe pendant la campagne de
+ * préinscription, et non à la rentrée comme l'ancienne règle du 1er octobre :
+ * une fiche ou une liste éditée en août doit porter l'année qui va s'ouvrir,
+ * pas celle qui s'achève.
+ *
+ * La date est filtrable — si le calendrier de campagne change, une ligne
+ * dans functions.php suffit, sans toucher à cette fonction :
+ *
+ *     add_filter( 'ueb_bascule_annee_academique', function () {
+ *         return array( 'mois' => 7, 'jour' => 1 );   // 1er juillet
+ *     } );
+ *
+ * Règle unique de toute l'application : elle sert au PDF de préinscription
+ * du candidat comme aux exports de la liste (inc/export-functions.php), pour
+ * que deux documents édités le même jour ne puissent pas se contredire.
+ *
  * Retourne du texte brut (le rendu natif TCPDF n'interprète pas le HTML).
  */
 function ueb_get_annee_academique() {
-    $mois  = (int) date( 'n' );
-    $annee = (int) date( 'Y' );
+    // Heure du site et non du serveur : le jour de bascule doit changer à
+    // minuit à Ébolowa, pas à minuit UTC.
+    $mois  = (int) current_time( 'n' );
+    $jour  = (int) current_time( 'j' );
+    $annee = (int) current_time( 'Y' );
 
-    if ( $mois >= 10 ) {
+    $bascule = apply_filters( 'ueb_bascule_annee_academique', array( 'mois' => 8, 'jour' => 13 ) );
+
+    // Bornage : un filtre mal réglé ne doit pas produire une année
+    // fantaisiste sur un document officiel.
+    $b_mois = max( 1, min( 12, (int) ( $bascule['mois'] ?? 8 ) ) );
+    $b_jour = max( 1, min( 31, (int) ( $bascule['jour'] ?? 13 ) ) );
+
+    $atteinte = ( $mois > $b_mois ) || ( $mois === $b_mois && $jour >= $b_jour );
+
+    if ( $atteinte ) {
         return $annee . '-' . ( $annee + 1 );
     }
 

@@ -241,3 +241,21 @@ function preinscriptions_bouton_url() {
     }
     return preinscriptions_compte_rebours_url();
 }
+
+/**
+ * Ce visiteur a-t-il le droit d'ouvrir le formulaire avant l'ouverture ?
+ *
+ * Avant le 1er septembre, le formulaire n'est pas public : tout le monde est
+ * renvoyé vers le compte à rebours. L'équipe, elle, doit continuer à tester le
+ * parcours complet — elle passe simplement par sa session WordPress, sans
+ * aucun lien ni paramètre d'URL à connaître.
+ *
+ * La capacité 'voir_preinscriptions' est celle qui ouvre déjà le tableau de
+ * bord : les personnes qui l'ont sont exactement celles qui travaillent sur
+ * l'outil. Se connecter à WordPress suffit donc à lever le blocage.
+ *
+ * @return bool
+ */
+function preinscriptions_acces_anticipe() {
+    return is_user_logged_in() && current_user_can( 'voir_preinscriptions' );
+}

@@ -9,28 +9,55 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/* Ouverture pas encore atteinte : le formulaire ne doit recevoir aucun
+   dossier, même en tapant son adresse directement. On renvoie vers le compte
+   à rebours — sauf pour l'équipe, reconnue à sa session WordPress
+   (voir preinscriptions_acces_anticipe()), qui doit pouvoir continuer à tester. */
+if ( ! preinscriptions_ouverture_atteinte() && ! preinscriptions_acces_anticipe() ) {
+    $ueb_url_attente = preinscriptions_compte_rebours_url();
+    wp_safe_redirect( '#' === $ueb_url_attente ? home_url( '/' ) : $ueb_url_attente );
+    exit;
+}
+
 /* Période de préinscription dépassée : on n'initialise même pas de
    numéro de dossier (inutile de consommer la séquence), et on affiche
    un message de clôture au lieu du formulaire. */
 if ( preinscriptions_cloture_atteinte() ) {
     get_header();
     ?>
-    <div class="countdown-page">
-        <div class="countdown-wrap">
-            <span class="countdown-eyebrow">● Préinscriptions 2026–2027</span>
-            <h1 class="countdown-title">Les préinscriptions sont <span class="accent">closes</span>.</h1>
-            <p class="countdown-subtitle">
-                La période de préinscription (1er septembre – 31 octobre 2026) est terminée.
-                Aucune nouvelle préinscription n'est acceptée au-delà de cette date.
-            </p>
-            <div class="countdown-actions">
-                <a class="btn btn-secondary" href="<?php echo esc_url( get_template_directory_uri() . '/assets/pdf/communique-recteur.pdf' ); ?>" target="_blank" rel="noopener noreferrer">
-                    Lire le communiqué du recteur (PDF)
-                </a>
-                <a class="btn btn-ghost" href="<?php echo esc_url( home_url( '/' ) ); ?>">
-                    &larr; Retour à l'accueil
-                </a>
-            </div>
+    <div class="cd">
+        <div class="cd-decor" aria-hidden="true">
+            <span class="cd-halo cd-halo-1"></span>
+            <span class="cd-halo cd-halo-2"></span>
+        </div>
+        <div class="cd-wrap">
+            <header class="cd-hero">
+                <p class="cd-eyebrow">
+                    <span class="cd-dot" aria-hidden="true"></span>
+                    Campagne 2026&#8202;–&#8202;2027 · Session terminée
+                </p>
+                <h1 class="cd-title">Les préinscriptions sont <span class="cd-title-accent">closes</span>.</h1>
+                <p class="cd-lead">
+                    La période de préinscription (1er septembre – 31 octobre 2026) est terminée.
+                    Aucune nouvelle demande n'est acceptée au-delà de cette date.
+                </p>
+                <div class="cd-actions">
+                    <a class="cd-btn cd-btn-primary" href="<?php echo esc_url( get_template_directory_uri() . '/assets/pdf/communique-recteur.pdf' ); ?>" target="_blank" rel="noopener noreferrer">
+                        <svg class="cd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <path d="M14 2v6h6"></path><path d="M9 13h6"></path><path d="M9 17h4"></path>
+                        </svg>
+                        Communiqué du recteur
+                        <span class="cd-sr-only"> (PDF, nouvel onglet)</span>
+                    </a>
+                    <a class="cd-btn cd-btn-ghost" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+                        <svg class="cd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path>
+                        </svg>
+                        Retour à l'accueil
+                    </a>
+                </div>
+            </header>
         </div>
     </div>
     <?php

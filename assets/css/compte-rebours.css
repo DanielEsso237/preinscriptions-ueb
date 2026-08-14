@@ -1,85 +1,535 @@
-.countdown-page {
-    min-height: 70vh;
+/*
+ * Page « compte à rebours » (page-compte-rebours.php) — thème Preinscriptions UEB.
+ *
+ * Direction : minimalisme institutionnel. Beaucoup de blanc, une seule
+ * couleur d'accent (le vert de marque), des chiffres traités comme le
+ * véritable objet de la page. Aucune dépendance à landing-page.css, qui
+ * n'est chargé que sur l'accueil : tout est défini ici, préfixé « cd- ».
+ *
+ * Sert aussi d'écran de clôture (page-preinscription.php réutilise .cd).
+ */
+
+.cd {
+    /* Reprend les variables de marque de style.css, avec repli si la feuille
+       n'est pas encore chargée. */
+    --cd-green: var(--ueb-green, #2e7d32);
+    --cd-green-deep: #17411c;
+    --cd-green-soft: #e8f2ea;
+    --cd-gold: var(--ueb-gold, #d4a017);
+    --cd-ink: #12211a;
+    --cd-gray: #566660;
+    --cd-line: #e2eae5;
+    --cd-surface: #ffffff;
+    --cd-bg: #f6faf8;
+    --cd-head: "Sora", system-ui, -apple-system, sans-serif;
+    --cd-body: "Inter", system-ui, -apple-system, sans-serif;
+    --cd-radius: 18px;
+    --cd-shadow: 0 1px 2px rgba(19, 53, 26, .04), 0 18px 40px -28px rgba(19, 53, 26, .35);
+
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(3rem, 8vw, 6.5rem) 0 clamp(3.5rem, 7vw, 5.5rem);
+    background: var(--cd-bg);
+    font-family: var(--cd-body);
+    color: var(--cd-ink);
+    line-height: 1.65;
+}
+
+.cd *,
+.cd *::before,
+.cd *::after { box-sizing: border-box; }
+
+/* Reset local, neutralisant les marges par défaut du navigateur et celles
+   qu'un thème parent pourrait poser.
+   :where() maintient ces règles à spécificité nulle : sans lui, « .cd p »
+   (0,1,1) l'emporterait sur « .cd-lead » (0,1,0) et écraserait silencieusement
+   toutes les marges définies plus bas classe par classe. */
+:where(.cd) :where(h1, h2, h3) {
+    font-family: var(--cd-head);
+    line-height: 1.14;
+    letter-spacing: -.022em;
+    margin: 0;
+}
+
+:where(.cd) :where(p) { margin: 0; }
+:where(.cd) :where(ol, ul) { list-style: none; margin: 0; padding: 0; }
+
+.cd-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 4vw, 2rem);
+}
+
+/* Contenu réservé aux lecteurs d'écran (titres de section, annonces). */
+.cd-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DÉCOR DE FOND
+   Deux halos très diffus. Le contenu reste sur du quasi-blanc :
+   le contraste du texte ne dépend jamais du décor.
+   ───────────────────────────────────────────────────────────── */
+.cd-decor {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(46, 125, 50, .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(46, 125, 50, .045) 1px, transparent 1px);
+    background-size: 68px 68px;
+    -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 62%);
+    mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 62%);
+}
+
+.cd-halo {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+}
+.cd-halo-1 {
+    top: -18%; left: 50%;
+    width: min(760px, 105vw); height: min(760px, 105vw);
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(97, 152, 43, .22), transparent 68%);
+}
+.cd-halo-2 {
+    bottom: -22%; right: -14%;
+    width: min(520px, 80vw); height: min(520px, 80vw);
+    background: radial-gradient(circle, rgba(212, 160, 23, .16), transparent 70%);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HERO
+   ───────────────────────────────────────────────────────────── */
+.cd-hero {
+    text-align: center;
+    max-width: 820px;
+    margin: 0 auto;
+}
+
+.cd-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    font-family: var(--cd-head);
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .045em;
+    color: var(--cd-green);
+    background: var(--cd-surface);
+    border: 1px solid var(--cd-line);
+    padding: .5rem 1.05rem;
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(19, 53, 26, .05);
+}
+
+.cd-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--cd-green);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, .55);
+    animation: cd-pulse 2.4s ease-out infinite;
+}
+
+@keyframes cd-pulse {
+    0%        { box-shadow: 0 0 0 0 rgba(46, 125, 50, .5); }
+    70%, 100% { box-shadow: 0 0 0 9px rgba(46, 125, 50, 0); }
+}
+
+.cd-title {
+    /* Plafonné pour que « Les préinscriptions ouvrent le » tienne sur une
+       seule ligne au-dessus de la date, comme le prévoit le <br> du template. */
+    font-size: clamp(1.9rem, 4.6vw, 2.95rem);
+    font-weight: 800;
+    margin: 1.5rem 0 0;
+    text-wrap: balance;
+}
+.cd-title-accent {
+    color: var(--cd-green);
+    /* La date ne doit jamais se couper en deux lignes. */
+    white-space: nowrap;
+    /* Surlignage décoratif, fin : il souligne la date sans l'écraser. */
+    background-image: linear-gradient(transparent 72%, rgba(212, 160, 23, .26) 0);
+}
+
+.cd-lead {
+    /* ~62 caractères par ligne : la mesure de lecture confortable. */
+    max-width: 54ch;
+    margin: 2.1rem auto 0;
+    font-size: clamp(1rem, 1.6vw, 1.09rem);
+    color: var(--cd-gray);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMPTE À REBOURS
+   ───────────────────────────────────────────────────────────── */
+.cd-timer {
+    margin: clamp(2.25rem, 5vw, 3.25rem) 0 0;
+    padding: clamp(1.5rem, 3.5vw, 2.25rem) clamp(1rem, 3vw, 2.25rem);
+    background: var(--cd-surface);
+    border: 1px solid var(--cd-line);
+    border-radius: var(--cd-radius);
+    box-shadow: var(--cd-shadow);
+}
+
+.cd-units {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(.35rem, 1.6vw, 1rem);
+}
+
+.cd-unit {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 130px;
+}
+
+.cd-num {
+    display: block;
+    font-family: var(--cd-head);
+    font-size: clamp(2.35rem, 8.5vw, 3.9rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.04em;
+    color: var(--cd-green-deep);
+    /* Chiffres à chasse fixe : sans cela, la ligne tremble à chaque seconde. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+/* Battement discret à chaque changement de valeur (classe posée par le JS).
+   Uniquement transform/opacity : aucun reflow, donc aucun décalage. */
+.cd-num.is-ticking { animation: cd-tick 320ms cubic-bezier(.22, .61, .36, 1); }
+
+@keyframes cd-tick {
+    0%   { transform: translateY(-22%); opacity: .25; }
+    100% { transform: translateY(0);    opacity: 1; }
+}
+
+.cd-unit-label {
+    display: block;
+    margin-top: .6rem;
+    /* 12px : plancher de lisibilité, même pour un libellé secondaire. */
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--cd-gray);
+}
+
+.cd-sep {
+    font-family: var(--cd-head);
+    font-size: clamp(1.5rem, 5vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--cd-line);
+    /* Aligné sur les chiffres, pas sur le bloc entier (qui inclut le label). */
+    align-self: flex-start;
+    padding-top: .12em;
+}
+
+/* Barre de progression */
+.cd-progress {
+    margin-top: clamp(1.5rem, 3vw, 2rem);
+    padding-top: clamp(1.25rem, 3vw, 1.6rem);
+    border-top: 1px solid var(--cd-line);
+}
+
+.cd-progress-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--cd-green-soft);
+    overflow: hidden;
+}
+
+.cd-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--cd-green), var(--ueb-green-light, #61982b));
+    transition: width .6s cubic-bezier(.22, .61, .36, 1);
+}
+
+.cd-progress-legend {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 3rem 1.25rem;
-    background: linear-gradient(180deg, var(--ueb-bg) 0%, #eef4f1 100%);
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .85rem;
+    font-size: .87rem;
+    color: var(--cd-gray);
+}
+.cd-progress-legend #cd-remaining {
+    font-weight: 600;
+    color: var(--cd-ink);
+}
+.cd-progress-sep { color: var(--cd-line); }
+
+/* ─────────────────────────────────────────────────────────────
+   BOUTONS
+   Redéfinis ici : .btn-secondary / .btn-ghost de landing-page.css
+   ne sont pas chargés hors de la page d'accueil.
+   ───────────────────────────────────────────────────────────── */
+.cd-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .85rem;
+    margin-top: clamp(1.75rem, 4vw, 2.5rem);
 }
 
-.countdown-wrap {
-    max-width: 720px;
+.cd-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    /* 48px de haut : au-delà de la cible tactile minimale de 44px. */
+    min-height: 48px;
+    padding: .8rem 1.6rem;
+    font-family: var(--cd-head);
+    font-size: .96rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1.5px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease,
+                background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.cd-btn-primary {
+    background: var(--cd-green);
+    color: #fff;
+    box-shadow: 0 12px 26px -14px rgba(46, 125, 50, .95);
+}
+.cd-btn-primary:hover {
+    background: #26692a;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px -14px rgba(46, 125, 50, 1);
+}
+
+.cd-btn-ghost {
+    background: var(--cd-surface);
+    border-color: var(--cd-line);
+    color: var(--cd-ink);
+}
+.cd-btn-ghost:hover {
+    border-color: var(--cd-green);
+    color: var(--cd-green);
+    transform: translateY(-2px);
+}
+
+.cd-btn:active { transform: translateY(0); }
+
+.cd-btn:focus-visible {
+    outline: 3px solid var(--cd-green);
+    outline-offset: 3px;
+}
+
+.cd-ico {
+    width: 18px; height: 18px;
+    flex: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SECTIONS DE CONTENU
+   ───────────────────────────────────────────────────────────── */
+.cd-section { margin-top: clamp(3.5rem, 8vw, 5.5rem); }
+
+.cd-section-head {
+    max-width: 620px;
+    margin: 0 auto clamp(1.75rem, 4vw, 2.5rem);
     text-align: center;
 }
 
-.countdown-eyebrow {
-    display: inline-block;
-    font-size: .85rem;
+.cd-section-title {
+    font-size: clamp(1.35rem, 3vw, 1.75rem);
     font-weight: 700;
-    color: var(--ueb-green);
-    background: rgba(46,125,50,.1);
-    padding: .35rem .9rem;
-    border-radius: 999px;
-    margin-bottom: 1.25rem;
 }
 
-.countdown-title {
-    font-size: clamp(1.9rem, 4vw, 2.8rem);
-    line-height: 1.15;
-    margin: 0 0 1rem;
-    color: var(--ueb-text);
-}
-.countdown-title .accent { color: var(--ueb-green); }
-
-.countdown-subtitle {
-    font-size: 1.05rem;
-    color: var(--ueb-gray);
-    margin: 0 0 2.5rem;
-}
-.countdown-subtitle strong { color: var(--ueb-text); }
-
-.countdown-grid {
-    display: flex;
-    justify-content: center;
-    gap: 1.25rem;
-    flex-wrap: wrap;
-    margin-bottom: 2.5rem;
+.cd-section-sub {
+    margin-top: .6rem;
+    font-size: .97rem;
+    color: var(--cd-gray);
 }
 
-.countdown-unit {
-    background: var(--ueb-white);
-    border-radius: 14px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.08);
-    padding: 1.5rem 1.25rem;
-    min-width: 110px;
-}
-
-.countdown-num {
-    display: block;
-    font-size: 2.4rem;
-    font-weight: 700;
-    color: var(--ueb-green);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-
-.countdown-label {
-    display: block;
-    margin-top: .5rem;
-    font-size: .8rem;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--ueb-gray);
-}
-
-.countdown-actions {
-    display: flex;
-    justify-content: center;
+/* Étapes du parcours */
+.cd-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    flex-wrap: wrap;
 }
 
-@media (max-width: 520px) {
-    .countdown-unit { min-width: 80px; padding: 1.1rem .8rem; }
-    .countdown-num { font-size: 1.8rem; }
+.cd-step {
+    position: relative;
+    padding: 1.6rem 1.4rem 1.5rem;
+    background: var(--cd-surface);
+    border: 1px solid var(--cd-line);
+    border-radius: var(--cd-radius);
+    /* Le survol ne change que la couleur et l'ombre : jamais la taille,
+       pour ne pas décaler les cartes voisines. */
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+.cd-step:hover {
+    border-color: rgba(46, 125, 50, .35);
+    box-shadow: var(--cd-shadow);
+}
+
+.cd-step-num {
+    display: block;
+    font-family: var(--cd-head);
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--cd-green);
+    margin-bottom: .8rem;
+}
+
+.cd-step-title {
+    font-size: 1.03rem;
+    font-weight: 700;
+}
+
+.cd-step-desc {
+    margin-top: .5rem;
+    font-size: .91rem;
+    color: var(--cd-gray);
+}
+
+/* À rassembler — deux colonnes : quatre éléments sur trois colonnes
+   laisseraient une carte seule sur la seconde ligne. */
+.cd-prep {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.cd-prep-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.35rem 1.4rem;
+    background: var(--cd-surface);
+    border: 1px solid var(--cd-line);
+    border-radius: var(--cd-radius);
+}
+
+.cd-prep-ico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: var(--cd-green-soft);
+    color: var(--cd-green);
+}
+.cd-prep-ico svg { width: 21px; height: 21px; }
+
+.cd-prep-title {
+    font-size: .99rem;
+    font-weight: 700;
+}
+
+.cd-prep-desc {
+    margin-top: .35rem;
+    font-size: .89rem;
+    color: var(--cd-gray);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NOTE DE VIGILANCE
+   ───────────────────────────────────────────────────────────── */
+.cd-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+    max-width: 760px;
+    margin: clamp(2.5rem, 6vw, 3.5rem) auto 0;
+    padding: 1.25rem 1.4rem;
+    background: #fffaf0;
+    border: 1px solid rgba(212, 160, 23, .3);
+    border-radius: var(--cd-radius);
+    font-size: .91rem;
+    color: #4a3a12;
+}
+
+.cd-note-ico {
+    width: 20px; height: 20px;
+    flex: none;
+    margin-top: .15rem;
+    color: var(--cd-gold);
+}
+
+.cd-note strong { color: #2f2508; }
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 620px) {
+    /* Sur mobile, les deux-points mangent la largeur utile des chiffres. */
+    .cd-sep { display: none; }
+
+    .cd-units {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: .75rem;
+    }
+
+    .cd-unit {
+        max-width: none;
+        padding: .9rem .5rem;
+        background: var(--cd-bg);
+        border-radius: 14px;
+    }
+
+    .cd-num { font-size: clamp(2rem, 12vw, 2.9rem); }
+
+    .cd-prep-item { padding: 1.15rem 1.15rem; }
+
+    .cd-actions .cd-btn { width: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MOUVEMENT RÉDUIT
+   Le compte à rebours continue de se mettre à jour : seules les
+   transitions et animations décoratives sont neutralisées.
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .cd *,
+    .cd *::before,
+    .cd *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+    .cd-btn:hover,
+    .cd-step:hover { transform: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   IMPRESSION
+   ───────────────────────────────────────────────────────────── */
+@media print {
+    .cd { background: #fff; padding: 0; }
+    .cd-decor,
+    .cd-actions { display: none; }
+    .cd-timer,
+    .cd-step,
+    .cd-prep-item { box-shadow: none; }
 }

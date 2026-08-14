@@ -151,18 +151,21 @@ function preinscriptions_countdown_assets() {
         return;
     }
 
+    $countdown_css = get_template_directory() . '/assets/css/compte-rebours.css';
+    $countdown_js  = get_template_directory() . '/assets/js/compte-rebours.js';
+
     wp_enqueue_style(
         'preinscriptions-countdown',
         get_template_directory_uri() . '/assets/css/compte-rebours.css',
         array( 'preinscriptions-style' ),
-        PREINSCRIPTIONS_VERSION
+        file_exists( $countdown_css ) ? filemtime( $countdown_css ) : PREINSCRIPTIONS_VERSION
     );
 
     wp_enqueue_script(
         'preinscriptions-countdown',
         get_template_directory_uri() . '/assets/js/compte-rebours.js',
         array(),
-        PREINSCRIPTIONS_VERSION,
+        file_exists( $countdown_js ) ? filemtime( $countdown_js ) : PREINSCRIPTIONS_VERSION,
         true
     );
 }
