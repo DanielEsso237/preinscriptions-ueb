@@ -38,6 +38,15 @@ nav.bar .brand{display:flex;align-items:center;gap:10px}nav.bar img{height:54px;
 .burger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
 .links a:hover{color:var(--green)}
 
+/* Lien « Guide Préinscription » : seule entrée du menu qui mène à une autre
+   page (les autres sont des ancres). Traité en puce discrète — assez
+   distinct pour se remarquer, assez sobre pour laisser le bouton or seul
+   dans le rôle d'action principale. */
+.nav-guide{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .9rem;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--green-d)!important;font-weight:600;font-size:.9rem;transition:border-color .25s ease,background .25s ease,color .25s ease}
+.nav-guide svg{width:17px;height:17px;flex:none}
+.nav-guide:hover{border-color:var(--green);background:var(--green-soft);color:var(--green)!important}
+.nav-guide:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+
 /* ── FOOTER ── */
 .site-footer{background:var(--green-d);color:rgba(255,255,255,.72);padding:56px 0 28px}
 .fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px;margin-bottom:32px}
@@ -52,6 +61,12 @@ nav.bar .brand{display:flex;align-items:center;gap:10px}nav.bar img{height:54px;
   .links{position:absolute;top:80px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);padding:8px 22px 18px;box-shadow:0 26px 40px -26px rgba(19,53,26,.45);transform:translateY(-14px);opacity:0;pointer-events:none;transition:opacity .3s ease,transform .3s cubic-bezier(.22,.61,.36,1)}
   .links.open{opacity:1;transform:none;pointer-events:auto}
   .links a{padding:15px 4px;border-bottom:1px solid var(--line);font-size:1rem;font-weight:600;color:var(--ink)}
+  /* Dans le menu déroulant, la puce arrondie détonnerait : le lien reprend
+     la forme des autres lignes, l'icône et la teinte verte suffisant à le
+     distinguer. Sélecteur en .links a.nav-guide pour passer devant
+     « .links a » (0,1,1), qui sinon écraserait ces valeurs. */
+  .links a.nav-guide{justify-content:flex-start;padding:15px 4px;border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent}
+  .links a.nav-guide:hover{background:transparent}
   .links a.btn{margin-top:14px;border-bottom:none;justify-content:center;padding:.85rem 1.3rem!important;color:#2a1f00}
 }
 @media (max-width:600px){

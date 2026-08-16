@@ -117,6 +117,43 @@ body.home {
   border-color: var(--green);
   color: var(--green);
 }
+
+/* ── « Procédure de préinscription » ──
+   Seule note rouge du site : à lire avant d'ouvrir le formulaire. Teinté,
+   pas plein — le bouton or reste l'action principale du hero.
+   Animation d'appel : un halo qui respire, distinct du balayage employé
+   sur le bouton du guide, pour que les deux ne se confondent pas. */
+/* Sélecteur en « .home a.btn-… » et non « .btn-… » : la règle générique
+   « .home a { color: inherit } » vaut (0,1,1) et écraserait sinon toute
+   couleur posée sur une simple classe (0,1,0). C'est ce qui rendait le
+   bouton du guide blanc sur blanc. */
+.home a.btn-procedure {
+  background: #fdf2f1;
+  border-color: #d99b93;
+  color: #9c2f24;
+  animation: btn-pulse 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.home a.btn-procedure:hover {
+  background: #9c2f24;
+  border-color: #9c2f24;
+  color: #fff;
+  transform: translateY(-3px);
+  /* L'appel s'arrête dès que le bouton est trouvé : continuer à pulser
+     sous le curseur n'apporterait plus rien. */
+  animation-play-state: paused;
+}
+.btn-procedure svg {
+  flex: none;
+}
+@keyframes btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(156, 47, 36, 0.32);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(156, 47, 36, 0);
+  }
+}
 nav.bar {
   position: sticky;
   top: 0;
@@ -390,7 +427,9 @@ nav.bar .brand b {
 }
 .estrip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Six étapes : deux rangées de trois. En quatre colonnes, la seconde
+     rangée n'en porterait que deux et la grille paraîtrait tronquée. */
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   max-width: 1000px;
   margin: 0 auto;
@@ -1121,5 +1160,104 @@ nav.bar .brand b {
 @media (prefers-reduced-motion: reduce) {
   .back-to-top {
     transition: opacity 0.01ms linear;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PROLONGEMENT DES ÉTAPES → GUIDE DE PRÉINSCRIPTION
+   Placé sous les six cartes : celui qui les a lues veut le détail.
+   Sur le fond sombre de la section « étapes », le bouton est clair.
+   ───────────────────────────────────────────────────────────── */
+.etapes-more {
+  max-width: 1000px;
+  margin: 40px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.etapes-more-txt {
+  max-width: 46ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Animation d'appel : un reflet qui traverse le bouton. Volontairement
+   différente du halo pulsé de « Procédure de préinscription » — deux
+   invites identiques se liraient comme un seul et même bouton. */
+/* Même précaution de spécificité que .btn-procedure : « .home a » (0,1,1)
+   imposerait sinon le blanc de la section sombre au texte du bouton. */
+.home a.btn-guide {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  background: #fff;
+  border-color: #fff;
+  color: var(--green-d, #13351a);
+}
+.home a.btn-guide::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Part hors cadre à gauche et traverse ; largeur généreuse pour que le
+     reflet reste doux plutôt que d'apparaître comme une barre. */
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(46, 125, 50, 0.16),
+    transparent
+  );
+  transform: skewX(-18deg);
+  animation: btn-shine 3.6s ease-in-out infinite;
+}
+.home a.btn-guide:hover {
+  background: var(--green, #2e7d32);
+  border-color: var(--green, #2e7d32);
+  color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 18px 34px -14px rgba(19, 53, 26, 0.9);
+}
+.home a.btn-guide:hover::after {
+  animation-play-state: paused;
+}
+.home a.btn-guide svg {
+  flex: none;
+  position: relative;
+}
+.btn-guide-arrow {
+  transition: transform 0.25s ease;
+}
+.home a.btn-guide:hover .btn-guide-arrow {
+  transform: translateX(4px);
+}
+@keyframes btn-shine {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+@media (max-width: 760px) {
+  .etapes-more {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .etapes-more-txt {
+    max-width: none;
+  }
+  .home a.btn-guide {
+    justify-content: center;
   }
 }

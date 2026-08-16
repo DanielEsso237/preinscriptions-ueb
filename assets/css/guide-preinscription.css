@@ -1,0 +1,930 @@
+/*
+ * Page « Guide de préinscription » (page-guide-preinscription.php).
+ *
+ * Direction : document éditorial, pas interface. C'est une page de
+ * RÉFÉRENCE administrative que l'on lit en entier ou dont on consulte une
+ * section précise — elle doit se lire comme un texte imprimé, pas comme un
+ * tableau de bord.
+ *
+ * Trois règles tenues de bout en bout :
+ *   1. UNE seule couleur d'accent, le vert UEB, et seulement sur ce qui
+ *      structure (numéros, titres, filet du sommaire actif, coches).
+ *      Aucun aplat de couleur derrière du texte courant.
+ *   2. La hiérarchie passe par la taille, la graisse et le blanc — jamais
+ *      par un fond teinté. Les cartes empilées sont remplacées par des
+ *      filets fins et de l'espace.
+ *   3. Les points de vigilance se signalent par leur intitulé (« Important »)
+ *      doublé d'un filet ambre : la couleur ne porte jamais seule le sens.
+ *
+ * Aucune dépendance à landing-page.css (chargé sur la seule accueil) :
+ * tout est défini ici, préfixé « gp- ».
+ */
+
+.gp {
+    /* Encre et gris : une famille de neutres très légèrement verdis, pour
+       que le noir ne jure pas à côté du vert de marque. */
+    --gp-ink: #14231b;
+    --gp-body: #46534c;
+    --gp-mute: #7b8880;
+    --gp-line: #e4e9e6;
+    --gp-line-strong: #c9d2cd;
+    --gp-paper: #ffffff;
+    --gp-bg: #fbfcfb;
+
+    /* Accent unique. --gp-warn ne sert qu'aux filets de vigilance. */
+    --gp-green: var(--ueb-green, #2e7d32);
+    --gp-green-deep: #1d4f21;
+    --gp-warn: #b5891a;
+
+    --gp-head: "Sora", system-ui, -apple-system, sans-serif;
+    --gp-text: "Inter", system-ui, -apple-system, sans-serif;
+
+    /* Hauteur de la nav sticky : décalage des ancres et du sommaire. */
+    --gp-nav-h: 80px;
+
+    position: relative;
+    /* Pas d'overflow ici : le moindre overflow sur un ancêtre neutralise le
+       position:sticky du sommaire. */
+    padding: 0 0 clamp(4rem, 8vw, 7rem);
+    background: var(--gp-bg);
+    font-family: var(--gp-text);
+    color: var(--gp-body);
+    font-size: 1rem;
+    line-height: 1.72;
+}
+
+.gp *,
+.gp *::before,
+.gp *::after { box-sizing: border-box; }
+
+/* Reset local à spécificité nulle : sans :where(), « .gp p » (0,1,1)
+   écraserait silencieusement les marges posées classe par classe. */
+:where(.gp) :where(h1, h2, h3) {
+    font-family: var(--gp-head);
+    color: var(--gp-ink);
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+:where(.gp) :where(p) { margin: 0; }
+:where(.gp) :where(ol, ul) { list-style: none; margin: 0; padding: 0; }
+:where(.gp) :where(dl, dd, dt) { margin: 0; }
+
+.gp-wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 5vw, 2.5rem);
+}
+
+.gp-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOUTONS
+   Deux niveaux seulement : plein (encre) et souligné discret.
+   ───────────────────────────────────────────────────────────── */
+.gp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 48px;
+    padding: .8rem 1.5rem;
+    border: 1px solid transparent;
+    font-family: var(--gp-head);
+    font-size: .94rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+.gp-btn-primary {
+    background: var(--gp-green);
+    color: #fff;
+}
+.gp-btn-primary:hover { background: var(--gp-green-deep); }
+
+.gp-btn-ghost {
+    background: transparent;
+    border-color: var(--gp-line-strong);
+    color: var(--gp-ink);
+}
+.gp-btn-ghost:hover {
+    border-color: var(--gp-ink);
+    background: transparent;
+}
+
+.gp-btn-block { display: flex; width: 100%; }
+
+.gp-btn:focus-visible,
+.gp a:focus-visible,
+.gp button:focus-visible {
+    outline: 2px solid var(--gp-green);
+    outline-offset: 3px;
+}
+
+.gp-ico { width: 18px; height: 18px; flex: none; }
+
+/* ─────────────────────────────────────────────────────────────
+   HERO
+   Deux colonnes : le texte à gauche, le document à emporter isolé à
+   droite. Les repères de campagne ferment le bloc sur toute la largeur.
+   ───────────────────────────────────────────────────────────── */
+.gp-hero {
+    padding: clamp(3rem, 8vw, 6rem) 0 clamp(2.5rem, 5vw, 4rem);
+    background: var(--gp-paper);
+    border-bottom: 1px solid var(--gp-line);
+}
+
+.gp-hero-grid {
+    display: grid;
+    /* La colonne de droite ne porte plus qu'un bouton : elle se dimensionne
+       sur lui plutôt que d'occuper une largeur fixe désormais vide. */
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    align-items: start;
+}
+.gp-hero-main { min-width: 0; }
+
+.gp-eyebrow {
+    display: block;
+    font-family: var(--gp-head);
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gp-green);
+}
+/* La pastille de l'ancienne version ne signalait rien : supprimée. */
+.gp-dot { display: none; }
+
+.gp-title {
+    margin-top: 1rem !important;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 700;
+    letter-spacing: -.038em;
+    /* Répartit les lignes du titre au lieu de laisser un mot seul en bas. */
+    text-wrap: balance;
+}
+
+.gp-lead {
+    margin-top: 1.25rem !important;
+    /* Mesure de lecture : 60-70 caractères. */
+    max-width: 54ch;
+    font-size: clamp(1.02rem, 1.4vw, 1.12rem);
+    color: var(--gp-body);
+    text-wrap: pretty;
+}
+
+/* ── Le guide à emporter ──
+   Réduit au seul bouton, calé à droite du hero. Aucun cadre : le bloc n'a
+   plus qu'un élément, l'encadrer reviendrait à décorer un bouton.
+   Encre et non vert : le vert reste au parcours de préinscription, deux
+   boutons verts pleins se disputeraient le rôle d'action principale. */
+.gp-doc {
+    display: flex;
+    justify-content: flex-end;
+    /* Aligne le bouton sur la ligne de base du titre plutôt que sur le haut
+       du bloc, où il flotterait sans rapport avec le texte de gauche. */
+    padding-top: 3.25rem;
+}
+.gp-doc .gp-btn {
+    background: var(--gp-ink);
+    color: #fff;
+}
+.gp-doc .gp-btn:hover { background: #0b1610; }
+
+/* Repères de campagne : une ligne de données, séparée par des filets. */
+.gp-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: clamp(2.25rem, 5vw, 3.25rem) !important;
+    border-top: 1px solid var(--gp-line);
+}
+.gp-fact {
+    padding: 1.15rem 1.5rem 0 0;
+    border-top: 2px solid var(--gp-ink);
+    margin-top: -1px;
+}
+.gp-fact + .gp-fact { padding-left: 1.5rem; }
+/* Sans cela, le filet de la dernière cellule s'arrête 1,5 rem avant le bord
+   et la ligne de données paraît tronquée à droite. */
+.gp-fact:last-child { padding-right: 0; }
+.gp-fact dt {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--gp-mute);
+}
+.gp-fact dd {
+    margin-top: .45rem !important;
+    font-family: var(--gp-head);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gp-ink);
+    line-height: 1.4;
+}
+
+.gp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-top: clamp(2rem, 4vw, 2.75rem);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MISE EN PAGE : SOMMAIRE + CONTENU
+   ───────────────────────────────────────────────────────────── */
+.gp-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: clamp(2.5rem, 6vw, 5rem);
+    align-items: start;
+    padding-top: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+/* ── Sommaire : liste nue, position marquée par un filet ── */
+.gp-toc {
+    position: sticky;
+    top: calc(var(--gp-nav-h) + 1.5rem);
+}
+.gp-toc-title {
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--gp-line);
+    font-family: var(--gp-head);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--gp-mute);
+}
+/* Avancement de lecture : un filet qui se remplit sous l'intitulé du
+   sommaire. Assez fin pour rester un repère et non un élément d'interface. */
+.gp-toc-progress {
+    height: 2px;
+    margin-top: -1px;
+    background: var(--gp-line);
+    overflow: hidden;
+}
+.gp-toc-progress-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--gp-green);
+    /* transform serait plus performant, mais la largeur est ici pilotée au
+       défilement avec un pas déjà lissé côté script. */
+    transition: width .15s linear;
+}
+
+.gp-toc-list { margin-top: 1rem !important; }
+.gp-toc-link {
+    display: flex;
+    align-items: baseline;
+    gap: .7rem;
+    padding: .45rem 0 .45rem .8rem;
+    /* Filet de position : transparent au repos, vert sur la section lue. */
+    border-left: 2px solid transparent;
+    margin-left: -.8rem;
+    color: var(--gp-mute);
+    font-size: .88rem;
+    line-height: 1.45;
+    text-decoration: none;
+    transition: color .2s ease, border-color .2s ease;
+}
+.gp-toc-link:hover { color: var(--gp-ink); }
+.gp-toc-num {
+    font-family: var(--gp-head);
+    font-size: .68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--gp-line-strong);
+    transition: color .2s ease;
+}
+/* État actif, posé par guide-preinscription.js (scrollspy). */
+.gp-toc-link.is-active {
+    border-left-color: var(--gp-green);
+    color: var(--gp-ink);
+    font-weight: 600;
+}
+.gp-toc-link.is-active .gp-toc-num { color: var(--gp-green); }
+
+.gp-toc-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--gp-line);
+    color: var(--gp-ink);
+    font-size: .85rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+.gp-toc-pdf:hover { color: var(--gp-green); }
+.gp-toc-pdf .gp-ico { width: 16px; height: 16px; color: var(--gp-green); }
+
+/* ─────────────────────────────────────────────────────────────
+   SECTIONS
+   Plus de cartes : un filet de séparation et du blanc.
+   ───────────────────────────────────────────────────────────── */
+.gp-content { min-width: 0; }
+
+/* Largeur de la colonne de numérotation. Une seule valeur à changer pour
+   décaler tout le corps du document. */
+.gp { --gp-num-w: 5rem; --gp-num-gap: 1.75rem; }
+
+.gp-section {
+    /* Filet en tête plutôt qu'en pied : chaque article commence par un
+       trait franc, comme un intertitre de document officiel. */
+    padding-top: clamp(2.5rem, 5vw, 3.75rem);
+    border-top: 2px solid var(--gp-ink);
+    margin-bottom: clamp(3.5rem, 7vw, 5.5rem);
+    /* Compense la nav sticky à l'arrivée par une ancre. */
+    scroll-margin-top: calc(var(--gp-nav-h) + 2rem);
+}
+.gp-section:last-of-type { margin-bottom: clamp(3rem, 6vw, 4.5rem); }
+
+/* En-tête de section : le numéro occupe sa propre colonne, en très grand.
+   C'est le repère de la page — sept chiffres qui rythment la descente et
+   qu'on retrouve dans le sommaire et dans le PDF. */
+.gp-section-head {
+    display: grid;
+    grid-template-columns: var(--gp-num-w) minmax(0, 1fr);
+    gap: var(--gp-num-gap);
+    align-items: start;
+}
+.gp-section-num {
+    font-family: var(--gp-head);
+    font-size: clamp(2.25rem, 5vw, 3rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.05em;
+    line-height: .82;
+    color: var(--gp-line-strong);
+    /* Aligne le chiffre sur la hauteur d'x du titre, pas sur sa boîte. */
+    margin-top: -.04em;
+}
+.gp-section-title {
+    font-size: clamp(1.65rem, 3.8vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -.028em;
+    text-wrap: balance;
+}
+/* Tout le corps de l'article s'aligne sous le titre, jamais sous le
+   numéro : la colonne de chiffres reste une marge, pas une colonne de
+   contenu. */
+.gp-section > *:not(.gp-section-head) {
+    margin-left: calc(var(--gp-num-w) + var(--gp-num-gap));
+}
+.gp-section-intro {
+    margin-top: 1rem !important;
+    max-width: 62ch;
+    font-size: 1.02rem;
+}
+
+/* ── §1 Étapes : chiffres typographiques, filet de liaison ── */
+.gp-steps { margin-top: clamp(2rem, 4vw, 2.75rem) !important; }
+.gp-step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+}
+.gp-step:last-child { padding-bottom: 0; }
+/* Filet vertical reliant les étapes — s'arrête à la dernière. */
+.gp-step:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    top: 2rem;
+    /* Aligné sur l'axe des chiffres, pas sur celui du texte : le filet doit
+       se lire comme la suite de la numérotation. */
+    left: .3rem;
+    bottom: .25rem;
+    width: 1px;
+    background: var(--gp-line);
+}
+.gp-step-num {
+    font-family: var(--gp-head);
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--gp-green);
+    line-height: 1.5;
+}
+.gp-step-title {
+    font-size: 1.12rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.gp-step-desc {
+    margin-top: .4rem !important;
+    max-width: 58ch;
+}
+/* Précision de second plan : plus petite, en retrait, sans fond. */
+.gp-step-aide {
+    margin-top: .7rem !important;
+    padding-left: 1rem;
+    border-left: 1px solid var(--gp-line-strong);
+    max-width: 56ch;
+    /* Le texte peut contenir une URL longue : elle se coupe plutôt que de
+       déborder du cadre sur mobile. */
+    overflow-wrap: anywhere;
+    color: var(--gp-mute);
+    font-size: .9rem;
+    line-height: 1.6;
+}
+
+.gp-cta-inline { margin-top: clamp(2rem, 4vw, 2.5rem) !important; }
+
+/* ── §2 Paiement ── */
+/* Le montant est la donnée saillante de la section : il l'est par sa
+   taille, pas par un cartouche coloré. */
+.gp-amount {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .5rem 1rem;
+    margin-top: clamp(2rem, 4vw, 2.5rem) !important;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--gp-line);
+}
+.gp-amount-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--gp-mute);
+}
+.gp-amount-value {
+    font-family: var(--gp-head);
+    font-size: clamp(1.75rem, 4.5vw, 2.4rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    color: var(--gp-ink);
+    line-height: 1;
+}
+
+.gp-pays {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0;
+    margin-top: 1.75rem !important;
+}
+.gp-pay {
+    padding: 1.25rem 1.5rem 1.25rem 0;
+    border-top: 1px solid var(--gp-line);
+}
+.gp-pay + .gp-pay { padding-left: 1.5rem; }
+.gp-pay-nom {
+    font-size: 1rem;
+    font-weight: 600;
+}
+.gp-pay-detail {
+    margin-top: .35rem !important;
+    color: var(--gp-mute);
+    font-size: .9rem;
+    line-height: 1.55;
+}
+.gp-pay-ref {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .35rem;
+    margin-top: .85rem !important;
+}
+.gp-pay-ref-val {
+    /* Numéro de compte : chasse fixe, lecture chiffre à chiffre sans
+       ambiguïté. Assez petit pour tenir sur une ligne dans une colonne de
+       200 px ; anywhere reste le filet de sécurité. */
+    font-family: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+    font-size: .79rem;
+    font-weight: 500;
+    letter-spacing: -.01em;
+    color: var(--gp-ink);
+    overflow-wrap: anywhere;
+}
+
+/* Bouton de copie : discret au repos, il confirme par un changement d'état
+   (icône + libellé), pas par une couleur seule. */
+.gp-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    /* Cible tactile de 44 px obtenue par la marge négative : le bouton
+       reste visuellement compact sans devenir difficile à viser. */
+    min-height: 44px;
+    margin: -11px 0;
+    padding: 0 .5rem 0 0;
+    border: none;
+    background: none;
+    color: var(--gp-mute);
+    font-family: var(--gp-text);
+    font-size: .78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color .2s ease;
+}
+.gp-copy:hover { color: var(--gp-ink); }
+.gp-copy-ico { width: 14px; height: 14px; flex: none; }
+.gp-copy-ico-done { display: none; }
+
+.gp-copy.is-done { color: var(--gp-green); }
+.gp-copy.is-done .gp-copy-ico-idle { display: none; }
+.gp-copy.is-done .gp-copy-ico-done { display: block; }
+
+/* Encart : un filet à gauche, pas de fond. Le ton se lit dans l'intitulé,
+   la couleur du filet ne fait que le confirmer. */
+.gp-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    margin-top: 1.75rem;
+    padding: .25rem 0 .25rem 1.25rem;
+    border-left: 2px solid var(--gp-line-strong);
+    max-width: 62ch;
+    font-size: .95rem;
+}
+.gp-note-ico {
+    width: 19px; height: 19px;
+    flex: none;
+    margin-top: .28rem;
+    color: var(--gp-mute);
+}
+.gp-note strong { color: var(--gp-ink); font-weight: 600; }
+.gp-note-alerte { border-left-color: var(--gp-warn); }
+.gp-note-alerte .gp-note-ico { color: var(--gp-warn); }
+
+.gp-link-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--gp-line);
+}
+.gp-link-title { font-size: 1rem; font-weight: 600; }
+.gp-link-desc {
+    margin-top: .3rem !important;
+    max-width: 46ch;
+    color: var(--gp-mute);
+    font-size: .9rem;
+}
+
+/* ── §3 Onglets ── */
+.gp-tablist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: clamp(1.75rem, 3.5vw, 2.25rem);
+    border-bottom: 1px solid var(--gp-line);
+}
+.gp-tab {
+    padding: 0 0 .85rem 0;
+    /* Le filet actif se substitue au filet de la liste : aucun décalage de
+       position quand l'onglet change. */
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    color: var(--gp-mute);
+    font-family: var(--gp-head);
+    font-size: .95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color .2s ease, border-color .2s ease;
+}
+.gp-tab:hover { color: var(--gp-ink); }
+.gp-tab[aria-selected="true"] {
+    border-bottom-color: var(--gp-green);
+    color: var(--gp-ink);
+    font-weight: 600;
+}
+
+.gp-panel { padding-top: 1.75rem; }
+/* Sans JS, les trois listes restent visibles et leur titre les distingue ;
+   le script masque les panneaux inactifs et le titre devient redondant. */
+.gp-panel[hidden] { display: none; }
+.gp-tabs.is-enhanced .gp-panel-title { display: none; }
+.gp-panel-title { font-size: 1.1rem; font-weight: 600; }
+.gp-panel-contexte {
+    margin-bottom: .25rem !important;
+    color: var(--gp-mute);
+    font-size: .82rem;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+/* ── Listes de pièces : filets, pas de cartes ── */
+.gp-checklist { margin-top: 1rem !important; }
+.gp-checklist li {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: .5rem;
+    align-items: start;
+    padding: .8rem .75rem .8rem 0;
+    border-bottom: 1px solid var(--gp-line);
+    color: var(--gp-ink);
+    font-size: .97rem;
+    line-height: 1.6;
+    /* Survol : la ligne se détache légèrement, comme un doigt qui suit la
+       liste. Sur padding-left seul, pour ne décaler que le contenu. */
+    transition: background .2s ease, padding-left .2s ease;
+}
+.gp-checklist li:hover {
+    background: #f4f7f5;
+    padding-left: .6rem;
+}
+.gp-checklist li:first-child { border-top: 1px solid var(--gp-line); }
+.gp-check {
+    width: 15px; height: 15px;
+    margin-top: .35rem;
+    color: var(--gp-green);
+}
+.gp-panel-note {
+    margin-top: 1.15rem !important;
+    padding-left: 1.25rem;
+    border-left: 2px solid var(--gp-warn);
+    max-width: 62ch;
+    color: var(--gp-body);
+    font-size: .92rem;
+}
+
+/* ── §4 Dépôt ── */
+.gp-checklist-plain { margin-top: clamp(1.75rem, 3.5vw, 2.25rem) !important; }
+
+/* ── §5 Validation : deux colonnes de consigne, distinguées par leur
+   intitulé et un filet — jamais par un fond rouge ou vert ── */
+.gp-duo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    margin-top: clamp(1.75rem, 3.5vw, 2.25rem);
+}
+.gp-duo-item {
+    padding-top: 1.15rem;
+    border-top: 2px solid var(--gp-line-strong);
+    font-size: .97rem;
+}
+.gp-duo-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .7rem !important;
+    font-family: var(--gp-head);
+    font-size: .76rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.gp-duo-head .gp-ico { width: 15px; height: 15px; }
+.gp-duo-item strong { color: var(--gp-ink); font-weight: 600; }
+.gp-duo-oui { border-top-color: var(--gp-green); }
+.gp-duo-oui .gp-duo-head { color: var(--gp-green); }
+.gp-duo-non { border-top-color: var(--gp-ink); }
+.gp-duo-non .gp-duo-head { color: var(--gp-ink); }
+
+/* ── §6 Bon à savoir : liste de définitions à filets ── */
+.gp-facts-list { margin-top: clamp(1.75rem, 3.5vw, 2.25rem) !important; }
+.gp-fact-item {
+    padding: 1.4rem 0;
+    border-bottom: 1px solid var(--gp-line);
+    font-size: .97rem;
+}
+/* La mesure se limite sur le texte, pas sur l'élément : sinon le filet de
+   cette liste s'arrêterait avant ceux des autres sections et l'alignement
+   général de la colonne partirait. */
+.gp-fact-item p { max-width: 68ch; }
+.gp-fact-item:first-child { border-top: 1px solid var(--gp-line); }
+.gp-fact-title {
+    margin-bottom: .4rem;
+    font-size: 1.02rem;
+    font-weight: 600;
+}
+/* Point de vigilance : signalé par la mention, le filet ne fait que la
+   confirmer — la couleur ne porte jamais seule l'information. */
+.gp-fact-item.is-alerte {
+    padding-left: 1.25rem;
+    border-left: 2px solid var(--gp-warn);
+}
+.gp-fact-item.is-alerte .gp-fact-title::after {
+    content: "Important";
+    display: inline-block;
+    margin-left: .6rem;
+    vertical-align: .1em;
+    font-family: var(--gp-text);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--gp-warn);
+}
+
+/* ── §7 Établissements : table de référence ── */
+.gp-etabs { margin-top: clamp(1.75rem, 3.5vw, 2.25rem) !important; }
+.gp-etabs li:first-child .gp-etab { border-top: 1px solid var(--gp-line); }
+.gp-etab {
+    display: grid;
+    grid-template-columns: 5rem minmax(0, 1fr) 1rem;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gp-line);
+    color: var(--gp-ink);
+    text-decoration: none;
+    transition: color .2s ease;
+}
+.gp-etab:hover { color: var(--gp-green); }
+.gp-etab-abbr {
+    font-family: var(--gp-head);
+    font-size: .82rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--gp-green);
+}
+.gp-etab-nom { font-size: .97rem; }
+.gp-etab-fleche {
+    width: 16px; height: 16px;
+    align-self: center;
+    color: var(--gp-line-strong);
+    transition: color .2s ease, transform .2s ease;
+}
+.gp-etab:hover .gp-etab-fleche {
+    color: var(--gp-green);
+    transform: translateX(3px);
+}
+
+/* ── Clôture : bloc encre, une seule respiration sombre dans la page ── */
+.gp-final {
+    padding: clamp(2.5rem, 5vw, 3.5rem) clamp(1.75rem, 4vw, 3rem);
+    background: var(--gp-ink);
+    color: rgba(255, 255, 255, .72);
+}
+.gp-final-title {
+    font-size: clamp(1.45rem, 3.2vw, 1.9rem);
+    font-weight: 700;
+    color: #fff;
+}
+.gp-final-desc {
+    margin-top: .7rem !important;
+    max-width: 46ch;
+    font-size: .98rem;
+}
+.gp-final .gp-btn-primary {
+    background: #fff;
+    color: var(--gp-ink);
+}
+.gp-final .gp-btn-primary:hover { background: rgba(255, 255, 255, .88); }
+.gp-final .gp-btn-ghost {
+    border-color: rgba(255, 255, 255, .3);
+    color: #fff;
+}
+.gp-final .gp-btn-ghost:hover { border-color: #fff; }
+.gp-final .gp-btn:focus-visible { outline-color: #fff; }
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+    /* Le bouton de téléchargement passe sous le texte : à cette largeur,
+       une seconde colonne laisserait au titre une mesure trop étroite. */
+    .gp-hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.5rem;
+    }
+    .gp-doc {
+        justify-content: flex-start;
+        padding-top: 0;
+    }
+    .gp-facts { margin-top: 2.5rem !important; }
+
+    /* Le sommaire passe au-dessus du contenu, en barre défilable : il
+       reste accessible sans voler une hauteur d'écran entière. */
+    .gp-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2.5rem;
+    }
+    .gp-toc {
+        position: static;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--gp-line);
+    }
+    .gp-toc-list {
+        display: flex;
+        gap: 1.5rem;
+        overflow-x: auto;
+        margin-top: .9rem !important;
+        scrollbar-width: thin;
+    }
+    .gp-toc-list li { flex: none; }
+    .gp-toc-link {
+        padding: 0 0 .6rem 0;
+        border-left: none;
+        border-bottom: 2px solid transparent;
+        margin-left: 0;
+        white-space: nowrap;
+    }
+    .gp-toc-link.is-active {
+        border-left-color: transparent;
+        border-bottom-color: var(--gp-green);
+    }
+    .gp-toc-num { display: none; }
+
+    /* Les repères passent en colonne : trois cellules côte à côte sous
+       700px donneraient des veuves sur chaque valeur. */
+    .gp-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    /* La nav du thème passe à 60px sous ce seuil (header-footer.css) :
+       les ancres doivent suivre. */
+    .gp { --gp-nav-h: 60px; }
+
+    /* Le numéro passe au-dessus du titre : en colonne, il mangerait le
+       quart de la largeur utile et le titre se briserait mot à mot. */
+    .gp-section-head {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .35rem;
+    }
+    .gp-section-num {
+        font-size: 1.9rem;
+        line-height: 1;
+        margin-top: 0;
+    }
+    .gp-section > *:not(.gp-section-head) { margin-left: 0; }
+
+    .gp-facts { grid-template-columns: minmax(0, 1fr); }
+    .gp-fact,
+    .gp-fact + .gp-fact { padding: 1rem 0 1.15rem 0; }
+    .gp-actions .gp-btn { flex: 1 1 100%; }
+
+    .gp-step { grid-template-columns: 1.75rem minmax(0, 1fr); gap: .9rem; }
+    .gp-step:not(:last-child)::before { left: .35rem; }
+
+    .gp-pay,
+    .gp-pay + .gp-pay { padding: 1.15rem 0; }
+
+    .gp-tablist { gap: 1.5rem; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: thin; }
+    .gp-tab { white-space: nowrap; }
+
+    .gp-etab { grid-template-columns: 4.5rem minmax(0, 1fr); }
+    .gp-etab-fleche { display: none; }
+
+    .gp-duo { gap: 1.75rem; }
+}
+
+/* Respect de la préférence système. */
+@media (prefers-reduced-motion: reduce) {
+    .gp *,
+    .gp *::before,
+    .gp *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   IMPRESSION
+   Le PDF reste la version à emporter, mais un Ctrl+P ne doit pas sortir
+   un document illisible.
+   ───────────────────────────────────────────────────────────── */
+@media print {
+    .gp { padding: 0; background: #fff; }
+    .gp-hero { padding: 0 0 1.5rem 0; border-bottom: 1px solid #999; }
+    .gp-hero-grid { display: block; }
+    /* Sur papier, proposer de télécharger le document que l'on tient déjà
+       n'a pas de sens ; le bouton de copie non plus. */
+    .gp-toc,
+    .gp-doc,
+    .gp-copy,
+    .gp-actions,
+    .gp-cta-inline,
+    .gp-final,
+    .gp-link-card .gp-btn { display: none !important; }
+
+    .gp-layout { display: block; padding-top: 1.5rem; }
+    .gp-section {
+        border-bottom: 1px solid #ccc;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    /* Les onglets masqués par le script redeviennent visibles : sur papier,
+       on ne peut pas cliquer pour changer de niveau. */
+    .gp-panel[hidden] { display: block !important; }
+    .gp-tablist { display: none; }
+    .gp-tabs.is-enhanced .gp-panel-title { display: block; }
+}

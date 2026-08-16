@@ -169,6 +169,36 @@ function preinscriptions_countdown_assets() {
         true
     );
 }
+/**
+ * Assets de la page « Guide de préinscription ».
+ * Même schéma que preinscriptions_countdown_assets() : feuille autonome
+ * préfixée « gp- », chargée sur ce seul template.
+ */
+function preinscriptions_guide_assets() {
+    if ( ! is_page_template( 'page-guide-preinscription.php' ) ) {
+        return;
+    }
+
+    $guide_css = get_template_directory() . '/assets/css/guide-preinscription.css';
+    $guide_js  = get_template_directory() . '/assets/js/guide-preinscription.js';
+
+    wp_enqueue_style(
+        'preinscriptions-guide',
+        get_template_directory_uri() . '/assets/css/guide-preinscription.css',
+        array( 'preinscriptions-style' ),
+        file_exists( $guide_css ) ? filemtime( $guide_css ) : PREINSCRIPTIONS_VERSION
+    );
+
+    wp_enqueue_script(
+        'preinscriptions-guide',
+        get_template_directory_uri() . '/assets/js/guide-preinscription.js',
+        array(),
+        file_exists( $guide_js ) ? filemtime( $guide_js ) : PREINSCRIPTIONS_VERSION,
+        true
+    );
+}
+add_action( 'wp_enqueue_scripts', 'preinscriptions_guide_assets' );
+
 add_action( 'wp_enqueue_scripts', 'preinscriptions_countdown_assets' );
 add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
 
@@ -305,6 +335,8 @@ add_action( 'after_switch_theme', 'ueb_register_roles' );
 
 require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
+require_once( get_template_directory() . '/inc/guide-preinscription-content.php' );
+require_once( get_template_directory() . '/inc/guide-pdf-functions.php' );
 require_once( get_template_directory() . '/inc/db-schema.php' );
 require_once( get_template_directory() . '/inc/dossier-functions.php' );
 require_once( get_template_directory() . '/inc/ajax-functions.php' );
