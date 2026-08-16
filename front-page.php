@@ -21,7 +21,7 @@ $inscription = esc_url( preinscriptions_bouton_url() );
     <div class="hero-visual">
         <div class="photo hero-slider">
             <img class="on" src="<?php echo esc_url( preinscriptions_img( 'vie-etudiante-1.webp' ) ); ?>" alt="Étudiants de l'UEB en sortie pédagogique" fetchpriority="high">
-            <img src="<?php echo esc_url( preinscriptions_img( 'vie-etudiante-3.webp' ) ); ?>" alt="Rassemblement d'étudiants de l'UEB">
+            <img src="<?php echo esc_url( preinscriptions_img( 'vie-etudiante3.webp' ) ); ?>" alt="Rassemblement d'étudiants de l'UEB">
             <img src="<?php echo esc_url( preinscriptions_img( 'vie-etudiante-2.webp' ) ); ?>" alt="Cérémonie d'excellence académique">
         </div>
         <div class="chip c1"><span class="dot" style="background:var(--green)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>Dossier validé</div>
@@ -31,10 +31,19 @@ $inscription = esc_url( preinscriptions_bouton_url() );
     <div class="hero-rest">
         <p class="lead">Préinscris-toi en ligne en quelques minutes. On t'accompagne à chaque étape, du premier clic jusqu'à la rentrée.</p>
         <div class="cta">
+            <?php
+            /* Placé avant « Commencer » à dessein : lire la procédure avant
+               d'ouvrir le formulaire évite la moitié des dossiers rejetés.
+               Teinté rouge — la seule note rouge du site — pour signaler
+               qu'il y a quelque chose à savoir avant de se lancer. */
+            ?>
+            <a class="btn btn-procedure" href="#etapes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="10"/></svg>
+                Procédure de préinscription
+            </a>
             <a class="btn btn-primary" href="<?php echo $inscription; ?>">Commencer ma préinscription
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             <a class="btn btn-secondary" href="<?php echo esc_url( add_query_arg( 'reprise', '1', $inscription ) ); ?>">Continuer ma préinscription</a>
-            <a class="btn btn-ghost" href="#facultes">Voir les facultés</a>
         </div>
         <div class="mini">
             <div><b>9</b><span>Facultés &amp; écoles</span></div>
@@ -57,7 +66,7 @@ $inscription = esc_url( preinscriptions_bouton_url() );
 
 <!-- ETAPES -->
 <section class="etapes" id="etapes"><div class="wrap">
-    <div class="head reveal"><span class="pill" style="background:rgba(212,160,23,.18);color:var(--gold)">L'essentiel</span><h2>Ta préinscription en 4 étapes</h2><p>Simple, rapide et 100 % en ligne.</p></div>
+    <div class="head reveal"><span class="pill" style="background:rgba(212,160,23,.18);color:var(--gold)">L'essentiel</span><h2>Ta préinscription en 6 étapes</h2><p>De la plateforme au guichet de ta faculté, voici tout ce que tu auras à faire.</p></div>
     <div class="progress reveal"><i></i></div>
     <div class="estrip">
         <?php $n = 1; foreach ( preinscriptions_etapes() as $etape ) : ?>
@@ -68,6 +77,23 @@ $inscription = esc_url( preinscriptions_bouton_url() );
             </div>
         <?php $n++; endforeach; ?>
     </div>
+
+    <?php
+    /* Prolongement naturel des six étapes : le détail complet, les pièces
+       exigées par niveau et le PDF à emporter. Masqué tant qu'aucune page
+       ne porte le template du guide. */
+    $ueb_guide = preinscriptions_guide_url();
+    if ( $ueb_guide ) :
+        ?>
+        <div class="etapes-more reveal">
+            <p class="etapes-more-txt">Pièces à fournir, modalités de paiement, dépôt du dossier&nbsp;: la procédure officielle en détail.</p>
+            <a class="btn btn-guide" href="<?php echo esc_url( $ueb_guide ); ?>">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Guide de préinscription
+                <svg class="btn-guide-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+        </div>
+    <?php endif; ?>
 </div></section>
 
 <!-- CHIFFRES CLES -->

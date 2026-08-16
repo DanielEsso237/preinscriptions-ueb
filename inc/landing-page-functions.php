@@ -124,16 +124,45 @@ function preinscriptions_campus() {
 }
 
 /**
- * Les 4 etapes de la preinscription.
+ * Les 6 étapes de la préinscription, de la plateforme au guichet.
+ *
+ * Reprend la procédure officielle du Recteur (même séquence que
+ * ueb_guide_etapes(), qui alimente la page Guide et son PDF), mais rédigée
+ * pour la landing : on s'y adresse au candidat, et chaque étape dit ce
+ * qu'il aura à faire ou à préparer, pas ce que le système exécute.
+ *
+ * Quatre étapes ne suffisaient pas : le paiement et le choix de la
+ * formation, qui sont les deux points où les candidats se trompent le
+ * plus, n'y figuraient pas.
  *
  * @return array[] { title, desc }
  */
 function preinscriptions_etapes() {
     return array(
-        array( 'title' => 'Reçois ton numéro',  'desc' => 'Un numéro de dossier t\'est attribué automatiquement. Note-le pour reprendre ta préinscription à tout moment.' ),
-        array( 'title' => 'Remplis le formulaire', 'desc' => 'Tes infos, ta filière et tes choix en quelques minutes.' ),
-        array( 'title' => 'Télécharge ta fiche', 'desc' => 'Récupère ta fiche de préinscription et ton coupon récépissé en PDF.' ),
-        array( 'title' => 'Dépose ton dossier',  'desc' => 'Paie les frais en agence, imprime tes documents et dépose-les au campus.' ),
+        array(
+            'title' => 'Choisis ta formation',
+            'desc'  => "Compare les offres de formation et leurs débouchés, puis retiens la faculté qui correspond à ton projet.",
+        ),
+        array(
+            'title' => 'Remplis le formulaire',
+            'desc'  => "Renseigne chaque champ tel qu'il figure sur tes pièces : acte de naissance, diplôme et relevés de notes.",
+        ),
+        array(
+            'title' => 'Reçois ton numéro',
+            'desc'  => "Un numéro de dossier unique t'est attribué à la validation. Note-le : il te suit jusqu'au dépôt.",
+        ),
+        array(
+            'title' => 'Télécharge ta fiche',
+            'desc'  => "Ta fiche de préinscription et ton coupon récépissé, en PDF, prêts à imprimer en deux exemplaires.",
+        ),
+        array(
+            'title' => 'Règle tes droits',
+            'desc'  => "11 000 FCFA à la CCA Bank, par Express Union ou par MTN Mobile Money. Conserve le reçu, il est exigé au dépôt.",
+        ),
+        array(
+            'title' => 'Dépose ton dossier',
+            'desc'  => "Présente-toi à ta faculté au jour du rendez-vous, avec tes pièces certifiées, tes photos et la preuve de paiement.",
+        ),
     );
 }
 
@@ -225,6 +254,37 @@ function preinscriptions_compte_rebours_url() {
     }
 
     return apply_filters( 'preinscriptions_compte_rebours_url', $url );
+}
+
+/**
+ * URL de la page « Guide de préinscription » (template
+ * page-guide-preinscription.php). Même logique que
+ * preinscriptions_inscription_url() : on résout par le template plutôt que
+ * par un slug en dur, pour que la page reste renommable.
+ *
+ * Retourne '' (et non '#') si aucune page n'utilise le template : les
+ * appelants s'en servent pour masquer le lien plutôt que d'afficher une
+ * entrée de menu qui ne mène nulle part.
+ *
+ * @return string
+ */
+function preinscriptions_guide_url() {
+    $url = '';
+
+    $pages = get_posts( array(
+        'post_type'      => 'page',
+        'post_status'    => 'publish',
+        'meta_key'       => '_wp_page_template',
+        'meta_value'     => 'page-guide-preinscription.php',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ) );
+
+    if ( ! empty( $pages ) ) {
+        $url = get_permalink( $pages[0] );
+    }
+
+    return apply_filters( 'preinscriptions_guide_url', $url );
 }
 
 /**

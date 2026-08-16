@@ -169,7 +169,7 @@ get_header();
         <section class="cd-section" aria-labelledby="cd-etapes-title">
             <div class="cd-section-head">
                 <h2 class="cd-section-title" id="cd-etapes-title">Ce qui t'attend le jour J</h2>
-                <p class="cd-section-sub">Quatre étapes, une quinzaine de minutes. Rien à imprimer avant de commencer.</p>
+                <p class="cd-section-sub">De la plateforme au guichet de ta faculté. Rien à imprimer avant de commencer.</p>
             </div>
 
             <ol class="cd-steps">
