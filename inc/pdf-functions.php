@@ -183,6 +183,8 @@ function ueb_handle_pdf_generation() {
     $profession_mere  = sanitize_text_field( $posted['profession_mere'] ?? '' );
     $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
     $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
+    $adresse_urgence = sanitize_text_field( $posted['adresse_urgence'] ?? '' );
+
 
     // Informations diverses.
     $numero_certificat_medical = sanitize_text_field( $posted['numero_certificat_medical'] ?? '' );
@@ -259,6 +261,7 @@ function ueb_handle_pdf_generation() {
         'profession_mere'        => $profession_mere,
         'nom_tuteur'             => $nom_tuteur,
         'numero_tuteur'          => $numero_tuteur,
+        'adresse_urgence'        => $adresse_urgence,
         'sport_prefere'          => ueb_pdf_lookup( 'ueb_sports', $sport_id, 'libelle' ),
         'art_pratique'           => ueb_pdf_lookup( 'ueb_arts', $art_id, 'libelle' ),
         'numero_certificat_medical' => $numero_certificat_medical,
@@ -755,7 +758,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->MultiCell( 74, 2.9, $faculte_compte . "\nCCA BANK-10039-10012-0027277050", 0, 'L' );
 
     /* --- Crédit groupe en bas de page --- */
-    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions', 6.5, 'I', $c['gris'], 'C', 210 );
+    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );
 }
 
 
@@ -842,7 +845,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
         array( 'personne', 'Nom et Prénom', $d['nom_tuteur'] ),
         array( 'telephone', 'Téléphone (urgence)', $d['numero_tuteur'] ),
-        array( 'lieu', 'Adresse (urgence)', '' ),
+        array( 'lieu',       'Adresse (urgence)',    $d['adresse_urgence'] ),
     ), $y );
     /* --- Notes importantes --- */
     $y += 7.5;
@@ -863,7 +866,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 0, $yf + 12, 'Thank you for your cooperation.', 9.5, 'I', $c['gris'], 'C', 210 );
 
     /* --- Crédit groupe en bas de page --- */
-    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions', 6.5, 'I', $c['gris'], 'C', 210 );
+    ueb_pdf_txt( $pdf, 0, 292, '@NexusCore: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );
 }
 
 
