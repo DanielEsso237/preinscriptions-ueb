@@ -758,7 +758,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->MultiCell( 74, 2.9, $faculte_compte . "\nCCA BANK-10039-10012-0027277050", 0, 'L' );
 
     /* --- Crédit groupe en bas de page --- */
-    ueb_pdf_txt( $pdf, 0, 292, '@Nexus: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );
+    ueb_pdf_txt( $pdf, 0, 292, '@NexusCore: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );
 }
 
 
