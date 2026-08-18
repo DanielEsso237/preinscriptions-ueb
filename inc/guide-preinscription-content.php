@@ -49,7 +49,7 @@ if ( ! defined( 'UEB_URL_CERTIFICAT_MEDICAL' ) ) {
  * interne du site passe, elle, par preinscriptions_bouton_url().
  */
 if ( ! defined( 'UEB_URL_PLATEFORME' ) ) {
-    define( 'UEB_URL_PLATEFORME', 'https://preinscription.unv-ebolowa.cm/UEb_PreInscription/' );
+    define( 'UEB_URL_PLATEFORME', 'https://preinscription.unv-ebolowa.cm/' );
 }
 
 /**
