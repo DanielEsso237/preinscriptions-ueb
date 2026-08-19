@@ -737,7 +737,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . "Bq : CCABANK\n"
-        . 'Compte : 10039-10012-0027277050';
+        . 'Compte : 10039-10012-00272772201-07';
     ueb_pdf_qr_stylise( $pdf, $qr_coupon, 187, $ct + 5, 14 );
     $pdf->RoundedRect( 9, $ct + 25, 192, 10, 1, '1111', 'D',
         array( 'width' => 0.3, 'dash' => 0, 'color' => $c['noir'] ) );
@@ -750,12 +750,11 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 77, $ct + 27, '*Numéro de transaction :', 6.2, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 77, $ct + 30.8, '.....................', 6.4, '', $c['noir'] );
     ueb_pdf_icone( $pdf, 'banque', 117, $ct + 27.3, 6 );
-    ueb_pdf_txt( $pdf, 126, $ct + 26.3, '*N°Compte Bancaire :', 6.6, 'B', $c['noir'] );
-    $faculte_compte = $d['faculte'] !== '' ? strtoupper( $d['faculte'] ) : 'FACULTÉ';
+    ueb_pdf_txt( $pdf, 126, $ct + 26.3, 'N° de compte bancaire :', 6.6, 'B', $c['noir'] );
     $pdf->SetFont( 'dejavusans', '', 6 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
     $pdf->SetXY( 126, $ct + 29.6 );
-    $pdf->MultiCell( 74, 2.9, $faculte_compte . "\nCCA BANK-10039-10012-0027277050", 0, 'L' );
+    $pdf->MultiCell( 74, 2.9, '10039-10012-00272772201-07', 0, 'L' );
 
     /* --- Crédit groupe en bas de page --- */
     ueb_pdf_txt( $pdf, 0, 292, '@NexusCore: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );
