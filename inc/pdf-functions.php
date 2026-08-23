@@ -183,7 +183,9 @@ function ueb_handle_pdf_generation() {
     $profession_mere  = sanitize_text_field( $posted['profession_mere'] ?? '' );
     $nom_tuteur       = sanitize_text_field( $posted['nom_tuteur'] ?? '' );
     $numero_tuteur    = sanitize_text_field( $posted['numero_tuteur'] ?? '' );
-    $adresse_urgence = sanitize_text_field( $posted['adresse_urgence'] ?? '' );
+    $nom_urgence      = sanitize_text_field($posted['nom_urgence'] ?? '');
+    $adresse_urgence  = sanitize_text_field( $posted['adresse_urgence'] ?? '' );
+    $numero_urgence   = sanitize_text_field( $posted['numero_urgence'] ?? '' );
 
 
     // Informations diverses.
@@ -261,7 +263,9 @@ function ueb_handle_pdf_generation() {
         'profession_mere'        => $profession_mere,
         'nom_tuteur'             => $nom_tuteur,
         'numero_tuteur'          => $numero_tuteur,
+        'nom_urgence'            => $nom_urgence,
         'adresse_urgence'        => $adresse_urgence,
+        'numero_urgence'         => $numero_urgence,
         'sport_prefere'          => ueb_pdf_lookup( 'ueb_sports', $sport_id, 'libelle' ),
         'art_pratique'           => ueb_pdf_lookup( 'ueb_arts', $art_id, 'libelle' ),
         'numero_certificat_medical' => $numero_certificat_medical,
@@ -842,8 +846,8 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
     /* --- Personne à contacter --- */
     $y += 7.5;
     $y = ueb_pdf_boite_medicale( $pdf, "PERSONNE À CONTACTER EN CAS D'URGENCE", 'tel_urgence', 104, array(
-        array( 'personne', 'Nom et Prénom', $d['nom_tuteur'] ),
-        array( 'telephone', 'Téléphone (urgence)', $d['numero_tuteur'] ),
+        array( 'personne', 'Nom et Prénom', $d['nom_urgence'] ),
+        array( 'telephone', 'Téléphone (urgence)', $d['numero_urgence'] ),
         array( 'lieu',       'Adresse (urgence)',    $d['adresse_urgence'] ),
     ), $y );
     /* --- Notes importantes --- */
