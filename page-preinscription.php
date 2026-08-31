@@ -137,6 +137,19 @@ get_header();
             </div>
         </div>
 
+        <div class="assistance-notice">
+            <span class="assistance-notice-icon" aria-hidden="true">☎</span>
+            <p>
+                Besoin d'aide ou un problème pendant ta préinscription&nbsp;?
+                Contacte-nous au
+                <a href="tel:+237676295488">+237 6 76 29 54 88</a>,
+                <a href="tel:+237673414381">+237 6 73 41 43 81</a>,
+                <a href="tel:+237659490221">+237 6 59 49 02 21</a>
+                ou
+                <a href="tel:+237693899150">+237 6 93 89 91 50</a>.
+            </p>
+        </div>
+
         <div class="steps-nav" role="navigation" aria-label="Étapes du formulaire">
             <div class="step-item active" data-step="1">
                 <div class="step-circle">1</div>
