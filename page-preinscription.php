@@ -325,7 +325,7 @@ get_header();
                             <select id="mention_select" class="field-locked" required disabled aria-describedby="mention-hint">
                                 <option value="">— Chargement... —</option>
                             </select>
-                            <span class="field-hint" id="mention-hint">Attribuée automatiquement d'après ta moyenne : 10–11,99 passable, 12–13,99 assez bien, 14–15,99 bien, 16–17,99 très bien, 18–20 excellent.</span>
+
                         </div>
 
                         <!-- Année d'obtention — SELECT 1980..2026 -->
