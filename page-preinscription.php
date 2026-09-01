@@ -9,6 +9,15 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/* Mode maintenance : personne (hors équipe via preinscriptions_acces_anticipe())
+   ne doit pouvoir remplir le formulaire tant que le site est en chantier,
+   même en tapant l'URL directement. */
+if ( preinscriptions_maintenance_active() && ! preinscriptions_acces_anticipe() ) {
+    $ueb_url_maintenance = preinscriptions_maintenance_url();
+    wp_safe_redirect( '#' === $ueb_url_maintenance ? home_url( '/' ) : $ueb_url_maintenance );
+    exit;
+}
+
 /* Ouverture pas encore atteinte : le formulaire ne doit recevoir aucun
    dossier, même en tapant son adresse directement. On renvoie vers le compte
    à rebours — sauf pour l'équipe, reconnue à sa session WordPress
