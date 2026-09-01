@@ -2,6 +2,88 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
+ * Valide une date de naissance au format ISO (AAAA-MM-JJ).
+ *
+ * Le masque JJ/MM/AAAA du formulaire ne protège que le navigateur : un
+ * POST forgé peut porter 9999-99-99, que MySQL enregistrerait en
+ * 0000-00-00 ou rejetterait selon le mode SQL. On refait donc ici le
+ * même contrôle qu'en JS — date réelle (le 31/02 n'existe pas), pas
+ * antérieure à 1900, pas dans le futur.
+ *
+ * @param string $iso Date au format AAAA-MM-JJ.
+ * @return string La date validée, ou '' si elle est impossible.
+ */
+function ueb_valider_date_naissance( $iso ) {
+    $iso = trim( (string) $iso );
+
+    if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $m ) ) {
+        return '';
+    }
+
+    $annee = (int) $m[1];
+    $mois  = (int) $m[2];
+    $jour  = (int) $m[3];
+
+    // checkdate() connaît les années bissextiles : 29/02/2028 passe, 29/02/2027 non.
+    if ( ! checkdate( $mois, $jour, $annee ) ) {
+        return '';
+    }
+
+    if ( $annee < 1900 ) {
+        return '';
+    }
+
+    if ( $iso > current_time( 'Y-m-d' ) ) {
+        return '';
+    }
+
+    return $iso;
+}
+
+/**
+ * Moyenne au diplôme validée : un réel de l'intervalle [10, 20], arrondi
+ * au centième. Retourne null hors de cet intervalle, la mention étant
+ * ensuite calculée à partir de cette valeur.
+ *
+ * @param mixed $brut Valeur postée.
+ * @return float|null
+ */
+function ueb_valider_moyenne_diplome( $brut ) {
+    if ( ! isset( $brut ) || '' === $brut || ! is_numeric( $brut ) ) {
+        return null;
+    }
+
+    $moyenne = round( (float) $brut, 2 );
+
+    return ( $moyenne >= 10 && $moyenne <= 20 ) ? $moyenne : null;
+}
+
+/**
+ * Id de la mention correspondant à une moyenne, en repassant par le
+ * barème de ueb_mention_pour_moyenne(). La mention postée est ignorée :
+ * elle est calculée, pas choisie, et rien ne garantit qu'un POST forgé
+ * l'ait fait correspondre à la moyenne.
+ *
+ * @param float|null $moyenne Moyenne déjà validée.
+ * @return int|null Id dans ueb_mentions, ou null.
+ */
+function ueb_mention_id_pour_moyenne( $moyenne ) {
+    if ( null === $moyenne || ! function_exists( 'ueb_mention_pour_moyenne' ) ) {
+        return null;
+    }
+
+    $code = ueb_mention_pour_moyenne( $moyenne );
+    if ( '' === $code ) {
+        return null;
+    }
+
+    global $wpdb;
+    $id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM ueb_mentions WHERE code = %s", $code ) );
+
+    return $id ? (int) $id : null;
+}
+
+/**
  * Sauvegarde en base de données (tables ueb_*) les données du formulaire,
  * à la soumission finale. Se déclenche sur action=generate_pdf, priorité 5
  * (avant ueb_handle_pdf_generation(), priorité 10 par défaut), pour que le
@@ -69,15 +151,21 @@ function ueb_handle_db_save() {
       'region_origine', 'departement_origine', 'commune_origine',
       'niveau_lmd', 'mention', 'statut_etudiant', 'sport_prefere', 'art_pratique',
     );
-    $data['moyenne_diplome'] = isset( $posted['moyenne_diplome'] ) && $posted['moyenne_diplome'] !== ''
-    ? round( (float) $posted['moyenne_diplome'], 2 )
-    : null;
+    $data['moyenne_diplome'] = ueb_valider_moyenne_diplome( isset( $posted['moyenne_diplome'] ) ? $posted['moyenne_diplome'] : null );
+
+    // Date de naissance : le champ soumis est en ISO, on rejette tout ce
+    // qui n'est pas une date réelle plutôt que de le laisser filer en base.
+    $data['date_naissance'] = ueb_valider_date_naissance( $data['date_naissance'] );
     $data['handicap'] = in_array( $posted['handicap'] ?? '', array( 'oui', 'non' ), true ) ? $posted['handicap'] : 'non';
 
     foreach ( $champs_id as $key ) {
         $raw = isset( $posted[ $key ] ) ? $posted[ $key ] : '';
         $data[ $key ] = ( '' !== $raw ) ? absint( $raw ) : null;
     }
+
+    // La mention découle de la moyenne (cf. ueb_mentions_bareme()) : on la
+    // recalcule côté serveur, la valeur postée n'est qu'un affichage.
+    $data['mention'] = ueb_mention_id_pour_moyenne( $data['moyenne_diplome'] );
 
     $data['annee_obtention'] = isset( $posted['annee_obtention'] ) ? absint( $posted['annee_obtention'] ) : null;
 

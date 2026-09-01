@@ -213,6 +213,9 @@ get_header();
                 <input type="hidden" id="numero_dossier" name="numero_dossier" value="<?php echo esc_attr( $ueb_numero_dossier ?: '' ); ?>">
                 <input type="hidden" id="serie_diplome" name="serie_diplome">
                 <input type="hidden" id="niveau_lmd" name="niveau_lmd">
+                <!-- Mention : calculée à partir de la moyenne, le select
+                     visible n'est qu'un affichage (cf. ueb_mentions_bareme()). -->
+                <input type="hidden" id="mention" name="mention">
 
                 <!-- ===== ÉTAPE 1 : FORMATION ===== -->
                 <fieldset class="form-step active" data-step="1">
@@ -309,18 +312,20 @@ get_header();
                                 step="0.01"
                                 min="10"
                                 max="20"
+                                inputmode="decimal"
                                 placeholder="Ex : 13.50"
                                 required
                             >
-                            <span class="field-hint">Valeur comprise entre 10 et 20.</span>
+                            <span class="field-hint">Valeur comprise entre 10 et 20. Ta mention en découle automatiquement.</span>
                         </div>
 
-                        <!-- Mention -->
+                        <!-- Mention — déduite de la moyenne, non modifiable -->
                         <div class="form-group align-top">
-                            <label for="mention">Mention <span class="required">*</span><span class="field-trans">Mention / Honors</span></label>
-                            <select id="mention" name="mention" required disabled>
+                            <label for="mention_select">Mention <span class="required">*</span><span class="field-trans">Mention / Honors</span></label>
+                            <select id="mention_select" class="field-locked" required disabled aria-describedby="mention-hint">
                                 <option value="">— Chargement... —</option>
                             </select>
+                            <span class="field-hint" id="mention-hint">Attribuée automatiquement d'après ta moyenne : 10–11,99 passable, 12–13,99 assez bien, 14–15,99 bien, 16–17,99 très bien, 18–20 excellent.</span>
                         </div>
 
                         <!-- Année d'obtention — SELECT 1980..2026 -->

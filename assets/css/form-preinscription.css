@@ -593,6 +593,22 @@ input.date-field-input.error ~ .date-field-icon {
     border-left-color: var(--ueb-erreur);
 }
 
+/* Champ renseigné : l'icône s'efface au profit de la saisie, et le champ
+   date superposé cesse de capter le clic — sinon une zone invisible
+   continuerait d'ouvrir le calendrier. Elle revient si le champ est vidé. */
+.date-field--saisie .date-field-icon {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.date-field--saisie input.date-field-native {
+    pointer-events: none;
+}
+
+.date-field--saisie input.date-field-input {
+    padding-right: 14px;
+}
+
 /* ============================================================
    AJOUTS v2.1
    ============================================================ */
