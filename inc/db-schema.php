@@ -86,9 +86,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         ueb_preinscriptions, DELETE FROM wp_options les options
  *         ueb_db_version / ueb_data_version, puis désactiver/réactiver
  *         le thème (aucune vraie donnée candidat en local à ce stade).
+ * - 2.5 : retrait des 3 diplômes "relevé de notes" (niveau 1, niveau 2,
+ *         master 1) de l'offre. Le candidat choisit désormais lui-même
+ *         son niveau LMD parmi ceux qu'ouvre son diplôme : L1/L2/L3 pour
+ *         le Baccalauréat et le GCE O-Level, M1/M2 pour la Licence,
+ *         Doctorat pour le Master (cf. ueb_niveaux_par_diplome() dans
+ *         inc/ajax-functions.php). Données uniquement, aucun changement
+ *         de structure : le reseed déclenché par cette version lance
+ *         ueb_purge_diplomes_obsoletes(), qui retire de la base les
+ *         diplômes devenus hors offre et non référencés par un dossier.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.4' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.5' );
  }
 
 /**

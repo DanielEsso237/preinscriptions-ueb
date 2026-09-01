@@ -297,9 +297,9 @@ input.error, select.error { border-color: var(--ueb-erreur); }
     font-size: .82rem;
     color: var(--ueb-gris);
     background: #f0f7f3;
-    border-left: 3px solid var(--ueb-vert);
+    border: 1px solid rgba(26,74,46,.18);
     padding: 10px 12px;
-    border-radius: 0 6px 6px 0;
+    border-radius: 6px;
     margin-bottom: 20px;
     margin-top: -4px;
     line-height: 1.5;
@@ -523,132 +523,79 @@ select:focus-visible {
     line-height: 1.4;
 }
 
-/* Ligne téléphone (input + bouton supprimer) */
-.tel-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
+/* Ligne téléphone — un seul numéro par candidat */
+.tel-row .tel-input { margin-bottom: 0; }
+
+/* ── Date de naissance : saisie au clavier + calendrier natif ──
+   Le champ texte porte la saisie ; le champ date natif, réduit à la
+   zone de l'icône et rendu transparent, ouvre le calendrier système
+   sans masquer le reste du champ. */
+.date-field {
+    position: relative;
+    display: block;
 }
 
-.tel-row .tel-input { flex: 1; margin-bottom: 0; }
+/* Les sélecteurs de champ sont préfixés par `input` : sans cela, la règle
+   générique `input[type="text"] / input[type="date"]` plus haut (même
+   spécificité de type + attribut) l'emporterait sur une simple classe. */
+input.date-field-input {
+    /* Place réservée à l'icône du calendrier. */
+    padding-right: 52px;
+}
 
-.btn-remove-tel {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1.5px solid var(--ueb-bordure);
-    background: var(--ueb-blanc);
-    color: var(--ueb-erreur);
-    font-size: 1.2rem;
-    line-height: 1;
-    cursor: pointer;
+.date-field-icon {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 48px;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--ueb-gris);
+    border-left: 1.5px solid var(--ueb-bordure);
+    border-radius: 0 var(--radius-input) var(--radius-input) 0;
+    pointer-events: none;
     transition: var(--transition);
 }
 
-.btn-remove-tel:hover {
-    background: #fef2f2;
-    border-color: var(--ueb-erreur);
+input.date-field-native {
+    position: absolute;
+    top: 0;
+    right: 0;
+    /* 48px de large sur toute la hauteur du champ : au-delà des 44px
+       recommandés pour une cible tactile. */
+    width: 48px;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    opacity: 0;
+    cursor: pointer;
 }
 
-/* Bouton "Ajouter un numéro" */
-.btn-add-field {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    margin-top: 6px;
-    padding: 11px 16px;
-    border: 2px dashed var(--ueb-vert);
-    border-radius: 8px;
-    background: #f0f7f3;
+.date-field:hover .date-field-icon {
     color: var(--ueb-vert);
-    font-size: .88rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: var(--transition);
-    letter-spacing: .01em;
 }
 
-.btn-add-field:hover {
-    background: #dff0e6;
-    border-color: var(--ueb-dore);
-    color: var(--ueb-dore-hover);
+/* Pas d'anneau de focus ici : le champ est hors tabulation
+   (tabindex="-1"), l'accès clavier passe par le champ texte. */
+input.date-field-native:focus {
+    background: transparent;
+    box-shadow: none;
+    outline: none;
 }
 
-.btn-add-field:active {
-    transform: scale(.98);
-}
-
-.btn-add-field span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--ueb-vert);
-    color: var(--ueb-blanc);
-    font-size: .95rem;
-    line-height: 1;
-    font-weight: 700;
-    flex-shrink: 0;
-    transition: var(--transition);
-}
-
-.btn-add-field:hover span {
-    background: var(--ueb-dore);
+input.date-field-input.error ~ .date-field-icon {
+    color: var(--ueb-erreur);
+    border-left-color: var(--ueb-erreur);
 }
 
 /* ============================================================
    AJOUTS v2.1
    ============================================================ */
-
-/* Bouton "+ Ajouter un numéro" — style amélioré */
-.btn-add-field {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    margin-top: 6px;
-    padding: 11px 16px;
-    border: 2px dashed var(--ueb-vert);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--ueb-vert);
-    font-size: .88rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: var(--transition);
-    letter-spacing: .01em;
-}
-
-.btn-add-field:hover {
-    background: #f0f7f3;
-    border-style: solid;
-}
-
-.btn-add-field span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    background: var(--ueb-vert);
-    color: var(--ueb-blanc);
-    border-radius: 50%;
-    font-size: .9rem;
-    font-weight: 800;
-    flex-shrink: 0;
-}
 
 /* Bouton Générer la fiche */
 .btn-submit {
@@ -670,7 +617,7 @@ select:focus-visible {
 
 .form-notice--info {
     background: #fffbeb;
-    border-left-color: var(--ueb-dore);
+    border-color: rgba(201,162,39,.45);
     color: #92400e;
 }
 
@@ -687,7 +634,6 @@ select:focus-visible {
     gap: 4px;
     background-color: #f7f7f5;
     border: 1px solid #c9a227;
-    border-left: 4px solid #1a4a2e;
     border-radius: 8px;
     padding: 14px 18px;
     margin-bottom: 20px;
@@ -719,13 +665,114 @@ select:focus-visible {
 
 .dossier-banner--error {
     border-color: #b91c1c;
-    border-left-color: #b91c1c;
 }
 
 .dossier-banner--error p {
     color: #b91c1c;
     font-size: 13.5px;
     margin: 0;
+}
+
+
+/* ===== Aide & contact WhatsApp ===== */
+.aide-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: var(--ueb-blanc);
+    border: 1px solid var(--ueb-bordure);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+}
+
+.aide-contact-intro {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ueb-gris);
+}
+
+.aide-contact-liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.aide-contact-liste li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.aide-contact-lien {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 14px;
+    background-color: var(--ueb-fond);
+    border: 1px solid var(--ueb-bordure);
+    border-radius: 999px;
+    color: var(--ueb-vert);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.aide-contact-lien:hover,
+.aide-contact-lien:focus-visible {
+    background-color: #eaf3ed;
+    border-color: var(--ueb-vert);
+    color: var(--ueb-vert);
+    text-decoration: none;
+}
+
+.aide-contact-lien:hover {
+    transform: translateY(-1px);
+}
+
+.aide-contact-lien:focus-visible {
+    outline: 2px solid var(--ueb-vert);
+    outline-offset: 2px;
+}
+
+.aide-contact-lien:active {
+    transform: translateY(0);
+}
+
+.aide-contact-icone {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    fill: #25d366;
+}
+
+@media (max-width: 480px) {
+    .aide-contact-liste {
+        flex-direction: column;
+    }
+
+    .aide-contact-lien {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aide-contact-lien {
+        transition: none;
+    }
+
+    .aide-contact-lien:hover {
+        transform: none;
+    }
 }
 
 
@@ -758,7 +805,6 @@ select:focus-visible {
     padding: 18px 20px;
     background-color: #f7f7f5;
     border: 1px solid #e4e4e0;
-    border-left: 4px solid #1a4a2e;
     border-radius: 8px;
     max-width: 520px;
 }

@@ -491,10 +491,7 @@ SQL,
 INSERT IGNORE INTO ueb_diplomes_admission (code, libelle) VALUES
     ('bac', 'Baccalauréat'),
     ('gce_ol', 'GCE O-Level'),
-    ('releve_n1', 'Relevé de notes Niveau 1'),
-    ('releve_n2', 'Relevé de notes Niveau 2'),
     ('licence', 'Licence'),
-    ('releve_m1', 'Relevé de notes Master 1'),
     ('master', 'Master');
 SQL,
         'ueb_specialites_diplome' => <<<SQL
@@ -656,6 +653,46 @@ function ueb_seed_reference_data() {
                 $wpdb->last_error
             ) );
         }
+    }
+
+    ueb_purge_diplomes_obsoletes();
+}
+
+/**
+ * Supprime de ueb_diplomes_admission les diplômes qui ne font plus
+ * partie de l'offre (cf. ueb_niveaux_par_diplome() dans
+ * inc/ajax-functions.php).
+ *
+ * Le seed utilise INSERT IGNORE et n'efface donc jamais rien : sans
+ * cette purge, les bases déjà installées garderaient les relevés de
+ * notes retirés en 2.5. Un diplôme encore référencé par un dossier est
+ * volontairement conservé (la clé étrangère fk_pi_diplome interdirait
+ * de toute façon sa suppression) — le formulaire ne le propose plus,
+ * puisque ueb_ajax_get_diplomes() filtre sur la même liste blanche.
+ */
+function ueb_purge_diplomes_obsoletes() {
+    global $wpdb;
+
+    if ( ! function_exists( 'ueb_niveaux_par_diplome' ) ) {
+        return;
+    }
+
+    $codes  = array_keys( ueb_niveaux_par_diplome() );
+    $places = implode( ', ', array_fill( 0, count( $codes ), '%s' ) );
+
+    $obsoletes = $wpdb->get_col( $wpdb->prepare(
+        "SELECT d.id FROM ueb_diplomes_admission d
+         WHERE d.code NOT IN ($places)
+           AND NOT EXISTS (
+               SELECT 1 FROM ueb_preinscriptions p
+               WHERE p.diplome_admission_id = d.id
+           )",
+        $codes
+    ) );
+
+    foreach ( $obsoletes as $id ) {
+        // Les séries rattachées partent en cascade (fk_specialite_diplome).
+        $wpdb->delete( 'ueb_diplomes_admission', array( 'id' => (int) $id ), array( '%d' ) );
     }
 }
 

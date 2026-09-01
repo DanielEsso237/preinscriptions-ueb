@@ -134,6 +134,37 @@ get_header();
         </div>
         <?php endif; ?>
 
+        <?php
+        $ueb_contacts_aide = array(
+            array( 'affichage' => '+237 6 76 29 54 88', 'whatsapp' => '237676295488' ),
+            array( 'affichage' => '+237 6 73 41 43 81', 'whatsapp' => '237673414381' ),
+            array( 'affichage' => '+237 6 59 49 02 21', 'whatsapp' => '237659490221' ),
+            array( 'affichage' => '+237 6 93 89 91 50', 'whatsapp' => '237693899150' ),
+        );
+
+        $ueb_message_aide = rawurlencode(
+            'Bonjour, j\'ai besoin d\'aide pour ma préinscription à l\'UEB'
+            . ( $ueb_numero_dossier ? ' (dossier ' . $ueb_numero_dossier . ').' : '.' )
+        );
+        ?>
+        <div class="aide-contact">
+            <p class="aide-contact-intro">Besoin d'aide ou un problème pendant ta préinscription ? Contacte-nous au :</p>
+            <ul class="aide-contact-liste">
+                <?php foreach ( $ueb_contacts_aide as $ueb_contact ) : ?>
+                <li>
+                    <a class="aide-contact-lien"
+                       href="https://wa.me/<?php echo esc_attr( $ueb_contact['whatsapp'] ); ?>?text=<?php echo esc_attr( $ueb_message_aide ); ?>"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="Écrire au <?php echo esc_attr( $ueb_contact['affichage'] ); ?> sur WhatsApp">
+                        <svg class="aide-contact-icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                        <span><?php echo esc_html( $ueb_contact['affichage'] ); ?></span>
+                    </a>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+
         <div class="reprise-dossier">
             <button type="button" id="btn-toggle-reprise" class="reprise-toggle">Tu as déjà un dossier ? Continuer ma préinscription</button>
             <div id="reprise-panel" class="reprise-panel" style="display:none;">
@@ -278,7 +309,7 @@ get_header();
                             <select id="niveau_lmd_select" required disabled>
                                 <option value="">— Choisir d'abord le diplôme d'admission —</option>
                             </select>
-                            <span class="field-hint">Déduit automatiquement de ton diplôme d'admission.</span>
+                            <span class="field-hint">Ton diplôme d'admission détermine les niveaux auxquels tu peux postuler.</span>
                         </div>
 
                         <!-- Moyenne obtenue — réels dans [10, 20] -->
@@ -367,8 +398,31 @@ get_header();
                         </div>
 
                         <div class="form-group">
-                            <label for="date_naissance">Date de naissance <span class="required">*</span><span class="field-trans">Date of birth</span></label>
-                            <input type="date" id="date_naissance" name="date_naissance" required>
+                            <label for="date_naissance_saisie">Date de naissance <span class="required">*</span><span class="field-trans">Date of birth</span></label>
+                            <div class="date-field">
+                                <input
+                                    type="text"
+                                    id="date_naissance_saisie"
+                                    class="date-field-input"
+                                    inputmode="numeric"
+                                    autocomplete="bday"
+                                    placeholder="JJ/MM/AAAA"
+                                    maxlength="10"
+                                    aria-describedby="date-naissance-hint"
+                                    required
+                                >
+                                <span class="date-field-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                                        <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                                        <path d="M3 10h18M8 3v4M16 3v4"></path>
+                                    </svg>
+                                </span>
+                                <!-- Champ réellement soumis (format ISO attendu par la colonne
+                                     DATE). Superposé à l'icône : le toucher ouvre le calendrier
+                                     natif, sans empêcher la saisie au clavier dans le champ texte. -->
+                                <input type="date" id="date_naissance" name="date_naissance" class="date-field-native" tabindex="-1" aria-label="Choisir la date de naissance dans le calendrier">
+                            </div>
+                            <span class="field-hint" id="date-naissance-hint">Tape ta date au format JJ/MM/AAAA, ou touche l'icône pour ouvrir le calendrier.</span>
                         </div>
 
                         <div class="form-group">
@@ -438,15 +492,12 @@ get_header();
                         </div>
 
                         <div class="form-group full">
-                            <label>Téléphone(s) <span class="required">*</span><span class="field-trans">Phone number(s)</span></label>
+                            <label for="telephone">Téléphone <span class="required">*</span><span class="field-trans">Phone number</span></label>
                             <div id="telephones-container">
                                 <div class="tel-row">
-                                    <input type="tel" name="telephone[]" placeholder="6X XX XX XX XX" required class="tel-input">
+                                    <input type="tel" id="telephone" name="telephone[]" placeholder="6X XX XX XX XX" required class="tel-input">
                                 </div>
                             </div>
-                            <button type="button" id="btn-add-tel" class="btn-add-field">
-                                <span>+</span> Ajouter un numéro
-                            </button>
                         </div>
 
                         <div class="form-group full">
@@ -575,7 +626,7 @@ get_header();
                             <span class="btn-arrow">←</span> Précédent
                         </button>
                         <button type="button" class="btn-next btn-primary" data-next="5">
-                            Vérifier <span class="btn-arrow">→</span>
+                            Suivant <span class="btn-arrow">→</span>
                         </button>
                     </div>
                 </fieldset>
@@ -584,7 +635,7 @@ get_header();
                 <fieldset class="form-step" data-step="5">
                     <legend class="step-heading">
                         <span class="step-num">Étape 5 / 5</span>
-                        Vérifie ta demande
+                        Vérifie tes informations
                     </legend>
 
                     <div id="recap-content" class="recap-grid"></div>

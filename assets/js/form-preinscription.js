@@ -47,16 +47,6 @@
     let diplomesCache = [];
     let niveauxCache  = [];
 
-    /* Codes stables définis dans inc/db-seed.php : diplôme -> niveau LMD
-       auquel il donne accès. Utilisé pour verrouiller automatiquement le
-       champ "Niveau LMD" dès que le diplôme d'admission est choisi. */
-    const DIPLOME_VERS_NIVEAU = {
-        bac: 'L1', gce_ol: 'L1',
-        releve_n1: 'L2', releve_n2: 'L3',
-        licence: 'M1', releve_m1: 'M2',
-        master: 'DOC'
-    };
-
     // Diplômes pour lesquels "Série / Spécialité" a un sens (séries du
     // bac / GCE O-Level). Pour les autres (relevés de notes, licence,
     // master), ce champ est masqué et non requis.
@@ -73,8 +63,12 @@
         return f ? f.code : '';
     }
 
+    function getDiplome(diplomeId) {
+        return diplomesCache.find(function (x) { return String(x.id) === String(diplomeId); }) || null;
+    }
+
     function getDiplomeCode(diplomeId) {
-        const d = diplomesCache.find(function (x) { return String(x.id) === String(diplomeId); });
+        const d = getDiplome(diplomeId);
         return d ? d.code : '';
     }
 
@@ -157,9 +151,10 @@
         return data;
     });
 
-    // Niveau LMD : plus rempli directement dans un select libre — le champ
-    // est verrouillé et déduit du diplôme d'admission (cf.
-    // updateNiveauDepuisDiplome ci-dessous). On garde seulement le cache.
+    // Niveau LMD : le select n'est pas rempli au chargement — il n'affiche
+    // que les niveaux ouverts par le diplôme d'admission choisi (cf.
+    // updateNiveauxDisponibles ci-dessous). On garde donc seulement le
+    // cache de la liste complète, dans lequel on pioche ensuite.
     const niveauxPromise = uebFetch('ueb_get_niveaux_lmd').then(function (data) {
         niveauxCache = data;
         return data;
@@ -226,23 +221,47 @@
     }
 
     /* ================================================================
-       NIVEAU LMD — déduit automatiquement du diplôme d'admission choisi
+       NIVEAU LMD — le candidat choisit, parmi les seuls niveaux que son
+       diplôme d'admission lui ouvre. La liste des codes autorisés arrive
+       avec chaque diplôme (champ "niveaux", cf. ueb_ajax_get_diplomes()).
        ================================================================ */
-    function updateNiveauDepuisDiplome() {
-        const code   = DIPLOME_VERS_NIVEAU[getDiplomeCode(selectDiplome.value)] || '';
-        const trouve = niveauxCache.find(function (n) { return n.code === code; });
+    function updateNiveauxDisponibles() {
+        const diplome  = getDiplome(selectDiplome.value);
+        const autorise = (diplome && diplome.niveaux) || [];
+        const choixPrecedent = niveauSelect.value;
 
-        if (!trouve) {
+        niveauSelect.classList.remove('field-locked');
+
+        if (!autorise.length) {
             fillSelect(niveauSelect, [], '— Choisir d\'abord le diplôme d\'admission —', false);
             if (niveauHidden) niveauHidden.value = '';
             return;
         }
 
-        fillSelect(niveauSelect, [trouve], '', false);
-        niveauSelect.value = trouve.id;
-        niveauSelect.classList.add('field-locked');
-        if (niveauHidden) niveauHidden.value = trouve.id;
+        // On garde l'ordre de ueb_niveaux_lmd (L1, L2, L3, M1, M2, DOC).
+        const options = niveauxCache.filter(function (n) {
+            return autorise.indexOf(n.code) !== -1;
+        });
+
+        fillSelect(niveauSelect, options, '— Choisir ton niveau —', true);
+
+        // Un seul niveau possible (Master → Doctorat) : on le pose
+        // directement plutôt que d'imposer un choix sans alternative.
+        const encoreValide = options.some(function (n) { return String(n.id) === choixPrecedent; });
+        if (options.length === 1) {
+            niveauSelect.value = options[0].id;
+        } else if (encoreValide) {
+            niveauSelect.value = choixPrecedent;
+        }
+
+        syncNiveauHidden();
     }
+
+    function syncNiveauHidden() {
+        if (niveauHidden) niveauHidden.value = niveauSelect.value;
+    }
+
+    niveauSelect.addEventListener('change', syncNiveauHidden);
 
     /* ================================================================
        TYPE DE FORMATION : visible uniquement pour la faculté FS
@@ -345,7 +364,7 @@
 
     selectDiplome.addEventListener('change', function () {
         updateSeries();
-        updateNiveauDepuisDiplome();
+        updateNiveauxDisponibles();
     });
 
     selectType.addEventListener('change', updateFilieres);
@@ -423,48 +442,115 @@
     document.querySelectorAll('input[type="tel"]').forEach(enforceTelInput);
 
     /* ================================================================
-       TÉLÉPHONES MULTIPLES
+       TÉLÉPHONE DU CANDIDAT — un seul numéro
+       Le champ garde le nom "telephone[]" : la table
+       ueb_preinscriptions_telephones et le PDF attendent un tableau.
        ================================================================ */
-    function makeTelRow(name, required) {
-        const row = document.createElement('div');
-        row.className = 'tel-row';
-
-        const input = document.createElement('input');
-        input.type        = 'tel';
-        input.name        = name;
-        input.placeholder = '6X XX XX XX XX';
-        input.className   = 'tel-input';
-        if (required) input.required = true;
-        enforceTelInput(input);
-
-        const btnRemove = document.createElement('button');
-        btnRemove.type      = 'button';
-        btnRemove.className = 'btn-remove-tel';
-        btnRemove.setAttribute('aria-label', 'Supprimer ce numéro');
-        btnRemove.textContent = '×';
-        btnRemove.addEventListener('click', function () { row.remove(); });
-
-        row.appendChild(input);
-        row.appendChild(btnRemove);
-        return row;
+    function setTelephone(values) {
+        const input = document.querySelector('input[name="telephone[]"]');
+        if (!input) return;
+        const liste = Array.isArray(values) ? values : (values ? [values] : []);
+        input.value = liste.length ? formatTel(String(liste[0])) : '';
     }
 
-    function fillTelRows(containerId, name, values) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = '';
-        const list = (values && values.length) ? values : [''];
-        list.forEach(function (val, i) {
-            const row = makeTelRow(name, i === 0);
-            row.querySelector('input').value = val;
-            container.appendChild(row);
+    /* ================================================================
+       DATE DE NAISSANCE — saisie au clavier OU calendrier natif
+
+       Sur mobile, un <input type="date"> seul n'offre que le sélecteur
+       roulant, pénible pour remonter trente ans en arrière. On expose
+       donc un champ texte masqué en JJ/MM/AAAA, doublé du champ date
+       natif (superposé à l'icône) qui reste la valeur soumise, au format
+       ISO attendu par la colonne DATE.
+       ================================================================ */
+    const dateSaisie = document.getElementById('date_naissance_saisie');
+    const dateNative = document.getElementById('date_naissance');
+
+    // Bornes du calendrier : pas de date future, pas de siècle précédent.
+    if (dateNative) {
+        dateNative.max = new Date().toISOString().slice(0, 10);
+        dateNative.min = '1900-01-01';
+    }
+
+    function formatDateFr(raw) {
+        const digits = String(raw).replace(/\D/g, '').slice(0, 8);
+        let out = '';
+        for (let i = 0; i < digits.length; i++) {
+            if (i === 2 || i === 4) out += '/';
+            out += digits[i];
+        }
+        return out;
+    }
+
+    /**
+     * "12/03/2005" -> "2005-03-12", et '' si la date n'existe pas
+     * (31/02), est incomplète, antérieure à 1900 ou dans le futur.
+     */
+    function dateFrVersIso(texte) {
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(texte).trim());
+        if (!m) return '';
+
+        const jour = parseInt(m[1], 10);
+        const mois = parseInt(m[2], 10);
+        const an   = parseInt(m[3], 10);
+
+        const d = new Date(an, mois - 1, jour);
+        // Le constructeur reporte silencieusement les dates impossibles
+        // (31/02 -> 03/03) : on vérifie qu'il n'a rien déplacé.
+        if (d.getFullYear() !== an || d.getMonth() !== mois - 1 || d.getDate() !== jour) return '';
+        if (an < 1900) return '';
+
+        const aujourdhui = new Date();
+        aujourdhui.setHours(0, 0, 0, 0);
+        if (d > aujourdhui) return '';
+
+        return m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    function dateIsoVersFr(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso).trim());
+        return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+    }
+
+    /** Pose la date des deux côtés à partir d'une valeur ISO. */
+    function setDateNaissance(iso) {
+        if (!dateSaisie || !dateNative) return;
+        const fr = dateIsoVersFr(iso);
+        dateSaisie.value = fr;
+        dateNative.value = fr ? iso : '';
+    }
+
+    if (dateSaisie && dateNative) {
+        dateSaisie.addEventListener('input', function () {
+            const avant = this.value.length;
+            const pos   = this.selectionStart;
+            this.value  = formatDateFr(this.value);
+            const diff  = this.value.length - avant;
+            this.setSelectionRange(pos + diff, pos + diff);
+
+            // Le champ soumis ne reçoit que les dates complètes et réelles.
+            dateNative.value = dateFrVersIso(this.value);
         });
-    }
 
-    const btnAddTel = document.getElementById('btn-add-tel');
-    if (btnAddTel) {
-        btnAddTel.addEventListener('click', function () {
-            document.getElementById('telephones-container').appendChild(makeTelRow('telephone[]', false));
+        dateSaisie.addEventListener('keydown', function (e) {
+            const autorises = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', 'Enter'];
+            if (autorises.includes(e.key) || e.ctrlKey || e.metaKey) return;
+            if (!/^[0-9]$/.test(e.key)) e.preventDefault();
+        });
+
+        // Calendrier natif : le champ date superposé à l'icône reçoit le
+        // clic. showPicker() ouvre le sélecteur même là où cliquer un
+        // champ date transparent ne suffirait pas (Firefox desktop).
+        dateNative.addEventListener('click', function () {
+            if (typeof this.showPicker === 'function') {
+                try { this.showPicker(); } catch (err) { /* geste utilisateur refusé */ }
+            }
+        });
+
+        dateNative.addEventListener('change', function () {
+            dateSaisie.value = dateIsoVersFr(this.value);
+            dateSaisie.classList.remove('error');
+            const err = dateSaisie.closest('.form-group').querySelector('.field-error');
+            if (err) err.remove();
         });
     }
 
@@ -536,6 +622,16 @@
             }
         });
 
+        // Date de naissance : le champ texte peut être rempli mais
+        // incomplet ou impossible — dans ce cas le champ soumis est vide.
+        if (dateSaisie && fieldset.contains(dateSaisie) && dateSaisie.value.trim() && !dateNative.value) {
+            dateSaisie.classList.add('error');
+            addError(
+                dateSaisie.closest('.form-group'),
+                'Date invalide. Utilise le format JJ/MM/AAAA, par exemple 04/09/2005.'
+            );
+        }
+
         const emailField = fieldset.querySelector('input[type="email"]');
         if (emailField && emailField.value.trim()) {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value.trim())) {
@@ -574,7 +670,7 @@
         statut_socio_professionnel: 'Statut socio-professionnel',
         handicap              : 'Situation de handicap',
         email                 : 'Adresse e-mail',
-        telephone             : 'Téléphone(s)',
+        telephone             : 'Téléphone',
         adresse               : 'Adresse actuelle',
         region_origine        : "Région d'origine",
         departement_origine   : "Département d'origine",
@@ -625,7 +721,7 @@
         statut_socio_professionnel: 'Socio-professional status',
         handicap              : 'Disability status',
         email                 : 'Email address',
-        telephone             : 'Phone number(s)',
+        telephone             : 'Phone number',
         adresse               : 'Current address',
         region_origine        : 'Region of origin',
         departement_origine   : 'Department of origin',
@@ -670,10 +766,12 @@
     };
 
     function getFieldValue(fieldName) {
+        if (fieldName === 'date_naissance') {
+            return dateSaisie ? dateSaisie.value.trim() : '';
+        }
         if (fieldName === 'telephone') {
-            const vals = [];
-            document.querySelectorAll('input[name="telephone[]"]').forEach(function (i) { if (i.value.trim()) vals.push(i.value.trim()); });
-            return vals.join(', ');
+            const input = document.querySelector('input[name="telephone[]"]');
+            return input ? input.value.trim() : '';
         }
         if (fieldName === 'serie_diplome') {
             const sel = document.getElementById('serie_diplome_select');
@@ -910,6 +1008,9 @@
             if (el) el.value = donnees[name];
         });
 
+        // La date arrive en ISO : le champ texte visible doit suivre.
+        setDateNaissance(donnees.date_naissance || '');
+
         if (donnees.sexe) {
             const radio = form.querySelector('input[name="sexe"][value="' + donnees.sexe + '"]');
             if (radio) radio.checked = true;
@@ -920,7 +1021,7 @@
             if (radio) radio.checked = true;
         }
 
-        fillTelRows('telephones-container', 'telephone[]', donnees.telephone);
+        setTelephone(donnees.telephone);
 
         await Promise.all([
             facultesPromise, diplomesPromise, regionsPromise, statutsPromise,
@@ -971,7 +1072,11 @@
         if (donnees.faculte) selectFaculte.value = donnees.faculte;
         if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
 
-        updateNiveauDepuisDiplome();
+        updateNiveauxDisponibles();
+        if (donnees.niveau_lmd) {
+            niveauSelect.value = donnees.niveau_lmd;
+            syncNiveauHidden();
+        }
 
         const type = donnees.type_formation || 'classique';
         const faculteCode = getFaculteCode(donnees.faculte);
