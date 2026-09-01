@@ -151,10 +151,7 @@ function preinscriptions_countdown_assets() {
         && ! is_page_template( 'page-preinscription.php' )
         && ! is_page_template( 'page-maintenance.php' ) ) {
         return;
-    } {
-        return;
     }
-
     $countdown_css = get_template_directory() . '/assets/css/compte-rebours.css';
     $countdown_js  = get_template_directory() . '/assets/js/compte-rebours.js';
 
