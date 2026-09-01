@@ -137,6 +137,26 @@ function ueb_translate_type_formation( $code ) {
    GÉNÉRATION DU PDF (point d'entrée, hook template_redirect)
    ============================================================ */
 
+/**
+ * Formate une date ISO (AAAA-MM-JJ, telle que soumise par le champ date
+ * du formulaire) en JJ/MM/AAAA. Toute autre valeur est renvoyée telle
+ * quelle : on ne passe volontairement pas par strtotime() seul, qui lit
+ * "04/09/1999" à l'américaine et en ferait un 9 avril.
+ */
+function ueb_pdf_date_fr( $iso ) {
+    $iso = trim( (string) $iso );
+
+    if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $iso, $m ) ) {
+        return $iso;
+    }
+
+    if ( ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+        return $iso;
+    }
+
+    return $m[3] . '/' . $m[2] . '/' . $m[1];
+}
+
 function ueb_handle_pdf_generation() {
     if ( ! isset( $_POST['action'] ) || $_POST['action'] !== 'generate_pdf' ) {
         return;
@@ -627,7 +647,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $etab = $d['faculte_code'] !== '' ? $d['faculte_code'] : ueb_pdf_sans_accents( $d['faculte'] );
     $qr_fiche = 'Dossier : ' . $d['numero_dossier'] . "\n"
         . 'Nom : ' . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
-        . 'Ne(e) : ' . $d['date_naissance'] . "\n"
+        . 'Ne(e) : ' . ueb_pdf_date_fr( $d['date_naissance'] ) . "\n"
         . 'Sexe : ' . $d['sexe'] . "\n"
         . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
@@ -655,7 +675,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
                'Statut', 'Student status', $d['statut_etudiant'] ),
     ), $y );
     $y += 2;
-    $date_lieu = trim( $d['date_naissance'] . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
+    $date_lieu = trim( ueb_pdf_date_fr( $d['date_naissance'] ) . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
     $y = ueb_pdf_section_fiche( $pdf, 'ÉTAT CIVIL', array(
         array( 'Nom', 'Surname', strtoupper( $d['nom'] ),
                'Nationalité', 'Nationality', $d['nationalite'] ),
@@ -827,11 +847,7 @@ function ueb_pdf_page_medicale( $pdf, $d ) {
         '(Imprimez ces deux fiches et apportez-les au Centre médico-social lors de la visite médicale)',
         9, 'I', $c['gris'], 'C', 210 );
     /* --- Informations personnelles --- */
-    $date_fr = $d['date_naissance'];
-    $ts = strtotime( $d['date_naissance'] );
-    if ( $d['date_naissance'] !== '' && $ts ) {
-        $date_fr = date( 'd/m/Y', $ts );
-    }
+    $date_fr = ueb_pdf_date_fr( $d['date_naissance'] );
     $sexe_label = $d['sexe'] === 'M' ? 'MASCULIN' : ( $d['sexe'] === 'F' ? 'FÉMININ' : '' );
     $y = 62;
     $y = ueb_pdf_boite_medicale( $pdf, 'INFORMATIONS PERSONNELLES', 'personne', 76, array(

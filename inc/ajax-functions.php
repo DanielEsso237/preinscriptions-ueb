@@ -38,13 +38,55 @@ add_action( 'wp_ajax_nopriv_ueb_get_facultes', 'ueb_ajax_get_facultes' );
 /* ------------------------------------------------------------------ */
 /* Diplômes d'admission                                                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Source de vérité des niveaux LMD accessibles selon le diplôme
+ * d'admission présenté par le candidat.
+ *
+ * Sert deux usages :
+ *   1. la liste blanche des diplômes proposés dans le formulaire — un
+ *      diplôme absent de ce tableau n'est plus proposé, même s'il reste
+ *      présent en base (cas des relevés de notes, retirés du seed mais
+ *      conservés dans les bases déjà installées à cause des clés
+ *      étrangères des dossiers déjà saisis) ;
+ *   2. le filtrage du select "Niveau LMD", envoyé au navigateur avec
+ *      chaque diplôme (cf. ueb_ajax_get_diplomes()).
+ *
+ * Les clés sont les codes de ueb_diplomes_admission, les valeurs les
+ * codes de ueb_niveaux_lmd (cf. inc/db-seed.php).
+ *
+ * @return array<string, string[]> code diplôme => codes niveaux LMD
+ */
+function ueb_niveaux_par_diplome() {
+    return array(
+        'bac'     => array( 'L1', 'L2', 'L3' ),
+        'gce_ol'  => array( 'L1', 'L2', 'L3' ),
+        'licence' => array( 'M1', 'M2' ),
+        'master'  => array( 'DOC' ),
+    );
+}
+
 function ueb_ajax_get_diplomes() {
     ueb_ajax_check_nonce();
     global $wpdb;
 
-    $rows = $wpdb->get_results(
-        "SELECT id, code, libelle FROM ueb_diplomes_admission ORDER BY libelle ASC"
-    );
+    $map    = ueb_niveaux_par_diplome();
+    $codes  = array_keys( $map );
+    $places = implode( ', ', array_fill( 0, count( $codes ), '%s' ) );
+
+    $rows = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, code, libelle FROM ueb_diplomes_admission
+         WHERE code IN ($places)
+         ORDER BY libelle ASC",
+        $codes
+    ) );
+
+    // Chaque diplôme embarque les niveaux LMD qu'il autorise : le
+    // formulaire n'a ainsi qu'un seul aller-retour à faire, et le
+    // mapping n'est pas dupliqué côté JavaScript.
+    foreach ( $rows as $row ) {
+        $row->niveaux = $map[ $row->code ];
+    }
 
     wp_send_json_success( $rows );
 }
