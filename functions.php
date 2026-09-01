@@ -147,7 +147,11 @@ function preinscriptions_admin_assets() {
 }
 
 function preinscriptions_countdown_assets() {
-    if ( ! is_page_template( 'page-compte-rebours.php' ) && ! is_page_template( 'page-preinscription.php' ) ) {
+    if ( ! is_page_template( 'page-compte-rebours.php' )
+        && ! is_page_template( 'page-preinscription.php' )
+        && ! is_page_template( 'page-maintenance.php' ) ) {
+        return;
+    } {
         return;
     }
 

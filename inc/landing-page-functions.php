@@ -211,6 +211,55 @@ if ( ! defined( 'PREINSCRIPTIONS_DATE_CLOTURE' ) ) {
     define( 'PREINSCRIPTIONS_DATE_CLOTURE', '2026-10-31 23:59:59' );
 }
 
+
+/**
+ * Interrupteur unique du mode maintenance. Tant qu'il est à true, tous les
+ * boutons "Commencer / Continuer ma préinscription" du site (et l'accès
+ * direct à page-preinscription.php) renvoient vers la page de maintenance
+ * au lieu du formulaire — quelle que soit la date d'ouverture/clôture.
+ *
+ * Repasser à false pour rouvrir le formulaire au public.
+ */
+if ( ! defined( 'PREINSCRIPTIONS_MAINTENANCE_MODE' ) ) {
+    define( 'PREINSCRIPTIONS_MAINTENANCE_MODE', true );
+}
+
+/**
+ * Le mode maintenance est-il actif ? Passe par un filtre pour rester
+ * ajustable sans toucher au code (ex. depuis un plugin ou du debug).
+ *
+ * @return bool
+ */
+function preinscriptions_maintenance_active() {
+    return (bool) apply_filters( 'preinscriptions_maintenance_active', PREINSCRIPTIONS_MAINTENANCE_MODE );
+}
+
+/**
+ * URL de la page de maintenance (template page-maintenance.php).
+ * Même logique que preinscriptions_inscription_url().
+ *
+ * @return string
+ */
+function preinscriptions_maintenance_url() {
+    $url = '#';
+
+    $pages = get_posts( array(
+        'post_type'      => 'page',
+        'post_status'    => 'publish',
+        'meta_key'       => '_wp_page_template',
+        'meta_value'     => 'page-maintenance.php',
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ) );
+
+    if ( ! empty( $pages ) ) {
+        $url = get_permalink( $pages[0] );
+    }
+
+    return apply_filters( 'preinscriptions_maintenance_url', $url );
+}
+
+
 /**
  * Est-ce que la date d'ouverture est déjà atteinte (heure du serveur) ?
  *
@@ -296,6 +345,9 @@ function preinscriptions_guide_url() {
  * @return string
  */
 function preinscriptions_bouton_url() {
+    if ( preinscriptions_maintenance_active() ) {
+        return preinscriptions_maintenance_url();
+    }
     if ( preinscriptions_ouverture_atteinte() ) {
         return preinscriptions_inscription_url();
     }
