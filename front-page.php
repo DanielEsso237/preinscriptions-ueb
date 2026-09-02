@@ -16,7 +16,7 @@ $inscription = esc_url( preinscriptions_bouton_url() );
 
 <!-- HERO -->
 <section class="hero"><div class="wrap">
-    <h1 class="hero-title">Ta place à l'<span class="hl">Université d'Ébolowa</span> commence ici.</h1>
+    <h1 class="hero-title">Préinscription à l'<span class="hl">Université d'Ébolowa</span></h1>
 
     <div class="hero-visual">
         <div class="photo hero-slider">
