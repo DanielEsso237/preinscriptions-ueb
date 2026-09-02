@@ -349,3 +349,97 @@ require_once( get_template_directory() . '/inc/admin-references-ajax.php' );
 require_once( get_template_directory() . '/inc/export-functions.php' );
 require_once( get_template_directory() . '/inc/export-office.php' );
 require_once( get_template_directory() . '/inc/social-medias-functions.php' );
+
+/* =========================================================
+   SEO DU SITE
+   ========================================================= */
+
+/**
+ * Active la gestion native du <title> par WordPress.
+ */
+function ueb_theme_setup() {
+    add_theme_support( 'title-tag' );
+}
+add_action( 'after_setup_theme', 'ueb_theme_setup' );
+
+
+/**
+ * Titre SEO personnalisé.
+ */
+function ueb_document_title_parts( $title ) {
+
+    if ( is_front_page() || is_home() ) {
+        $title['title'] = 'Préinscription UEB';
+        $title['tagline'] = 'Université d’Ébolowa';
+    }
+
+    elseif ( is_page( 'preinscription' ) ) {
+        $title['title'] = 'Préinscription en ligne';
+        $title['tagline'] = 'Université d’Ébolowa';
+    }
+
+    elseif ( is_page( 'guide-de-preinscription' ) ) {
+        $title['title'] = 'Guide de préinscription';
+        $title['tagline'] = 'Université d’Ébolowa';
+    }
+
+    return $title;
+}
+add_filter( 'document_title_parts', 'ueb_document_title_parts' );
+
+
+/**
+ * Meta description + canonical + Open Graph.
+ */
+function ueb_seo_meta() {
+
+    if ( is_admin() ) {
+        return;
+    }
+
+    /* Description */
+    if ( is_front_page() || is_home() ) {
+
+        $description = 'Plateforme officielle de préinscription en ligne de l’Université d’Ébolowa (UEB). Consultez les informations et effectuez votre préinscription.';
+
+    } elseif ( is_page( 'preinscription' ) ) {
+
+        $description = 'Effectuez votre préinscription en ligne à l’Université d’Ébolowa (UEB) et renseignez les informations nécessaires à votre candidature.';
+
+    } elseif ( is_page( 'guide-de-preinscription' ) ) {
+
+        $description = 'Consultez le guide de préinscription à l’Université d’Ébolowa (UEB) pour connaître les étapes et les informations nécessaires.';
+
+    } else {
+
+        $description = 'Université d’Ébolowa (UEB) — informations et services de préinscription.';
+    }
+
+
+    /* Canonical */
+    if ( is_singular() ) {
+        $canonical = get_permalink();
+    } elseif ( is_front_page() ) {
+        $canonical = home_url( '/' );
+    } else {
+        $canonical = home_url( add_query_arg( array(), $GLOBALS['wp']->request ) );
+    }
+
+
+    /* Titre actuel */
+    $page_title = wp_get_document_title();
+
+
+    echo '<meta name="description" content="' . esc_attr( $description ) . '">' . "\n";
+    echo '<link rel="canonical" href="' . esc_url( $canonical ) . '">' . "\n";
+
+
+    /* Open Graph */
+    echo '<meta property="og:title" content="' . esc_attr( $page_title ) . '">' . "\n";
+    echo '<meta property="og:description" content="' . esc_attr( $description ) . '">' . "\n";
+    echo '<meta property="og:url" content="' . esc_url( $canonical ) . '">' . "\n";
+    echo '<meta property="og:type" content="website">' . "\n";
+    echo '<meta property="og:site_name" content="Université d’Ébolowa">' . "\n";
+
+}
+add_action( 'wp_head', 'ueb_seo_meta', 5 );
