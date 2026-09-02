@@ -221,7 +221,7 @@ if ( ! defined( 'PREINSCRIPTIONS_DATE_CLOTURE' ) ) {
  * Repasser à false pour rouvrir le formulaire au public.
  */
 if ( ! defined( 'PREINSCRIPTIONS_MAINTENANCE_MODE' ) ) {
-    define( 'PREINSCRIPTIONS_MAINTENANCE_MODE', true );
+    define( 'PREINSCRIPTIONS_MAINTENANCE_MODE', false );
 }
 
 /**
