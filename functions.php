@@ -368,17 +368,17 @@ add_action( 'after_setup_theme', 'ueb_theme_setup' );
  */
 function ueb_document_title_parts( $title ) {
 
-    if ( is_front_page() || is_home() ) {
-        $title['title'] = 'Préinscription UEB';
-        $title['tagline'] = 'Université d’Ébolowa';
+    if ( is_front_page()) {
+        $title['title'] = "Bienvenue sur la plateforme de préinscription de l'UEB";
+        $title['tagline'] = '';
     }
 
-    elseif ( is_page( 'preinscription' ) ) {
+    elseif ( is_page_template( 'page-preinscription.php' ) ) {
         $title['title'] = 'Préinscription en ligne';
         $title['tagline'] = 'Université d’Ébolowa';
     }
 
-    elseif ( is_page( 'guide-de-preinscription' ) ) {
+    elseif ( is_page_template( 'page-guide-preinscription' ) ) {
         $title['title'] = 'Guide de préinscription';
         $title['tagline'] = 'Université d’Ébolowa';
     }
