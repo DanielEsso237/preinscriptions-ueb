@@ -362,10 +362,75 @@ add_action( 'wp_ajax_nopriv_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
 /* ------------------------------------------------------------------ */
 /* Mentions                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Barème officiel moyenne -> mention, sur 20.
+ *
+ * Source de vérité unique : le JS s'en sert pour renseigner le champ à
+ * la saisie, ueb_enregistrer_preinscription() pour recalculer la mention
+ * à l'enregistrement sans faire confiance au POST. Les bornes sont
+ * inclusives des deux côtés ; elles se touchent à la décimale près
+ * (11.99 / 12.00), une moyenne comme 11.995 tombe donc dans "passable"
+ * puisque la comparaison se fait sur la valeur arrondie au centième.
+ *
+ * @return array<int, array{code: string, min: float, max: float}>
+ */
+function ueb_mentions_bareme() {
+    return array(
+        array( 'code' => 'passable',   'min' => 10.00, 'max' => 11.99 ),
+        array( 'code' => 'assez_bien', 'min' => 12.00, 'max' => 13.99 ),
+        array( 'code' => 'bien',       'min' => 14.00, 'max' => 15.99 ),
+        array( 'code' => 'tres_bien',  'min' => 16.00, 'max' => 17.99 ),
+        array( 'code' => 'excellent',  'min' => 18.00, 'max' => 20.00 ),
+    );
+}
+
+/**
+ * Code de la mention correspondant à une moyenne, '' hors barème.
+ *
+ * @param mixed $moyenne Moyenne sur 20 (chaîne ou nombre).
+ * @return string Code de ueb_mentions, ou '' si la moyenne est absente
+ *                ou hors de l'intervalle [10, 20].
+ */
+function ueb_mention_pour_moyenne( $moyenne ) {
+    if ( '' === $moyenne || null === $moyenne || ! is_numeric( $moyenne ) ) {
+        return '';
+    }
+
+    $valeur = round( (float) $moyenne, 2 );
+
+    foreach ( ueb_mentions_bareme() as $palier ) {
+        if ( $valeur >= $palier['min'] && $valeur <= $palier['max'] ) {
+            return $palier['code'];
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Mentions de la base, enrichies des bornes du barème.
+ *
+ * Le JS reçoit ainsi l'id à soumettre ET l'intervalle qui le déclenche :
+ * le barème n'est écrit qu'ici, pas dupliqué côté client.
+ */
 function ueb_ajax_get_mentions() {
     ueb_ajax_check_nonce();
     global $wpdb;
-    wp_send_json_success( $wpdb->get_results( "SELECT id, libelle FROM ueb_mentions ORDER BY ordre ASC" ) );
+
+    $rows = $wpdb->get_results( "SELECT id, code, libelle FROM ueb_mentions ORDER BY ordre ASC" );
+
+    $bornes = array();
+    foreach ( ueb_mentions_bareme() as $palier ) {
+        $bornes[ $palier['code'] ] = $palier;
+    }
+
+    foreach ( $rows as $row ) {
+        $row->moyenne_min = isset( $bornes[ $row->code ] ) ? $bornes[ $row->code ]['min'] : null;
+        $row->moyenne_max = isset( $bornes[ $row->code ] ) ? $bornes[ $row->code ]['max'] : null;
+    }
+
+    wp_send_json_success( $rows );
 }
 add_action( 'wp_ajax_ueb_get_mentions', 'ueb_ajax_get_mentions' );
 add_action( 'wp_ajax_nopriv_ueb_get_mentions', 'ueb_ajax_get_mentions' );

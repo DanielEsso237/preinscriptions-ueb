@@ -220,7 +220,13 @@ function ueb_handle_pdf_generation() {
     $filiere_2_id       = absint( $posted['filiere_2'] ?? 0 );
     $filiere_3_id       = absint( $posted['filiere_3'] ?? 0 );
     $niveau_lmd_id      = absint( $posted['niveau_lmd'] ?? 0 );
-    $mention_id         = absint( $posted['mention'] ?? 0 );
+
+    // La mention se déduit de la moyenne (ueb_mentions_bareme()), comme à
+    // l'enregistrement : la reprendre du POST ferait diverger la fiche PDF
+    // de ce qui est réellement stocké si la requête a été manipulée.
+    $mention_id         = function_exists( 'ueb_mention_id_pour_moyenne' )
+        ? (int) ueb_mention_id_pour_moyenne( ueb_valider_moyenne_diplome( $posted['moyenne_diplome'] ?? null ) )
+        : absint( $posted['mention'] ?? 0 );
     $statut_etudiant_id = absint( $posted['statut_etudiant'] ?? 0 );
     $nationalite_id     = absint( $posted['nationalite'] ?? 0 );
     $premiere_langue_id = absint( $posted['premiere_langue'] ?? 0 );

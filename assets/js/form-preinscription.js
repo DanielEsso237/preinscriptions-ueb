@@ -46,6 +46,7 @@
     let facultesCache = [];
     let diplomesCache = [];
     let niveauxCache  = [];
+    let mentionsCache = [];
 
     // Diplômes pour lesquels "Série / Spécialité" a un sens (séries du
     // bac / GCE O-Level). Pour les autres (relevés de notes, licence,
@@ -160,8 +161,13 @@
         return data;
     });
 
+    // Mention : le candidat ne la choisit pas, elle découle de sa moyenne.
+    // Chaque entrée porte son intervalle (moyenne_min / moyenne_max) tel
+    // que défini par ueb_mentions_bareme() côté PHP.
     const mentionsPromise = uebFetch('ueb_get_mentions').then(function (data) {
-        fillSelect(document.getElementById('mention'), data, '— Choisir —', true);
+        mentionsCache = data;
+        fillSelect(mentionSelect, data, '— Saisis d\'abord ta moyenne —', false);
+        appliquerMention();
         return data;
     });
 
@@ -218,6 +224,65 @@
             .then(function (data) {
                 fillSelect(serieSelect, data, '— Choisir la série —', true);
             });
+    }
+
+    /* ================================================================
+       MENTION — déduite de la moyenne, jamais choisie
+
+       Le barème vit dans ueb_mentions_bareme() (inc/ajax-functions.php)
+       et arrive avec chaque mention (moyenne_min / moyenne_max). Le
+       select visible n'est qu'un affichage verrouillé ; c'est le champ
+       caché #mention qui part au serveur — lequel recalcule de toute
+       façon la mention à l'enregistrement.
+       ================================================================ */
+    const moyenneInput  = document.getElementById('moyenne_diplome');
+    const mentionSelect = document.getElementById('mention_select');
+    const mentionHidden = document.getElementById('mention');
+
+    /** Mention correspondant à une moyenne, ou null hors barème. */
+    function mentionPourMoyenne(valeur) {
+        if (valeur === '' || valeur === null || isNaN(valeur)) return null;
+
+        const moyenne = Math.round(parseFloat(valeur) * 100) / 100;
+
+        return mentionsCache.find(function (m) {
+            return m.moyenne_min !== null && m.moyenne_max !== null &&
+                   moyenne >= parseFloat(m.moyenne_min) && moyenne <= parseFloat(m.moyenne_max);
+        }) || null;
+    }
+
+    /** Reporte la mention déduite de la moyenne sur le select et le champ soumis. */
+    function appliquerMention() {
+        if (!mentionSelect || !mentionHidden) return;
+
+        const mention = moyenneInput ? mentionPourMoyenne(moyenneInput.value) : null;
+
+        if (!mention) {
+            mentionSelect.value = '';
+            mentionHidden.value = '';
+            // Le placeholder dit pourquoi le champ est vide : moyenne
+            // manquante, ou hors de l'intervalle noté [10, 20].
+            const opt0 = mentionSelect.options[0];
+            if (opt0) {
+                opt0.textContent = (moyenneInput && moyenneInput.value.trim())
+                    ? '— Moyenne hors barème (10 à 20) —'
+                    : '— Saisis d\'abord ta moyenne —';
+            }
+            return;
+        }
+
+        mentionSelect.value = mention.id;
+        mentionHidden.value = mention.id;
+        mentionSelect.classList.remove('error');
+
+        const groupe = mentionSelect.closest('.form-group');
+        const err = groupe ? groupe.querySelector('.field-error') : null;
+        if (err) err.remove();
+    }
+
+    if (moyenneInput) {
+        moyenneInput.addEventListener('input', appliquerMention);
+        moyenneInput.addEventListener('change', appliquerMention);
     }
 
     /* ================================================================
@@ -461,54 +526,163 @@
        donc un champ texte masqué en JJ/MM/AAAA, doublé du champ date
        natif (superposé à l'icône) qui reste la valeur soumise, au format
        ISO attendu par la colonne DATE.
+
+       Le masque borne chaque segment dès la frappe et analyserDateFr()
+       refuse ensuite les dates qui n'existent pas : ni 26/26/2222 ni
+       31/02/2026 ne peuvent atteindre le champ soumis.
        ================================================================ */
     const dateSaisie = document.getElementById('date_naissance_saisie');
     const dateNative = document.getElementById('date_naissance');
+    const dateField  = dateSaisie ? dateSaisie.closest('.date-field') : null;
+
+    const DATE_MIN_ANNEE = 1900;
+    const MOIS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+    /** ISO du jour dans le fuseau du visiteur (toISOString() renvoie de l'UTC). */
+    function isoLocal(d) {
+        const mois = String(d.getMonth() + 1).padStart(2, '0');
+        const jour = String(d.getDate()).padStart(2, '0');
+        return d.getFullYear() + '-' + mois + '-' + jour;
+    }
+
+    const AUJOURDHUI_ISO = isoLocal(new Date());
 
     // Bornes du calendrier : pas de date future, pas de siècle précédent.
     if (dateNative) {
-        dateNative.max = new Date().toISOString().slice(0, 10);
-        dateNative.min = '1900-01-01';
+        dateNative.max = AUJOURDHUI_ISO;
+        dateNative.min = DATE_MIN_ANNEE + '-01-01';
     }
 
+    /**
+     * Masque JJ/MM/AAAA appliqué à la volée, chaque segment borné dès la
+     * frappe : un premier chiffre supérieur à 3 ne peut être qu'un jour
+     * écrit sans zéro (4 -> 04), un jour au-delà de 31 ou un mois au-delà
+     * de 12 sont ramenés à leur maximum. Composer 26/26/2222 devient donc
+     * impossible, y compris chiffre par chiffre.
+     */
     function formatDateFr(raw) {
-        const digits = String(raw).replace(/\D/g, '').slice(0, 8);
-        let out = '';
-        for (let i = 0; i < digits.length; i++) {
-            if (i === 2 || i === 4) out += '/';
-            out += digits[i];
+        let digits = String(raw).replace(/\D/g, '');
+        if (!digits) return '';
+
+        if (parseInt(digits[0], 10) > 3) {
+            digits = '0' + digits;
         }
+        if (digits.length >= 3 && parseInt(digits[2], 10) > 1) {
+            digits = digits.slice(0, 2) + '0' + digits.slice(2);
+        }
+
+        digits = digits.slice(0, 8);
+
+        let jour  = digits.slice(0, 2);
+        let mois  = digits.slice(2, 4);
+        const annee = digits.slice(4, 8);
+
+        if (jour.length === 2) {
+            const n = parseInt(jour, 10);
+            if (n > 31)     jour = '31';
+            else if (n === 0) jour = '01';
+        }
+        if (mois.length === 2) {
+            const n = parseInt(mois, 10);
+            if (n > 12)     mois = '12';
+            else if (n === 0) mois = '01';
+        }
+
+        let out = jour;
+        if (digits.length > 2) out += '/' + mois;
+        if (digits.length > 4) out += '/' + annee;
         return out;
     }
 
     /**
-     * "12/03/2005" -> "2005-03-12", et '' si la date n'existe pas
-     * (31/02), est incomplète, antérieure à 1900 ou dans le futur.
+     * Analyse une saisie JJ/MM/AAAA.
+     *
+     * @param {string} texte Contenu du champ visible.
+     * @returns {{iso: string, erreur: string}} iso vide dès que la date
+     *          n'est pas exploitable, avec le motif exact en clair.
      */
+    function analyserDateFr(texte) {
+        const valeur = String(texte).trim();
+        if (!valeur) return { iso: '', erreur: '' };
+
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valeur);
+        if (!m) {
+            return { iso: '', erreur: 'Date incomplète. Utilise le format JJ/MM/AAAA, par exemple 04/09/2005.' };
+        }
+
+        const jour  = parseInt(m[1], 10);
+        const mois  = parseInt(m[2], 10);
+        const annee = parseInt(m[3], 10);
+
+        if (mois < 1 || mois > 12) {
+            return { iso: '', erreur: 'Le mois doit être compris entre 01 et 12.' };
+        }
+
+        // Le jour 0 du mois suivant est le dernier du mois courant : gère
+        // les 30/31 jours comme le 29 février des années bissextiles.
+        const joursDuMois = new Date(annee, mois, 0).getDate();
+        if (jour < 1 || jour > joursDuMois) {
+            return {
+                iso: '',
+                erreur: MOIS_FR[mois - 1] + ' ' + annee + ' compte ' + joursDuMois +
+                        ' jours : le ' + m[1] + ' n\'existe pas.'
+            };
+        }
+
+        if (annee < DATE_MIN_ANNEE) {
+            return { iso: '', erreur: 'L\'année doit être postérieure à ' + DATE_MIN_ANNEE + '.' };
+        }
+
+        const iso = m[3] + '-' + m[2] + '-' + m[1];
+        if (iso > AUJOURDHUI_ISO) {
+            return { iso: '', erreur: 'La date de naissance ne peut pas être dans le futur.' };
+        }
+
+        return { iso: iso, erreur: '' };
+    }
+
+    /** "12/03/2005" -> "2005-03-12", '' si la date n'existe pas. */
     function dateFrVersIso(texte) {
-        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(texte).trim());
-        if (!m) return '';
-
-        const jour = parseInt(m[1], 10);
-        const mois = parseInt(m[2], 10);
-        const an   = parseInt(m[3], 10);
-
-        const d = new Date(an, mois - 1, jour);
-        // Le constructeur reporte silencieusement les dates impossibles
-        // (31/02 -> 03/03) : on vérifie qu'il n'a rien déplacé.
-        if (d.getFullYear() !== an || d.getMonth() !== mois - 1 || d.getDate() !== jour) return '';
-        if (an < 1900) return '';
-
-        const aujourdhui = new Date();
-        aujourdhui.setHours(0, 0, 0, 0);
-        if (d > aujourdhui) return '';
-
-        return m[3] + '-' + m[2] + '-' + m[1];
+        return analyserDateFr(texte).iso;
     }
 
     function dateIsoVersFr(iso) {
         const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso).trim());
         return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+    }
+
+    function messageErreurDate(msg) {
+        if (!dateSaisie) return;
+        const groupe = dateSaisie.closest('.form-group');
+        if (!groupe) return;
+
+        groupe.querySelectorAll('.field-error').forEach(function (e) { e.remove(); });
+
+        if (!msg) {
+            dateSaisie.classList.remove('error');
+            dateSaisie.removeAttribute('aria-invalid');
+            return;
+        }
+
+        dateSaisie.classList.add('error');
+        dateSaisie.setAttribute('aria-invalid', 'true');
+
+        const span = document.createElement('span');
+        span.className   = 'field-error';
+        span.textContent = msg;
+        groupe.appendChild(span);
+    }
+
+    /**
+     * L'icône du calendrier ne sert qu'à ouvrir le sélecteur : dès que le
+     * champ contient quelque chose, elle laisse la place à la saisie (et
+     * le champ date superposé cesse de capter les clics, sans quoi une
+     * zone invisible resterait cliquable).
+     */
+    function majIconeCalendrier() {
+        if (!dateField || !dateSaisie) return;
+        dateField.classList.toggle('date-field--saisie', dateSaisie.value.trim() !== '');
     }
 
     /** Pose la date des deux côtés à partir d'une valeur ISO. */
@@ -517,6 +691,8 @@
         const fr = dateIsoVersFr(iso);
         dateSaisie.value = fr;
         dateNative.value = fr ? iso : '';
+        majIconeCalendrier();
+        messageErreurDate('');
     }
 
     if (dateSaisie && dateNative) {
@@ -528,13 +704,36 @@
             this.setSelectionRange(pos + diff, pos + diff);
 
             // Le champ soumis ne reçoit que les dates complètes et réelles.
-            dateNative.value = dateFrVersIso(this.value);
+            const analyse = analyserDateFr(this.value);
+            dateNative.value = analyse.iso;
+
+            majIconeCalendrier();
+
+            // Pendant la frappe on n'affiche rien de neuf, mais une erreur
+            // déjà posée disparaît dès que la saisie redevient correcte.
+            if (analyse.iso || !this.value.trim()) messageErreurDate('');
+        });
+
+        // Le verdict tombe quand le candidat quitte le champ, pas à chaque
+        // touche : signaler "date incomplète" au deuxième chiffre serait
+        // du bruit.
+        dateSaisie.addEventListener('blur', function () {
+            messageErreurDate(analyserDateFr(this.value).erreur);
         });
 
         dateSaisie.addEventListener('keydown', function (e) {
             const autorises = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', 'Enter'];
             if (autorises.includes(e.key) || e.ctrlKey || e.metaKey) return;
             if (!/^[0-9]$/.test(e.key)) e.preventDefault();
+        });
+
+        // Un collage passe par le même masque que la frappe.
+        dateSaisie.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const colle = (e.clipboardData || window.clipboardData).getData('text');
+            this.value = formatDateFr(this.value + colle);
+            dateNative.value = dateFrVersIso(this.value);
+            majIconeCalendrier();
         });
 
         // Calendrier natif : le champ date superposé à l'icône reçoit le
@@ -546,12 +745,17 @@
             }
         });
 
+        // Le calendrier ne produit que des dates réelles, mais il reste
+        // borné par min/max : on repasse par la même analyse.
         dateNative.addEventListener('change', function () {
-            dateSaisie.value = dateIsoVersFr(this.value);
-            dateSaisie.classList.remove('error');
-            const err = dateSaisie.closest('.form-group').querySelector('.field-error');
-            if (err) err.remove();
+            const analyse = analyserDateFr(dateIsoVersFr(this.value));
+            this.value = analyse.iso;
+            dateSaisie.value = dateIsoVersFr(analyse.iso);
+            majIconeCalendrier();
+            messageErreurDate(analyse.erreur);
         });
+
+        majIconeCalendrier();
     }
 
     /* ================================================================
@@ -623,13 +827,15 @@
         });
 
         // Date de naissance : le champ texte peut être rempli mais
-        // incomplet ou impossible — dans ce cas le champ soumis est vide.
-        if (dateSaisie && fieldset.contains(dateSaisie) && dateSaisie.value.trim() && !dateNative.value) {
-            dateSaisie.classList.add('error');
-            addError(
-                dateSaisie.closest('.form-group'),
-                'Date invalide. Utilise le format JJ/MM/AAAA, par exemple 04/09/2005.'
-            );
+        // incomplet ou impossible — dans ce cas le champ soumis est vide
+        // et analyserDateFr() dit précisément ce qui cloche.
+        if (dateSaisie && fieldset.contains(dateSaisie) && dateSaisie.value.trim()) {
+            const analyseDate = analyserDateFr(dateSaisie.value);
+            if (analyseDate.erreur) {
+                dateSaisie.classList.add('error');
+                dateSaisie.setAttribute('aria-invalid', 'true');
+                addError(dateSaisie.closest('.form-group'), analyseDate.erreur);
+            }
         }
 
         const emailField = fieldset.querySelector('input[type="email"]');
@@ -784,6 +990,12 @@
             if (!sel) return '';
             const opt = sel.options[sel.selectedIndex];
             return opt ? opt.text : '';
+        }
+        if (fieldName === 'mention') {
+            if (!mentionSelect) return '';
+            const opt = mentionSelect.options[mentionSelect.selectedIndex];
+            const txt = opt ? opt.text : '';
+            return txt.startsWith('—') ? '' : txt;
         }
         if (fieldName === 'type_formation') {
             return selectType.value === 'pro' ? 'Formation Professionnelle (LP)' : 'Formation Initiale (Classique)';
@@ -1044,10 +1256,9 @@
             if (elSit) elSit.value = donnees.situation_matrimoniale;
         }
 
-        if (donnees.mention) {
-            const elMention = document.getElementById('mention');
-            if (elMention) elMention.value = donnees.mention;
-        }
+        // La mention n'est pas restaurée telle quelle : elle se déduit de
+        // la moyenne, elle-même remise en place par simpleFields.
+        appliquerMention();
 
         if (donnees.statut_etudiant) {
             const elStatutEtu = document.getElementById('statut_etudiant');
