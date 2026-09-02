@@ -10,6 +10,60 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * EXCLUSION DES PAGES NON PUBLIQUES DU SITEMAP ET DE L'INDEXATION
+ *
+ * /administration/, /compte-a-rebours/ et /maintenance/ sont des pages
+ * techniques (dashboard de gestion, écrans temporaires) qui n'ont rien à
+ * faire dans les résultats Google. On les retire du sitemap ET on ajoute
+ * une balise noindex au cas où Google les découvrirait quand même via un
+ * lien externe.
+ */
+
+/** Templates des pages à ne jamais indexer. */
+function ueb_templates_non_indexables() {
+    return array(
+        'page-administration.php',
+        'page-compte-rebours.php',
+        'page-maintenance.php',
+    );
+}
+
+/** Retire ces pages du sitemap XML natif de WordPress. */
+add_filter( 'wp_sitemaps_posts_query_args', function( $args, $post_type ) {
+    if ( 'page' !== $post_type ) {
+        return $args;
+    }
+
+    $exclure = array();
+    foreach ( ueb_templates_non_indexables() as $template ) {
+        $pages = get_posts( array(
+            'post_type'      => 'page',
+            'meta_key'       => '_wp_page_template',
+            'meta_value'     => $template,
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ) );
+        $exclure = array_merge( $exclure, $pages );
+    }
+
+    if ( $exclure ) {
+        $args['post__not_in'] = $exclure;
+    }
+
+    return $args;
+}, 10, 2 );
+
+/** Ajoute <meta name="robots" content="noindex,nofollow"> sur ces pages. */
+add_action( 'wp_head', function() {
+    foreach ( ueb_templates_non_indexables() as $template ) {
+        if ( is_page_template( $template ) ) {
+            echo '<meta name="robots" content="noindex,nofollow">' . "\n";
+            return;
+        }
+    }
+}, 1 );
+
+/**
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
