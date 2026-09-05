@@ -493,7 +493,8 @@ function ueb_seo_meta() {
     echo '<meta property="og:description" content="' . esc_attr( $description ) . '">' . "\n";
     echo '<meta property="og:url" content="' . esc_url( $canonical ) . '">' . "\n";
     echo '<meta property="og:type" content="website">' . "\n";
-    echo '<meta property="og:site_name" content="Université d’Ébolowa">' . "\n";
+    echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '">' . "\n";
+    
 
 }
 add_action( 'wp_head', 'ueb_seo_meta', 5 );
