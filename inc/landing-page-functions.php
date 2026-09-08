@@ -157,7 +157,12 @@ function preinscriptions_etapes() {
         ),
         array(
             'title' => 'Règle tes droits',
-            'desc'  => "11 000 FCFA à la CCA Bank, par Express Union ou par MTN Mobile Money. Conserve le reçu, il est exigé au dépôt.",
+            /* Montant repris de la constante du guide : un seul endroit à
+               corriger si les droits changent. */
+            'desc'  => sprintf(
+                "%s à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money. Conserve le reçu : il est exigé au dépôt du dossier.",
+                ueb_guide_frais( false )
+            ),
         ),
         array(
             'title' => 'Dépose ton dossier',

@@ -476,17 +476,23 @@
     line-height: 1;
 }
 
+/* Deux colonnes fixes, pas d'auto-fit : à quatre canaux, des colonnes de
+   200 px couperaient le numéro de compte en deux lignes. Le filet de tête
+   doit rester continu d'un bord à l'autre de la rangée, donc la gouttière
+   est prise en padding et non en gap — et le premier bloc de chaque rangée
+   n'en porte pas à gauche, le dernier pas à droite. */
 .gp-pays {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
     margin-top: 1.75rem !important;
 }
 .gp-pay {
-    padding: 1.25rem 1.5rem 1.25rem 0;
+    padding: 1.25rem 1.5rem;
     border-top: 1px solid var(--gp-line);
 }
-.gp-pay + .gp-pay { padding-left: 1.5rem; }
+.gp-pay:nth-child(odd) { padding-left: 0; }
+.gp-pay:nth-child(even) { padding-right: 0; }
 .gp-pay-nom {
     font-size: 1rem;
     font-weight: 600;
@@ -875,8 +881,10 @@
     .gp-step { grid-template-columns: 1.75rem minmax(0, 1fr); gap: .9rem; }
     .gp-step:not(:last-child)::before { left: .35rem; }
 
+    .gp-pays { grid-template-columns: minmax(0, 1fr); }
     .gp-pay,
-    .gp-pay + .gp-pay { padding: 1.15rem 0; }
+    .gp-pay:nth-child(odd),
+    .gp-pay:nth-child(even) { padding: 1.15rem 0; }
 
     .gp-tablist { gap: 1.5rem; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: thin; }
     .gp-tab { white-space: nowrap; }
