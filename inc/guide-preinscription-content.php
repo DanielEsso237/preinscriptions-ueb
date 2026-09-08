@@ -168,8 +168,11 @@ function ueb_guide_etapes() {
         ),
         array(
             'titre' => 'Régler vos droits',
-            'desc'  => "Réglez les droits de préinscription ou de réinscription, ainsi que les frais médicaux le cas échéant, par l'un des canaux officiels.",
-            'aide'  => 'Précisez clairement l\'objet du paiement et conservez le reçu : il fait partie du dossier physique.',
+            'desc'  => sprintf(
+                "Réglez les %s de droits de préinscription ou de réinscription, ainsi que les frais médicaux le cas échéant, à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money.",
+                ueb_guide_frais( false )
+            ),
+            'aide'  => 'Précisez clairement l\'objet du paiement et conservez le reçu : il est exigé au dépôt du dossier physique.',
         ),
         array(
             'titre' => 'Déposer votre dossier',
@@ -180,7 +183,11 @@ function ueb_guide_etapes() {
 }
 
 /**
- * Les trois canaux de paiement officiels.
+ * Les canaux de paiement officiels.
+ *
+ * Le nombre de canaux n'est écrit nulle part ailleurs (page, PDF) : les
+ * deux rendus se calent sur la longueur de ce tableau, un canal peut donc
+ * être ajouté ou retiré ici seul.
  *
  * @return array[] { nom, detail, ref }
  */
@@ -200,6 +207,11 @@ function ueb_guide_paiements() {
             'nom'    => 'MTN Mobile Money',
             'detail' => 'Depuis votre téléphone, via le service UNIVPAY',
             'ref'    => 'UNIVPAY',
+        ),
+        array(
+            'nom'    => 'Campost Money',
+            'detail' => 'Dans tout bureau de poste Campost',
+            'ref'    => '',
         ),
     );
 }

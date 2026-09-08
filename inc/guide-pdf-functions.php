@@ -521,7 +521,8 @@ function ueb_guide_pdf_section_paiement( $pdf ) {
         2,
         'Modalités de paiement',
         "Les droits de préinscription ou de réinscription, et le cas échéant les frais médicaux, "
-        . "se règlent par l'un des trois canaux officiels ci-dessous."
+        . "se règlent par l'un des canaux officiels ci-dessous. Conservez le reçu du versement : "
+        . "il est exigé au dépôt du dossier."
     );
 
     /* Montant : c'est la donnée saillante de l'article, il l'est par sa
@@ -544,18 +545,25 @@ function ueb_guide_pdf_section_paiement( $pdf ) {
 
     $pdf->SetY( $y + 18 );
 
-    /* Les trois canaux, en colonnes sous un filet commun. */
+    /* Les canaux, en colonnes sous un filet commun. Au-delà de trois, on
+       passe sur deux rangées plutôt que d'affiner les colonnes : un numéro
+       de compte de 26 chiffres ne tient pas dans 40 mm à 8 pt. */
     $paiements = ueb_guide_paiements();
-    $col       = ( $largeur - 2 * 4 ) / 3;
+    $nb        = count( $paiements );
+    $par_rang  = $nb > 3 ? 2 : max( 1, $nb );
+    $rangs     = (int) ceil( $nb / $par_rang );
+    $gouttiere = 4;
+    $col       = ( $largeur - ( $par_rang - 1 ) * $gouttiere ) / $par_rang;
     $h_bloc    = 24;
 
-    ueb_guide_pdf_reserver( $pdf, $h_bloc + 4 );
-    $y = $pdf->GetY();
+    ueb_guide_pdf_reserver( $pdf, $rangs * $h_bloc + 4 );
+    $y0 = $pdf->GetY();
 
     $pdf->SetLineStyle( array( 'width' => 0.25, 'color' => $c['ligne'] ) );
 
     foreach ( $paiements as $i => $pay ) {
-        $cx = UEB_GUIDE_PDF_MARGE + $i * ( $col + 4 );
+        $cx = UEB_GUIDE_PDF_MARGE + ( $i % $par_rang ) * ( $col + $gouttiere );
+        $y  = $y0 + intdiv( $i, $par_rang ) * $h_bloc;
 
         $pdf->Line( $cx, $y, $cx + $col, $y );
 
@@ -579,7 +587,7 @@ function ueb_guide_pdf_section_paiement( $pdf ) {
         }
     }
 
-    $pdf->SetY( $y + $h_bloc + 3 );
+    $pdf->SetY( $y0 + $rangs * $h_bloc + 3 );
 
     ueb_guide_pdf_encart(
         $pdf,

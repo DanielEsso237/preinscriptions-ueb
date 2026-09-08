@@ -178,7 +178,8 @@ get_header();
                 </header>
                 <p class="gp-section-intro">
                     Les droits de préinscription ou de réinscription, et le cas échéant les frais
-                    médicaux, se règlent par l'un des trois canaux officiels ci-dessous.
+                    médicaux, se règlent par l'un des canaux officiels ci-dessous. Conservez le
+                    reçu du versement&nbsp;: il est exigé au dépôt du dossier.
                 </p>
 
                 <p class="gp-amount">

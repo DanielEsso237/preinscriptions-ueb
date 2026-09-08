@@ -12,6 +12,10 @@
 get_header();
 
 $inscription = esc_url( preinscriptions_bouton_url() );
+
+/* Page du guide (étapes détaillées) : résolue une seule fois, elle sert au
+   bouton rouge du hero et au renvoi placé sous les six étapes. */
+$ueb_guide = preinscriptions_guide_url();
 ?>
 
 <!-- HERO -->
@@ -35,9 +39,15 @@ $inscription = esc_url( preinscriptions_bouton_url() );
             /* Placé avant « Commencer » à dessein : lire la procédure avant
                d'ouvrir le formulaire évite la moitié des dossiers rejetés.
                Teinté rouge — la seule note rouge du site — pour signaler
-               qu'il y a quelque chose à savoir avant de se lancer. */
+               qu'il y a quelque chose à savoir avant de se lancer.
+
+               Il mène à la page des étapes de préinscription (le guide
+               complet), et non au simple résumé en six étapes plus bas :
+               le candidat y trouve les pièces, les montants et les canaux
+               de paiement. Repli sur l'ancre locale tant qu'aucune page ne
+               porte le template du guide. */
             ?>
-            <a class="btn btn-procedure" href="#etapes">
+            <a class="btn btn-procedure" href="<?php echo esc_url( $ueb_guide ? $ueb_guide : '#etapes' ); ?>">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="10"/></svg>
                 Procédure de préinscription
             </a>
@@ -82,7 +92,6 @@ $inscription = esc_url( preinscriptions_bouton_url() );
     /* Prolongement naturel des six étapes : le détail complet, les pièces
        exigées par niveau et le PDF à emporter. Masqué tant qu'aucune page
        ne porte le template du guide. */
-    $ueb_guide = preinscriptions_guide_url();
     if ( $ueb_guide ) :
         ?>
         <div class="etapes-more reveal">
