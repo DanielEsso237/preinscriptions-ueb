@@ -77,11 +77,12 @@ function ueb_guide_date_fr( DateTimeImmutable $date, $avec_annee = true ) {
  * Dates de la campagne, toutes dérivées des constantes du thème.
  *
  * La note du Recteur décrit une campagne qui s'ouvre le 1er du mois
- * d'ouverture et se referme à la fin de ce même mois, les visites médicales
- * des nouveaux étudiants ayant lieu pendant le mois d'ouverture et celles
- * des anciens le mois suivant. On reproduit ce calendrier relatif à partir
- * de PREINSCRIPTIONS_DATE_OUVERTURE : si la campagne est décalée d'une
- * année, aucune date de cette page n'est à reprendre à la main.
+ * d'ouverture et se referme à la fin du mois suivant : les visites médicales
+ * des nouveaux étudiants ont lieu pendant le mois d'ouverture, celles des
+ * anciens sur toute la période de la campagne (de l'ouverture à la clôture).
+ * On reproduit ce calendrier relatif à partir de
+ * PREINSCRIPTIONS_DATE_OUVERTURE / _CLOTURE : si la campagne est décalée
+ * d'une année, aucune date de cette page n'est à reprendre à la main.
  *
  * @return array{ouverture:string,cloture:string,periode:string,visites_nouveaux:string,visites_anciens:string,annee_academique:string}
  */
@@ -89,12 +90,10 @@ function ueb_guide_dates() {
     $ouverture = new DateTimeImmutable( PREINSCRIPTIONS_DATE_OUVERTURE );
     $cloture   = new DateTimeImmutable( PREINSCRIPTIONS_DATE_CLOTURE );
 
-    /* Visites médicales : le mois d'ouverture pour les nouveaux étudiants,
-       le mois suivant pour les anciens. */
+    /* Visites médicales : le mois d'ouverture pour les nouveaux étudiants ;
+       toute la période de la campagne (ouverture → clôture) pour les anciens. */
     $mois_nouveaux    = $ouverture;
     $fin_nouveaux     = $ouverture->modify( 'last day of this month' );
-    $debut_anciens    = $ouverture->modify( 'first day of next month' );
-    $fin_anciens      = $debut_anciens->modify( 'last day of this month' );
 
     /* Année académique : « 2026 – 2027 » pour une campagne ouverte en 2026. */
     $an               = (int) $ouverture->format( 'Y' );
@@ -114,8 +113,8 @@ function ueb_guide_dates() {
         ),
         'visites_anciens'  => sprintf(
             'du %s au %s',
-            ueb_guide_date_fr( $debut_anciens, false ),
-            ueb_guide_date_fr( $fin_anciens )
+            ueb_guide_date_fr( $ouverture, false ),
+            ueb_guide_date_fr( $cloture )
         ),
         'annee_academique' => $an . ' – ' . ( $an + 1 ),
     );
@@ -311,7 +310,7 @@ function ueb_guide_bon_a_savoir() {
         ),
         array(
             'titre' => 'Visites médicales — anciens étudiants',
-            'texte' => "Sans frais supplémentaires, les visites médicales des anciens étudiants s'effectuent " . $dates['visites_anciens'] . ", selon le programme établi dans chaque établissement. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
+            'texte' => "Les visites médicales des anciens étudiants s'effectuent " . $dates['visites_anciens'] . ", selon le programme établi par chaque établissement. Elles sont payantes : 3 000 FCFA pour les anciens étudiants, et 5 000 FCFA pour ceux revenant après une suspension de matricule. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
             'ton'   => 'alerte',
         ),
         array(
