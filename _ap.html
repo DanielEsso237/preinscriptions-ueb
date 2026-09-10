@@ -1,0 +1,453 @@
+<!DOCTYPE html><html lang="fr" data-ueb-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Aperçu</title>
+<link rel="stylesheet" href="assets/css/fonts.css"><link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="assets/css/admin-dashboard.css"></head><body><svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+    <symbol id="ueb-i-overview" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 5-7"/></symbol>
+    <symbol id="ueb-i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="ueb-i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8Z"/></symbol>
+    <symbol id="ueb-i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="ueb-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="ueb-i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+    <symbol id="ueb-i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="ueb-i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="ueb-i-sort" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
+    <symbol id="ueb-i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="ueb-i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
+    <symbol id="ueb-i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="ueb-i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="ueb-i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+    <symbol id="ueb-i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M9 6h.01M15 6h.01M9 10h.01M15 10h.01M9 14h.01M15 14h.01"/></symbol>
+    <symbol id="ueb-i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
+    <symbol id="ueb-i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="ueb-i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+    <symbol id="ueb-i-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></symbol>
+    <symbol id="ueb-i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+    <symbol id="ueb-i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="ueb-i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="ueb-i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <!-- Formats d'export : une feuille commune, un signe distinctif par format. -->
+    <symbol id="ueb-i-file-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/><path d="M14 13h2.5"/><path d="M14 17v-4"/></symbol>
+    <symbol id="ueb-i-file-sheet" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 12h9M8 16h9M11.5 12v7"/></symbol>
+    <symbol id="ueb-i-file-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></symbol>
+    <!-- Effectifs : un organigramme, soit exactement ce que l'onglet parcourt. -->
+    <symbol id="ueb-i-org" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v4M5 17v-2h14v2"/><path d="M12 11v4"/></symbol>
+    <symbol id="ueb-i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="ueb-i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></symbol>
+    <symbol id="ueb-i-accessibility" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M4.5 8.5 12 10l7.5-1.5"/><path d="M12 10v4.5"/><path d="m8.5 21 3.5-6.5 3.5 6.5"/></symbol>
+</svg>
+<div class="admin-page"><div class="admin-shell">
+<aside class="admin-sidebar"><div class="admin-sidebar-brand"><span class="admin-sidebar-logo">UEB</span>
+<span class="admin-sidebar-brand-text"><span class="admin-sidebar-mark">Préinscriptions</span>
+<span class="admin-sidebar-title">Université d'Ébolowa</span></span></div>
+<nav class="admin-sidebar-nav" role="tablist"><span class="admin-sidebar-heading">Navigation</span>
+<button class="admin-tab-btn" data-tab="stats" role="tab"><svg class="admin-icon"><use href="#ueb-i-overview"/></svg>Vue d'ensemble</button>
+<button class="admin-tab-btn active" data-tab="effectifs" role="tab"><svg class="admin-icon"><use href="#ueb-i-org"/></svg>Effectifs</button>
+<button class="admin-tab-btn" data-tab="liste" role="tab"><svg class="admin-icon"><use href="#ueb-i-list"/></svg>Dossiers</button></nav>
+<div class="admin-sidebar-footer"><div class="admin-sidebar-user"><span class="admin-sidebar-user-avatar">E</span>
+<span class="admin-sidebar-user-meta"><span class="admin-sidebar-user-name">Gestionnaire</span>
+<span class="admin-sidebar-user-role">Gestionnaire</span></span></div>
+<a href="#" class="admin-sidebar-logout"><svg class="admin-icon admin-icon--sm"><use href="#ueb-i-logout"/></svg>Déconnexion</a></div></aside>
+<div class="admin-main" id="admin-main"><header class="admin-topbar"><div><h1 id="admin-page-title">Effectifs</h1>
+<p class="admin-subtitle">Préinscriptions — Université d'Ébolowa</p></div><div class="admin-topbar-actions">
+<button id="admin-theme-toggle" class="admin-tbtn admin-tbtn--icon" aria-label="Thème">
+<svg class="admin-icon admin-theme-icon--moon"><use href="#ueb-i-moon"/></svg>
+<svg class="admin-icon admin-theme-icon--sun"><use href="#ueb-i-sun"/></svg></button>
+<button class="admin-tbtn"><svg class="admin-icon admin-icon--sm"><use href="#ueb-i-download"/></svg>Exporter</button>
+</div></header>            <!-- ===== EFFECTIFS =====
+                 Un même gabarit sert les quatre paliers de l'organigramme
+                 (université > établissement > département > filière) : seuls
+                 les intitulés et les données changent d'un niveau à l'autre.
+                 Tout le contenu est peint par admin-effectifs.js à partir de
+                 la base ; ce balisage ne pose que la coque et les squelettes,
+                 pour que la place soit réservée avant la première réponse. -->
+            <div id="admin-tab-effectifs" class="admin-tab-panel active" role="tabpanel" aria-labelledby="admin-tabbtn-effectifs" tabindex="-1">
+
+                <!-- Fil du parcours : chaque palier traversé garde son
+                     effectif sous les yeux, pour que « 96 » se lise toujours
+                     comme une part de « 380 », elle-même part de « 1 240 ». -->
+                <nav id="eff-fil" class="eff-fil" aria-label="Niveau consulté"></nav>
+
+                <header class="eff-entete">
+                    <div class="eff-entete-texte">
+                        <h2 id="eff-titre" class="eff-titre">Université d'Ébolowa</h2>
+                        <p id="eff-soustitre" class="eff-soustitre">Effectifs par établissement</p>
+                    </div>
+
+                    <div class="eff-entete-total">
+                        <span id="eff-total" class="eff-total-valeur">—</span>
+                        <span class="eff-total-legende">préinscrits</span>
+                    </div>
+
+                    <button type="button" id="eff-refresh" class="admin-tbtn admin-tbtn--icon"
+                            aria-label="Actualiser les effectifs" title="Actualiser">
+                        <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-refresh"/></svg>
+                    </button>
+                </header>
+
+                <p id="eff-maj" class="eff-maj" role="status" aria-live="polite"></p>
+
+                <!-- Cartes du palier : raccourci de navigation vers l'échelon
+                     du dessous. Le tableau juste en dessous porte les mêmes
+                     effectifs au chiffre près ; ces cartes servent le geste,
+                     pas la lecture fine. -->
+                <div id="eff-cartes" class="eff-cartes admin-stagger">
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                </div>
+
+                <div id="eff-tableau" class="eff-tableau"></div>
+
+                <div class="admin-charts-grid admin-stagger eff-graphes">
+
+                    <section class="admin-chart-card admin-chart-card--half">
+                        <div class="admin-chart-head">
+                            <div>
+                                <h3 class="admin-chart-title">Répartition par sexe</h3>
+                                <p id="eff-sexe-sub" class="admin-chart-sub">Sur l'ensemble de l'université</p>
+                            </div>
+                        </div>
+                        <div class="admin-chart-body"><canvas id="chart-eff-sexe"></canvas></div>
+                    </section>
+
+                    <section class="admin-chart-card admin-chart-card--half">
+                        <div class="admin-chart-head">
+                            <div>
+                                <h3 class="admin-chart-title">Situation de handicap</h3>
+                                <p id="eff-handicap-sub" class="admin-chart-sub">Sur l'ensemble de l'université</p>
+                            </div>
+                        </div>
+                        <div class="admin-chart-body"><canvas id="chart-eff-handicap"></canvas></div>
+                    </section>
+
+                </div>
+            </div>
+
+</div></div></div>
+<script src="assets/js/vendor/chart.umd.min.js"></script>
+<script>window.uebAdminDashboard={ajax_url:'/faux',nonce:'faux'};var FAUX = {
+    "universite:0": {
+        "niveau": "universite",
+        "id": 0,
+        "code": "",
+        "titre": "Université d'Ébolowa",
+        "sousTitre": "Effectifs par établissement",
+        "colonne": "Établissement",
+        "total": 150,
+        "lignes": [
+            {
+                "id": 1,
+                "code": "FS",
+                "libelle": "Faculté des Sciences",
+                "total": 60,
+                "hommes": 34,
+                "femmes": 26,
+                "handicap": 5,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 3,
+                "code": "FSEG",
+                "libelle": "Faculté des Sciences Économiques et de Gestion",
+                "total": 42,
+                "hommes": 21,
+                "femmes": 21,
+                "handicap": 2,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 2,
+                "code": "FALSH",
+                "libelle": "Faculté des Arts, Lettres et Sciences Humaines",
+                "total": 30,
+                "hommes": 12,
+                "femmes": 18,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 4,
+                "code": "FSJP",
+                "libelle": "Faculté des Sciences Juridiques et Politiques",
+                "total": 18,
+                "hommes": 9,
+                "femmes": 9,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            }
+        ],
+        "ventilation": {
+            "sexe": [
+                {
+                    "label": "M",
+                    "total": 76
+                },
+                {
+                    "label": "F",
+                    "total": 74
+                }
+            ],
+            "handicap": [
+                {
+                    "label": "non",
+                    "total": 143
+                },
+                {
+                    "label": "oui",
+                    "total": 7
+                }
+            ]
+        },
+        "fil": []
+    },
+    "etablissement:1": {
+        "niveau": "etablissement",
+        "id": 1,
+        "code": "FS",
+        "titre": "Faculté des Sciences",
+        "sousTitre": "Effectifs par filière",
+        "colonne": "Filière",
+        "total": 60,
+        "lignes": [
+            {
+                "id": 4,
+                "code": "GEO",
+                "libelle": "Géosciences et Environnement",
+                "total": 13,
+                "hommes": 5,
+                "femmes": 8,
+                "handicap": 1,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 2,
+                "code": "PHY",
+                "libelle": "Physique Appliquée",
+                "total": 11,
+                "hommes": 6,
+                "femmes": 5,
+                "handicap": 1,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 3,
+                "code": "CHIM",
+                "libelle": "Chimie Appliquée",
+                "total": 9,
+                "hommes": 4,
+                "femmes": 5,
+                "handicap": 2,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 6,
+                "code": "BIO",
+                "libelle": "Biotechnologie et Pharmacognosie",
+                "total": 8,
+                "hommes": 6,
+                "femmes": 2,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 1,
+                "code": "TIC",
+                "libelle": "TIC — Technologies de l'Information et de la Communication",
+                "total": 6,
+                "hommes": 3,
+                "femmes": 3,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 5,
+                "code": "ROSE",
+                "libelle": "ROSE — Recherche Opérationnelle et Économétrie",
+                "total": 5,
+                "hommes": 4,
+                "femmes": 1,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 8,
+                "code": "LP_BIO_AGR",
+                "libelle": "LP Sciences Biologiques Appliquées à l'Agriculture",
+                "total": 3,
+                "hommes": 2,
+                "femmes": 1,
+                "handicap": 0,
+                "badge": "LP",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 7,
+                "code": "LP_BIO_MED",
+                "libelle": "LP Sciences Biomédicales et Médico-Sanitaires",
+                "total": 3,
+                "hommes": 2,
+                "femmes": 1,
+                "handicap": 1,
+                "badge": "LP",
+                "reste": false,
+                "feuille": false
+            },
+            {
+                "id": 9,
+                "code": "LP_TBM",
+                "libelle": "LP Technologie Bio-Médicale",
+                "total": 2,
+                "hommes": 2,
+                "femmes": 0,
+                "handicap": 0,
+                "badge": "LP",
+                "reste": false,
+                "feuille": false
+            }
+        ],
+        "ventilation": {
+            "sexe": [
+                {
+                    "label": "M",
+                    "total": 34
+                },
+                {
+                    "label": "F",
+                    "total": 26
+                }
+            ],
+            "handicap": [
+                {
+                    "label": "non",
+                    "total": 55
+                },
+                {
+                    "label": "oui",
+                    "total": 5
+                }
+            ]
+        },
+        "fil": [
+            {
+                "niveau": "universite",
+                "id": 0,
+                "libelle": "Université d'Ébolowa",
+                "code": "UEB"
+            }
+        ]
+    },
+    "filiere:4": {
+        "niveau": "filiere",
+        "id": 4,
+        "code": "GEO",
+        "titre": "Géosciences et Environnement",
+        "sousTitre": "Effectifs par niveau LMD",
+        "colonne": "Niveau LMD",
+        "badge": "",
+        "total": 13,
+        "lignes": [
+            {
+                "id": 1,
+                "code": "L1",
+                "libelle": "Licence 1",
+                "total": 10,
+                "hommes": 3,
+                "femmes": 7,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": true
+            },
+            {
+                "id": 3,
+                "code": "L3",
+                "libelle": "Licence 3",
+                "total": 2,
+                "hommes": 2,
+                "femmes": 0,
+                "handicap": 1,
+                "badge": "",
+                "reste": false,
+                "feuille": true
+            },
+            {
+                "id": 6,
+                "code": "DOC",
+                "libelle": "Doctorat",
+                "total": 1,
+                "hommes": 0,
+                "femmes": 1,
+                "handicap": 0,
+                "badge": "",
+                "reste": false,
+                "feuille": true
+            }
+        ],
+        "ventilation": {
+            "sexe": [
+                {
+                    "label": "M",
+                    "total": 5
+                },
+                {
+                    "label": "F",
+                    "total": 8
+                }
+            ],
+            "handicap": [
+                {
+                    "label": "non",
+                    "total": 12
+                },
+                {
+                    "label": "oui",
+                    "total": 1
+                }
+            ]
+        },
+        "fil": [
+            {
+                "niveau": "universite",
+                "id": 0,
+                "libelle": "Université d'Ébolowa",
+                "code": "UEB"
+            },
+            {
+                "niveau": "etablissement",
+                "id": 1,
+                "libelle": "Faculté des Sciences",
+                "code": "FS"
+            }
+        ]
+    }
+};
+var PREMIER_ETAB = 1;
+
+window.fetch=function(u,o){var p=new URLSearchParams(o.body);
+var d=FAUX[p.get('niveau')+':'+p.get('id')]||FAUX['universite:0'];
+return Promise.resolve({json:function(){return Promise.resolve({success:true,data:d});}});};</script>
+<script src="assets/js/admin-analytics.js"></script>
+<script src="assets/js/admin-effectifs.js"></script>
+<script>window.uebEffectifs.afficher(true);</script></body></html>

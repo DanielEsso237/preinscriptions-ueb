@@ -199,6 +199,42 @@ function ueb_admin_ajax_get_stats() {
 add_action( 'wp_ajax_ueb_admin_get_stats', 'ueb_admin_ajax_get_stats' );
 
 /* ------------------------------------------------------------------ */
+/* Onglet "Effectifs" — un palier de l'organigramme par appel          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Effectifs du palier demandé (université, établissement ou filière), lus
+ * directement en base à chaque appel : aucun cache, aucune
+ * valeur figée côté page. Une préinscription enregistrée pendant qu'un
+ * gestionnaire consulte l'écran apparaît donc au rafraîchissement suivant.
+ *
+ * Volontairement insensible aux filtres du dashboard, contrairement à
+ * ueb_admin_ajax_get_stats() : cet écran répond « combien sont-ils ? »,
+ * et cette réponse ne doit pas dépendre d'un filtre resté actif dans un
+ * autre onglet.
+ */
+function ueb_admin_ajax_get_effectifs() {
+    ueb_admin_ajax_check_access();
+
+    $niveaux = array( 'universite', 'etablissement', 'filiere' );
+    $niveau  = isset( $_POST['niveau'] ) ? sanitize_key( wp_unslash( $_POST['niveau'] ) ) : 'universite';
+    $id      = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+
+    if ( ! in_array( $niveau, $niveaux, true ) ) {
+        $niveau = 'universite';
+    }
+
+    $vue = ueb_effectifs_vue( $niveau, $id );
+
+    if ( null === $vue ) {
+        wp_send_json_error( array( 'message' => "Cet élément n'existe plus." ), 404 );
+    }
+
+    wp_send_json_success( $vue );
+}
+add_action( 'wp_ajax_ueb_admin_get_effectifs', 'ueb_admin_ajax_get_effectifs' );
+
+/* ------------------------------------------------------------------ */
 /* Cascades des filtres (filière selon faculté, série selon faculté +   */
 /* diplôme, département selon région, commune selon département)       */
 /* ------------------------------------------------------------------ */

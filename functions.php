@@ -67,7 +67,7 @@ add_action( 'wp_head', function() {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.3' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.4.5' );
 }
 
 /**
@@ -191,9 +191,10 @@ function preinscriptions_admin_assets() {
 
     wp_enqueue_script( 'chartjs', get_template_directory_uri() . '/assets/js/vendor/chart.umd.min.js', array(), '4.4.0', true );
     wp_enqueue_script( 'preinscriptions-admin-analytics', get_template_directory_uri() . '/assets/js/admin-analytics.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
-    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs', 'preinscriptions-admin-analytics' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-effectifs', get_template_directory_uri() . '/assets/js/admin-effectifs.js', array( 'chartjs', 'preinscriptions-admin-analytics' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs', 'preinscriptions-admin-analytics', 'preinscriptions-admin-effectifs' ), PREINSCRIPTIONS_VERSION, true );
 
-    wp_localize_script( 'preinscriptions-admin-dashboard', 'uebAdminDashboard', array(
+    wp_localize_script( 'preinscriptions-admin-effectifs', 'uebAdminDashboard', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'ueb_admin_dashboard' ),
         'refs'     => ueb_admin_get_reference_lists(),
@@ -397,6 +398,7 @@ require_once( get_template_directory() . '/inc/dossier-functions.php' );
 require_once( get_template_directory() . '/inc/ajax-functions.php' );
 require_once( get_template_directory() . '/inc/db-seed.php' );
 require_once( get_template_directory() . '/inc/admin-functions.php' );
+require_once( get_template_directory() . '/inc/stats-effectifs-functions.php' );
 require_once( get_template_directory() . '/inc/admin-ajax-functions.php' );
 require_once( get_template_directory() . '/inc/admin-references-functions.php' );
 require_once( get_template_directory() . '/inc/admin-references-ajax.php' );

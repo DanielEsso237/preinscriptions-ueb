@@ -88,6 +88,11 @@ get_header();
     <symbol id="ueb-i-file-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/><path d="M14 13h2.5"/><path d="M14 17v-4"/></symbol>
     <symbol id="ueb-i-file-sheet" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 12h9M8 16h9M11.5 12v7"/></symbol>
     <symbol id="ueb-i-file-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></symbol>
+    <!-- Effectifs : un organigramme, soit exactement ce que l'onglet parcourt. -->
+    <symbol id="ueb-i-org" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v4M5 17v-2h14v2"/><path d="M12 11v4"/></symbol>
+    <symbol id="ueb-i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="ueb-i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></symbol>
+    <symbol id="ueb-i-accessibility" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M4.5 8.5 12 10l7.5-1.5"/><path d="M12 10v4.5"/><path d="m8.5 21 3.5-6.5 3.5 6.5"/></symbol>
 </svg>
 
 <div class="admin-page">
@@ -150,6 +155,12 @@ get_header();
                         role="tab" aria-selected="true" aria-controls="admin-tab-stats" id="admin-tabbtn-stats">
                     <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-overview"/></svg>
                     Vue d'ensemble
+                </button>
+
+                <button type="button" class="admin-tab-btn" data-tab="effectifs"
+                        role="tab" aria-selected="false" aria-controls="admin-tab-effectifs" id="admin-tabbtn-effectifs">
+                    <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-org"/></svg>
+                    Effectifs
                 </button>
 
                 <button type="button" class="admin-tab-btn" data-tab="liste"
@@ -323,6 +334,77 @@ get_header();
                             </div>
                         </div>
                         <div class="admin-chart-body"><canvas id="chart-faculte-sexe"></canvas></div>
+                    </section>
+
+                </div>
+            </div>
+
+            <!-- ===== EFFECTIFS =====
+                 Un même gabarit sert les quatre paliers de l'organigramme
+                 (université > établissement > département > filière) : seuls
+                 les intitulés et les données changent d'un niveau à l'autre.
+                 Tout le contenu est peint par admin-effectifs.js à partir de
+                 la base ; ce balisage ne pose que la coque et les squelettes,
+                 pour que la place soit réservée avant la première réponse. -->
+            <div id="admin-tab-effectifs" class="admin-tab-panel" role="tabpanel" aria-labelledby="admin-tabbtn-effectifs" tabindex="-1">
+
+                <!-- Fil du parcours : chaque palier traversé garde son
+                     effectif sous les yeux, pour que « 96 » se lise toujours
+                     comme une part de « 380 », elle-même part de « 1 240 ». -->
+                <nav id="eff-fil" class="eff-fil" aria-label="Niveau consulté"></nav>
+
+                <header class="eff-entete">
+                    <div class="eff-entete-texte">
+                        <h2 id="eff-titre" class="eff-titre">Université d'Ébolowa</h2>
+                        <p id="eff-soustitre" class="eff-soustitre">Effectifs par établissement</p>
+                    </div>
+
+                    <div class="eff-entete-total">
+                        <span id="eff-total" class="eff-total-valeur">—</span>
+                        <span class="eff-total-legende">préinscrits</span>
+                    </div>
+
+                    <button type="button" id="eff-refresh" class="admin-tbtn admin-tbtn--icon"
+                            aria-label="Actualiser les effectifs" title="Actualiser">
+                        <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-refresh"/></svg>
+                    </button>
+                </header>
+
+                <p id="eff-maj" class="eff-maj" role="status" aria-live="polite"></p>
+
+                <!-- Cartes du palier : raccourci de navigation vers l'échelon
+                     du dessous. Le tableau juste en dessous porte les mêmes
+                     effectifs au chiffre près ; ces cartes servent le geste,
+                     pas la lecture fine. -->
+                <div id="eff-cartes" class="eff-cartes admin-stagger">
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                    <div class="admin-skeleton admin-skeleton--kpi"></div>
+                </div>
+
+                <div id="eff-tableau" class="eff-tableau"></div>
+
+                <div class="admin-charts-grid admin-stagger eff-graphes">
+
+                    <section class="admin-chart-card admin-chart-card--half">
+                        <div class="admin-chart-head">
+                            <div>
+                                <h3 class="admin-chart-title">Répartition par sexe</h3>
+                                <p id="eff-sexe-sub" class="admin-chart-sub">Sur l'ensemble de l'université</p>
+                            </div>
+                        </div>
+                        <div class="admin-chart-body"><canvas id="chart-eff-sexe"></canvas></div>
+                    </section>
+
+                    <section class="admin-chart-card admin-chart-card--half">
+                        <div class="admin-chart-head">
+                            <div>
+                                <h3 class="admin-chart-title">Situation de handicap</h3>
+                                <p id="eff-handicap-sub" class="admin-chart-sub">Sur l'ensemble de l'université</p>
+                            </div>
+                        </div>
+                        <div class="admin-chart-body"><canvas id="chart-eff-handicap"></canvas></div>
                     </section>
 
                 </div>
