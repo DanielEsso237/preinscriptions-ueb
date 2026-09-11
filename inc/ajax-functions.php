@@ -60,7 +60,7 @@ add_action( 'wp_ajax_nopriv_ueb_get_facultes', 'ueb_ajax_get_facultes' );
 function ueb_niveaux_par_diplome() {
     return array(
         'bac'     => array( 'L1', 'L2', 'L3' ),
-        'gce_ol'  => array( 'L1', 'L2', 'L3' ),
+        'gce_ad'  => array( 'L1', 'L2', 'L3' ),
         'licence' => array( 'M1', 'M2' ),
         'master'  => array( 'DOC' ),
     );
