@@ -965,7 +965,14 @@
 
     // Ordre des onglets dans la navigation : sert à déduire le sens du
     // glissement (on avance vers la droite, on revient vers la gauche).
-    var ORDRE_ONGLETS = ['stats', 'liste'];
+    var ORDRE_ONGLETS = ['stats', 'effectifs', 'liste'];
+
+    // Titre de la barre du haut, par onglet.
+    var TITRES_ONGLETS = {
+        stats:     "Vue d'ensemble",
+        effectifs: 'Effectifs',
+        liste:     'Dossiers'
+    };
     var ongletCourant = 'stats';
 
     function activerOnglet(cible) {
@@ -985,17 +992,35 @@
             p.classList.toggle('active', actif);
         });
         if (pageTitle) {
-            pageTitle.textContent = cible === 'liste' ? 'Dossiers' : "Vue d'ensemble";
+            pageTitle.textContent = TITRES_ONGLETS[cible] || TITRES_ONGLETS.stats;
         }
+
+        // Les filtres ne s'appliquent pas aux effectifs : cet onglet répond
+        // « combien sont-ils ? », et cette réponse ne doit pas dépendre d'un
+        // filtre resté actif ailleurs. La barre de filtres disparaît donc
+        // plutôt que de laisser croire qu'elle agit.
+        document.body.classList.toggle('ueb-sans-filtres', cible === 'effectifs');
 
         var url = new URL(window.location.href);
         url.searchParams.set('onglet', cible);
-        window.history.replaceState({}, '', url);
+
+        // L'onglet Effectifs gère lui-même son entrée d'historique (il y
+        // inscrit le palier ouvert) : écraser l'état ici effacerait le
+        // chemin de remontée dans l'organigramme.
+        if (cible !== 'effectifs') {
+            url.searchParams.delete('niveau');
+            url.searchParams.delete('entite');
+            window.history.replaceState({}, '', url);
+        }
 
         // Chart.js ne recalcule pas ses dimensions dans un conteneur masqué :
-        // on force un redessin au retour sur la vue d'ensemble.
+        // on force un redessin au retour sur une vue qui en contient.
         if (cible === 'stats' && window.uebCharts) {
             requestAnimationFrame(function () { window.uebCharts.render(); });
+        }
+
+        if (window.uebEffectifs) {
+            window.uebEffectifs.afficher(cible === 'effectifs');
         }
     }
 
@@ -1007,7 +1032,9 @@
        CHARGEMENT INITIAL
        ================================================================ */
     var ongletInitial = new URL(window.location.href).searchParams.get('onglet');
-    if (ongletInitial === 'liste') activerOnglet('liste');
+    if (ongletInitial && ORDRE_ONGLETS.indexOf(ongletInitial) > 0) {
+        activerOnglet(ongletInitial);
+    }
 
     updateFilterBadge();
     renderChips();

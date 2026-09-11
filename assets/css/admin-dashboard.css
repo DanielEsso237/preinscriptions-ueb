@@ -1532,6 +1532,394 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
 }
 
 /* -------------------------------------------------------------------------
+   11 bis. EFFECTIFS — parcours de l'organigramme académique
+
+   Cet onglet descend université > établissement > département > filière.
+   Il n'introduit aucune couleur ni aucune géométrie nouvelle : il réutilise
+   les tokens et les composants déjà posés plus haut (cartes, tableau,
+   anneaux), et concentre son seul geste propre sur la descente elle-même —
+   le fil, qui garde le chemin parcouru sous les yeux, et la continuité de
+   direction entre le clic et le palier qui s'ouvre.
+   ------------------------------------------------------------------------- */
+
+/* Le filtrage ne s'applique pas aux effectifs : la barre disparaît plutôt
+   que de rester là sans effet. Voir activerOnglet() dans admin-dashboard.js. */
+body.ueb-sans-filtres #admin-filter-toggle,
+body.ueb-sans-filtres #admin-active-filters { display: none; }
+
+/* ---- Fil du parcours ---- */
+.eff-fil {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin-bottom: .9rem;
+    font-size: .8rem;
+}
+.eff-fil:empty { display: none; }
+
+.eff-fil-etape {
+    display: inline-flex;
+    align-items: center;
+    /* 44px de haut au minimum une fois le padding compté : le fil est la
+       seule remontée possible, il doit rester atteignable au doigt. */
+    min-height: 34px;
+    padding: .35rem .6rem;
+    border: 1px solid transparent;
+    border-radius: var(--ueb-radius-sm);
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    color: var(--ueb-text-muted);
+    cursor: pointer;
+    transition: color var(--ueb-fast) var(--ueb-ease),
+                background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease);
+}
+.eff-fil-etape:hover {
+    color: var(--ueb-primary);
+    background: var(--ueb-primary-wash);
+    border-color: var(--ueb-border);
+}
+.eff-fil-sep {
+    display: inline-grid;
+    place-items: center;
+    color: var(--ueb-text-muted);
+    opacity: .45;
+}
+.eff-fil-sep .admin-icon { width: 14px; height: 14px; }
+
+.eff-fil-courant {
+    padding: .35rem .2rem;
+    font-weight: 600;
+    color: var(--ueb-text);
+}
+
+/* ---- En-tête du palier ---- */
+.eff-entete {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: .35rem;
+    border-bottom: 1px solid var(--ueb-border);
+}
+.eff-entete-texte { min-width: 0; }
+
+.eff-titre {
+    font-family: 'Sora', sans-serif;
+    /* Se cale entre le titre de la barre du haut et celui d'une carte de
+       graphique : c'est le titre du contenu, pas celui de la page. */
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    color: var(--ueb-text);
+    margin: 0 0 .2rem;
+}
+.eff-soustitre {
+    font-size: .84rem;
+    color: var(--ueb-text-muted);
+    margin: 0;
+}
+
+/* Le total du palier, posé en regard du titre : c'est le chiffre dont
+   toutes les lignes du tableau sont une part. */
+.eff-entete-total {
+    display: flex;
+    align-items: baseline;
+    gap: .4rem;
+    margin-left: auto;
+}
+.eff-total-valeur {
+    font-family: 'Sora', sans-serif;
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -.03em;
+    color: var(--ueb-text);
+    font-variant-numeric: tabular-nums;
+}
+.eff-total-legende {
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--ueb-text-muted);
+}
+
+.eff-maj {
+    font-size: .74rem;
+    color: var(--ueb-text-muted);
+    margin: 0 0 1.2rem;
+}
+.eff-maj:empty { margin-bottom: .6rem; }
+
+#eff-refresh .admin-icon { transition: transform var(--ueb-slow) var(--ueb-ease); }
+.eff-refresh--tourne .admin-icon { transform: rotate(360deg); }
+
+/* ---- Cartes du palier ---- */
+.eff-cartes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: .8rem;
+    margin-bottom: 1.4rem;
+}
+
+.eff-carte {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .45rem;
+    /* Bordure complète : pas de filet coloré à gauche, la teinte de série
+       vit dans la jauge, là où elle porte une valeur. */
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+    background: var(--ueb-surface);
+    padding: .9rem 1rem;
+    text-align: left;
+    font: inherit;
+    box-shadow: var(--ueb-shadow-sm);
+    transition: transform var(--ueb-normal) var(--ueb-ease),
+                box-shadow var(--ueb-normal) var(--ueb-ease),
+                border-color var(--ueb-normal) var(--ueb-ease);
+}
+
+.eff-carte--ouvrable { cursor: pointer; }
+.eff-carte--ouvrable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ueb-shadow);
+    border-color: var(--ueb-border-strong);
+}
+.eff-carte--ouvrable:active { transform: translateY(0); }
+
+.eff-carte-nom {
+    font-size: .78rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--ueb-text-soft);
+    /* Deux lignes puis coupe : « Faculté des Sciences Économiques et de
+       Gestion » ne tient pas sur une ligne, et tronquer dès la première
+       rendrait deux facultés indistinguables. La hauteur des deux lignes
+       est toujours réservée, pour que les effectifs des cartes voisines
+       restent alignés entre eux. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.7em;
+}
+.eff-carte-valeur {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.03em;
+    color: var(--ueb-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Jauge proportionnelle au plus gros effectif du palier : elle permet de
+   comparer deux cartes d'un coup d'œil, ce que deux nombres seuls ne
+   permettent pas. */
+.eff-carte-jauge {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--ueb-surface-hover);
+    overflow: hidden;
+}
+.eff-carte-jauge > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--eff-serie, var(--ueb-primary));
+    transform-origin: left center;
+    animation: ueb-grow var(--ueb-slow) var(--ueb-ease) both;
+    animation-delay: calc(var(--eff-i, 0) * var(--ueb-stagger));
+}
+
+.eff-carte-part {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .4rem;
+    font-size: .74rem;
+    color: var(--ueb-text-muted);
+}
+.eff-carte-fleche {
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity var(--ueb-fast) var(--ueb-ease),
+                transform var(--ueb-fast) var(--ueb-ease);
+}
+.eff-carte--ouvrable:hover .eff-carte-fleche,
+.eff-carte--ouvrable:focus-visible .eff-carte-fleche {
+    opacity: 1;
+    transform: none;
+}
+
+/* ---- Tableau du palier ---- */
+.eff-tableau {
+    margin-bottom: 1.4rem;
+    /* Le tableau défile horizontalement à l'intérieur de ce bloc : sa
+       largeur propre ne doit jamais remonter jusqu'à la mise en page. */
+    min-width: 0;
+}
+
+.eff-table .eff-cell-nom {
+    color: var(--ueb-text);
+    font-weight: 500;
+}
+/* Le bouton d'ouverture vit dans la cellule du libellé : c'est une action
+   sur l'entité nommée, pas une donnée de plus. Le tableau garde ainsi ses
+   deux seules colonnes — l'entité et son effectif. */
+.eff-nom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+.eff-nom-texte {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* La carte occupe toute la largeur, mais les deux colonnes n'ont pas à
+   s'écarter d'autant : le nom prend un peu plus de la moitié, l'effectif
+   le suit, et la colonne de remplissage absorbe le reste. Sans elle, un
+   tableau à deux colonnes envoie toujours le chiffre au bord opposé, à un
+   demi-écran de l'intitulé auquel il se rapporte.
+   Les nombres restent alignés à droite entre eux — c'est ce qui permet de
+   comparer des effectifs d'un coup d'œil. */
+.eff-table { table-layout: fixed; }
+
+.eff-table th:first-child,
+.eff-table td:first-child { width: 52%; }
+
+.eff-table .eff-cell-nombre,
+.eff-table .eff-col-nombre {
+    width: 14%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.eff-table .eff-col-nombre .admin-th-sort {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+}
+
+/* Sans intitulé et sans contenu : cette colonne n'existe que pour tenir
+   l'espace à droite du chiffre. */
+.eff-table .eff-col-reste {
+    width: 34%;
+    padding: 0;
+}
+/* La cellule de remplissage est un <td> : sans ces deux règles, la bande
+   grise de l'en-tête et celle du pied s'arrêteraient net au milieu de la
+   carte, qui paraîtrait coupée en deux. */
+.eff-table thead .eff-col-reste {
+    background: var(--ueb-surface-2);
+    border-bottom: 1px solid var(--ueb-border);
+}
+.eff-table tfoot .eff-col-reste {
+    background: var(--ueb-surface-2);
+    border-top: 2px solid var(--ueb-border-strong);
+}
+
+/* Les deux colonnes sont écartées par toute la largeur de l'écran : sans
+   un survol franc, l'œil perd la ligne entre l'intitulé et son effectif. */
+.eff-table tbody tr:hover { background: var(--ueb-surface-hover); }
+.eff-table tbody tr:hover .eff-cell-nombre { color: var(--ueb-text); }
+
+.eff-ligne--ouvrable { cursor: pointer; }
+.eff-ouvrir {
+    flex: 0 0 auto;
+    display: inline-grid;
+    place-items: center;
+    /* Cible tactile de 36px sur une ligne de 44 : la ligne entière reste
+       cliquable au doigt, ce bouton n'est que le repère visuel et le seul
+       chemin au clavier. */
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ueb-text-muted);
+    cursor: pointer;
+    /* Masqué au repos pour ne pas hachurer le tableau de chevrons, mais
+       jamais pour le clavier : le focus le ramène (règle ci-dessous). */
+    opacity: 0;
+    transform: translateX(-3px);
+    transition: opacity var(--ueb-fast) var(--ueb-ease),
+                transform var(--ueb-fast) var(--ueb-ease),
+                background var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.eff-ligne--ouvrable:hover .eff-ouvrir,
+.eff-ouvrir:focus-visible {
+    opacity: 1;
+    transform: none;
+}
+.eff-ouvrir:focus-visible,
+.eff-ouvrir:hover {
+    background: var(--ueb-primary-wash);
+    color: var(--ueb-primary);
+}
+
+/* Pied de tableau : la somme des lignes, toujours égale au total du palier
+   affiché en en-tête. Fond appuyé et filet haut plus marqué pour qu'on ne
+   le confonde jamais avec une ligne de données. */
+.eff-table tfoot td {
+    padding: .8rem 1rem;
+    background: var(--ueb-surface-2);
+    border-top: 2px solid var(--ueb-border-strong);
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    color: var(--ueb-text);
+    font-variant-numeric: tabular-nums;
+}
+.eff-table tfoot td:first-child {
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+}
+
+/* Ligne d'appoint (« non rattaché ») : signalée sans être mise en avant,
+   c'est un reliquat à corriger dans les références, pas une entité. */
+.eff-cell-note {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--ueb-text-muted);
+    font-style: italic;
+}
+
+.eff-badge {
+    display: inline-block;
+    padding: .1rem .4rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--ueb-text-muted);
+    vertical-align: middle;
+}
+
+/* Squelette du tableau : même hauteur de ligne que le vrai tableau, pour
+   que le remplacement ne déplace rien. */
+.eff-squelette-table { padding: 1rem; }
+
+/* Les deux anneaux se partagent la largeur : ils se lisent ensemble, et
+   aucun des deux n'a la priorité sur l'autre. Plus hauts que les anneaux
+   de la vue d'ensemble : leur légende est en corps 14, et le disque ne
+   doit pas rétrécir pour lui faire place. */
+.admin-chart-card--half { grid-column: span 6; }
+.admin-chart-card--half .admin-chart-body { height: 330px; }
+
+/* -------------------------------------------------------------------------
    12. ANIMATIONS
    ------------------------------------------------------------------------- */
 @keyframes ueb-fade {
@@ -1646,7 +2034,7 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
 }
 
 @media (max-width: 900px) {
-    .admin-shell { grid-template-columns: 1fr; }
+    .admin-shell { grid-template-columns: minmax(0, 1fr); }
     .admin-sidebar {
         position: static;
         height: auto;
@@ -1686,11 +2074,54 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
     .admin-chart-card,
     .admin-chart-card--third,
     .admin-chart-card--twothird,
+    .admin-chart-card--half,
     .admin-chart-card--full { grid-column: span 12; }
+
+    .eff-entete-total { margin-left: 0; }
 }
 
 @media (max-width: 620px) {
     .admin-topbar h1 { font-size: 1.3rem; }
+    .eff-titre { font-size: 1.2rem; }
+    .eff-total-valeur { font-size: 1.7rem; }
+    .eff-cartes { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .eff-carte-valeur { font-size: 1.5rem; }
+
+    /* L'en-tête s'empile : le total et le bouton d'actualisation passent
+       sous le titre, au lieu de se disputer une largeur qui n'y est pas. */
+    .eff-entete {
+        align-items: flex-start;
+        gap: .6rem;
+    }
+    .eff-entete-texte { flex: 1 1 100%; }
+    .eff-entete-total { margin-left: 0; }
+    #eff-refresh { margin-left: auto; }
+
+    /* Deux colonnes tiennent sans défilement même sur un téléphone : ce
+       tableau n'a pas besoin du min-width de 680px que s'impose celui des
+       dossiers, quelques lignes plus bas. Le sélecteur est qualifié par
+       .admin-table pour l'emporter sur celui-ci quel que soit l'ordre des
+       déclarations — à spécificité égale, c'est la dernière qui gagne, et
+       ce tableau se retrouvait large de 680px sur un écran de 390.
+       Les parts des deux colonnes sont explicites : avec table-layout:
+       fixed, un `width: auto` laissait la colonne des noms tout réclamer
+       et poussait les effectifs hors du cadre. */
+    .admin-table.eff-table {
+        min-width: 0;
+        width: 100%;
+    }
+    .eff-table th:first-child,
+    .eff-table td:first-child { width: 68%; }
+    .eff-table .eff-cell-nombre,
+    .eff-table .eff-col-nombre { width: 32%; }
+    .eff-table .eff-col-reste { display: none; }
+
+    /* Sur une colonne étroite, un intitulé long vaut mieux sur deux lignes
+       que tronqué au tiers. */
+    .eff-nom-texte {
+        white-space: normal;
+        overflow: visible;
+    }
     .admin-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
     .admin-kpi-value { font-size: 1.6rem; }
     .admin-chart-body { height: 240px; }

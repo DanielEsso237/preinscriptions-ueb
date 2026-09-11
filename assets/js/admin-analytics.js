@@ -285,7 +285,8 @@
      * Enregistré par instance (et non globalement) pour ne pas polluer les
      * autres graphiques.
      */
-    function centreTexte(valeur, legende, T) {
+    function centreTexte(valeur, legende, T, echelle) {
+        echelle = echelle || 1;
         return {
             id: 'centreTexte',
             afterDraw: function (chart) {
@@ -299,13 +300,13 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                ctx.font = '700 22px Sora, sans-serif';
+                ctx.font = '700 ' + Math.round(22 * echelle) + 'px Sora, sans-serif';
                 ctx.fillStyle = T.text;
-                ctx.fillText(valeur, cx, cy - 8);
+                ctx.fillText(valeur, cx, cy - 8 * echelle);
 
-                ctx.font = '500 11px Inter, sans-serif';
+                ctx.font = '500 ' + Math.round(11 * echelle) + 'px Inter, sans-serif';
                 ctx.fillStyle = T.tick;
-                ctx.fillText(legende, cx, cy + 12);
+                ctx.fillText(legende, cx, cy + 12 * echelle);
                 ctx.restore();
             }
         };
@@ -318,11 +319,17 @@
         options = options || {};
         var T = theme();
         var total = somme(dataset);
+        // Corps de la légende. Par défaut 11 : c'est ce que supporte une
+        // carte d'un tiers de largeur sans que les intitulés se replient.
+        var tailleLegende = options.tailleLegende || 11;
         // Libellé court pour la légende (sigle de faculté, « Masculin »…),
         // libellé complet conservé pour l'infobulle.
         var lbls = options.mapLabel ? dataset.map(options.mapLabel) : labels(dataset);
         var complets = options.mapComplet ? dataset.map(options.mapComplet) : labels(dataset);
-        var couleurs = options.couleurs || T.series;
+        var couleurs = options.couleurs ||
+            (options.series
+                ? options.series.map(function (rang) { return T.series[(rang - 1) % T.series.length]; })
+                : T.series);
 
         instances[id] = new Chart(el, {
             type: 'doughnut',
@@ -346,12 +353,12 @@
                         position: 'bottom',
                         labels: {
                             color: T.tick,
-                            font: { family: 'Inter, sans-serif', size: 11 },
-                            boxWidth: 10,
-                            boxHeight: 10,
+                            font: { family: 'Inter, sans-serif', size: tailleLegende },
+                            boxWidth: tailleLegende - 1,
+                            boxHeight: tailleLegende - 1,
                             usePointStyle: true,
                             pointStyle: 'circle',
-                            padding: 12,
+                            padding: tailleLegende + 3,
                             // Le pourcentage est affiché dans la légende :
                             // l'information ne dépend donc jamais de la
                             // seule couleur de la part.
@@ -361,7 +368,7 @@
                                     var v = d.datasets[0].data[i];
                                     var pct = total ? Math.round((v / total) * 100) : 0;
                                     return {
-                                        text: court(label, 22) + ' · ' + pct + '%',
+                                        text: court(label, options.longueurLegende || 22) + ' · ' + pct + '%',
                                         fillStyle: d.datasets[0].backgroundColor[i],
                                         strokeStyle: 'transparent',
                                         pointStyle: 'circle',
@@ -395,7 +402,8 @@
             plugins: [centreTexte(
                 options.centreValeur || nf(total),
                 options.centreLegende || 'dossiers',
-                T
+                T,
+                options.echelleCentre
             )]
         });
     }
@@ -585,7 +593,14 @@
         Object.keys(instances).forEach(detruire);
     }
 
-    window.uebCharts = { render: render, destroy: detruireTout };
+    window.uebCharts = {
+        render: render,
+        destroy: detruireTout,
+        // Exposé pour l'onglet Effectifs, qui peint ses propres anneaux au
+        // périmètre du palier consulté. Même fonction, mêmes couleurs de
+        // thème, même traitement de l'état vide.
+        anneau: renderAnneau
+    };
 
     // Le changement de thème impose un redessin complet : les couleurs sont
     // figées dans les instances Chart.js au moment de leur création.
