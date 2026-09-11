@@ -490,7 +490,7 @@ function demo_generer_dossier( array $ref, $numero_dossier, $timestamp, array $p
     /* --- Diplôme d'admission + niveau LMD cohérents ------------------ */
     $poids_dip = array(
         'bac'       => 66,
-        'gce_ol'    => 10,
+        'gce_ad'    => 10,
         'releve_n1' => 6,
         'releve_n2' => 5,
         'licence'   => 7,
@@ -504,7 +504,7 @@ function demo_generer_dossier( array $ref, $numero_dossier, $timestamp, array $p
 
     $niveau_par_diplome = array(
         'bac'       => 'L1',
-        'gce_ol'    => 'L1',
+        'gce_ad'    => 'L1',
         'releve_n1' => 'L2',
         'releve_n2' => 'L3',
         'licence'   => 'M1',
@@ -514,7 +514,7 @@ function demo_generer_dossier( array $ref, $numero_dossier, $timestamp, array $p
     $code_niv   = isset( $niveau_par_diplome[ $code_dip ] ) ? $niveau_par_diplome[ $code_dip ] : 'L1';
     $niveau_id  = isset( $ref['niveaux'][ $code_niv ] ) ? $ref['niveaux'][ $code_niv ] : null;
 
-    /* --- Spécialité : seuls bac et gce_ol en ont ---------------------- */
+    /* --- Spécialité : seuls bac et gce_ad en ont ---------------------- */
     $specialite_id = null;
     if ( isset( $ref['specialites'][ $diplome_id ][ $faculte_id ] ) ) {
         $liste = $ref['specialites'][ $diplome_id ][ $faculte_id ];

@@ -49,9 +49,9 @@
     let mentionsCache = [];
 
     // Diplômes pour lesquels "Série / Spécialité" a un sens (séries du
-    // bac / GCE O-Level). Pour les autres (relevés de notes, licence,
+    // bac / GCE Advanced-Level). Pour les autres (relevés de notes, licence,
     // master), ce champ est masqué et non requis.
-    const DIPLOMES_AVEC_SERIE = ['bac', 'gce_ol'];
+    const DIPLOMES_AVEC_SERIE = ['bac', 'gce_ad'];
 
     // Listes "brutes" des filières (avant filtrage croisé), mises à jour
     // à chaque changement de faculté/type de formation, et relues par

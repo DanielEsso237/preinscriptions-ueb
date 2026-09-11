@@ -89,7 +89,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - 2.5 : retrait des 3 diplômes "relevé de notes" (niveau 1, niveau 2,
  *         master 1) de l'offre. Le candidat choisit désormais lui-même
  *         son niveau LMD parmi ceux qu'ouvre son diplôme : L1/L2/L3 pour
- *         le Baccalauréat et le GCE O-Level, M1/M2 pour la Licence,
+ *         le Baccalauréat et le GCE Advanced-Level, M1/M2 pour la Licence,
  *         Doctorat pour le Master (cf. ueb_niveaux_par_diplome() dans
  *         inc/ajax-functions.php). Données uniquement, aucun changement
  *         de structure : le reseed déclenché par cette version lance
