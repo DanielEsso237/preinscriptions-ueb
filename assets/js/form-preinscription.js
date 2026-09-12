@@ -360,31 +360,33 @@
     }
 
     /* ================================================================
-       CYCLE DU NIVEAU CHOISI
-       Le cycle arrive avec chaque niveau (cf. ueb_ajax_get_niveaux_lmd) :
-       la correspondance niveau => cycle n'est donc écrite qu'une fois,
-       en PHP, dans ueb_cycle_pour_niveau().
+       VISIBILITÉ DES 2e ET 3e CHOIX
+       Les trois choix se filtrent mutuellement (un même parcours ne peut
+       pas être pris deux fois) : un Nième choix n'a donc de sens que s'il
+       reste au moins N filières à proposer. On se fonde sur le nombre
+       réellement disponible plutôt que sur le cycle, car un tronc commun
+       n'est pas forcément à filière unique — la FSEG n'en a qu'une en
+       L1/L2, la FSJP en a trois.
        ================================================================ */
-    function getCycleCourant() {
-        const n = niveauxCache.find(function (x) { return String(x.id) === String(niveauSelect.value); });
-        return n ? (n.cycle || '') : '';
-    }
-
-    // En tronc commun (L1/L2) il n'existe qu'une filière : les 2e et 3e
-    // choix n'ont pas d'objet. On les masque et on retire leur caractère
-    // obligatoire, sinon l'étape resterait invalidable.
     function updateVisibiliteChoixFilieres() {
-        const troncCommun = getCycleCourant() === 'tronc_commun';
+        const dispo = filiere23Data.length;
 
-        [selectFiliere2, selectFiliere3].forEach(function (select) {
-            const groupe = select.closest('.form-group');
-            if (groupe) groupe.style.display = troncCommun ? 'none' : '';
+        [
+            { select: selectFiliere2, seuil: 2, obligatoire: true },
+            { select: selectFiliere3, seuil: 3, obligatoire: false }
+        ].forEach(function (cfg) {
+            const visible = dispo >= cfg.seuil;
+            const groupe  = cfg.select.closest('.form-group');
 
-            if (troncCommun) {
-                select.value = '';
-                select.removeAttribute('required');
-            } else if (select === selectFiliere2) {
-                select.setAttribute('required', 'required');
+            if (groupe) groupe.style.display = visible ? '' : 'none';
+
+            if (!visible) {
+                // Masqué : on vide et on retire l'obligation, sinon
+                // l'étape resterait invalidable sur un champ invisible.
+                cfg.select.value = '';
+                cfg.select.removeAttribute('required');
+            } else if (cfg.obligatoire) {
+                cfg.select.setAttribute('required', 'required');
             }
         });
     }
