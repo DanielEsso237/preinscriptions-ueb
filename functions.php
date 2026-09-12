@@ -394,6 +394,7 @@ add_action( 'after_switch_theme', 'ueb_register_roles' );
 
 require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
+require_once( get_template_directory() . '/inc/quitus-pdf-functions.php' );
 require_once( get_template_directory() . '/inc/guide-preinscription-content.php' );
 require_once( get_template_directory() . '/inc/guide-pdf-functions.php' );
 require_once( get_template_directory() . '/inc/db-schema.php' );
