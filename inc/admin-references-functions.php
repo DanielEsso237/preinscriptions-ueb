@@ -67,6 +67,9 @@ function ueb_admin_ref_registry() {
             'search_columns' => array( 'code', 'libelle' ),
             'columns'        => array(
                 'code'    => array( 'label' => 'Code',    'type' => 'text', 'required' => true, 'maxlength' => 20 ),
+                // NULL = diplome propose par toutes les facultes. Renseigne,
+                // il n'apparait dans le formulaire que pour cette faculte.
+                'faculte_id' => array( 'label' => 'Réservé à la faculté', 'type' => 'select', 'required' => false, 'fk' => 'facultes' ),
                 'libelle' => array( 'label' => 'Libellé',  'type' => 'text', 'required' => true, 'maxlength' => 100 ),
             ),
             'label_col' => 'libelle',

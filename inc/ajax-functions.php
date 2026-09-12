@@ -76,8 +76,12 @@ function ueb_ajax_get_diplomes() {
     $codes  = array_keys( $map );
     $places = implode( ', ', array_fill( 0, count( $codes ), '%s' ) );
 
+    // faculte_id est renvoye tel quel : NULL = diplome propose partout,
+    // sinon il n'est propose que par cette faculte (cas de la Capacite en
+    // Droit, reservee a la FSJP). Le formulaire s'en sert pour filtrer la
+    // liste quand la faculte change, sans second aller-retour.
     $rows = $wpdb->get_results( $wpdb->prepare(
-        "SELECT id, code, libelle FROM ueb_diplomes_admission
+        "SELECT id, code, libelle, faculte_id FROM ueb_diplomes_admission
          WHERE code IN ($places)
          ORDER BY libelle ASC",
         $codes

@@ -116,7 +116,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         autres facultés, proposées à tous les niveaux comme avant.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.7' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.8' );
  }
 
 /**
@@ -177,8 +177,11 @@ CREATE TABLE IF NOT EXISTS ueb_diplomes_admission (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     code VARCHAR(20) NOT NULL,
     libelle VARCHAR(100) NOT NULL,
+    faculte_id INT UNSIGNED DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_diplome_code (code)
+    UNIQUE KEY uq_diplome_code (code),
+    KEY idx_diplome_faculte (faculte_id),
+    CONSTRAINT fk_diplome_faculte FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
         'ueb_specialites_diplome' => <<<SQL
@@ -537,6 +540,52 @@ function ueb_add_column_if_missing( $table, $colonne, $definition ) {
 }
 
 /**
+ * Ajoute une contrainte de clé étrangère si elle n'existe pas déjà.
+ *
+ * Pendant de ueb_add_column_if_missing() : sans elle, une base migrée
+ * n'aurait que la colonne, et divergerait d'une installation neuve — que
+ * ueb_create_tables() dote de la contrainte dès le CREATE TABLE.
+ *
+ * @param string $table      Nom de la table (sans préfixe wp_).
+ * @param string $nom        Nom de la contrainte.
+ * @param string $definition Définition SQL complète (FOREIGN KEY ...).
+ * @return bool true si la contrainte existe à la sortie de la fonction.
+ */
+function ueb_add_foreign_key_if_missing( $table, $nom, $definition ) {
+    global $wpdb;
+
+    $existe = $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+         WHERE TABLE_SCHEMA    = DATABASE()
+           AND TABLE_NAME      = %s
+           AND CONSTRAINT_NAME = %s",
+        $table,
+        $nom
+    ) );
+
+    if ( $existe ) {
+        return true;
+    }
+
+    // Mêmes précautions que ueb_add_column_if_missing() : ces trois
+    // valeurs sont des littéraux de ce fichier, jamais des entrées
+    // utilisateur, et ALTER TABLE n'accepte pas de placeholders ici.
+    $ok = $wpdb->query( "ALTER TABLE $table ADD CONSTRAINT $nom $definition" );
+
+    if ( false === $ok ) {
+        error_log( sprintf(
+            '[UEB DB] Échec de l\'ajout de la contrainte "%s" sur "%s" : %s',
+            $nom,
+            $table,
+            $wpdb->last_error
+        ) );
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Applique les changements de structure sur les tables déjà installées.
  *
  * Chaque migration doit être idempotente : la fonction est rejouée à
@@ -553,6 +602,15 @@ function ueb_run_schema_migrations() {
         'cycle',
         "ENUM('tous','tronc_commun','licence_3','master') NOT NULL DEFAULT 'tous'"
     );
+
+    // 2.8 — diplôme réservé à une faculté (NULL = toutes).
+    if ( ueb_add_column_if_missing( 'ueb_diplomes_admission', 'faculte_id', 'INT UNSIGNED DEFAULT NULL' ) ) {
+        ueb_add_foreign_key_if_missing(
+            'ueb_diplomes_admission',
+            'fk_diplome_faculte',
+            'FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL'
+        );
+    }
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
