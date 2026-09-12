@@ -104,16 +104,19 @@ function ueb_admin_ref_registry() {
                     'options'  => array( 'classique' => 'Classique', 'pro' => 'Licence Pro (LP)' ),
                 ),
                 // Cycle auquel la filière est proposée. 'tous' = à tous les
-                // niveaux LMD (cas des facultés qui n'ont pas de tronc
-                // commun) ; sinon le formulaire ne la propose qu'au niveau
-                // correspondant (cf. ueb_cycle_pour_niveau()).
+                // niveaux LMD ; sinon le formulaire ne la propose qu'aux
+                // niveaux du cycle (cf. ueb_cycle_pour_niveau()).
+                // 'tronc_commun' est un code historique qui désigne le
+                // cycle L1-L2 : toutes les facultés n'y ont pas un tronc
+                // commun unique (la FSEG oui, la FSJP y ouvre 3 filières),
+                // d'où un libellé neutre côté interface.
                 'cycle'          => array(
                     'label'    => 'Cycle',
                     'type'     => 'enum',
                     'required' => true,
                     'options'  => array(
                         'tous'         => 'Tous les niveaux',
-                        'tronc_commun' => 'Tronc commun (L1–L2)',
+                        'tronc_commun' => 'Licence 1 et 2',
                         'licence_3'    => 'Licence 3',
                         'master'       => 'Master (M1–M2)',
                     ),

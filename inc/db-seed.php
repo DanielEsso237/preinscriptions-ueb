@@ -505,6 +505,7 @@ SQL,
 INSERT IGNORE INTO ueb_diplomes_admission (code, libelle) VALUES
     ('bac', 'Baccalauréat'),
     ('gce_ad', 'GCE ADVANCED-Level'),
+    ('capacite', 'Capacité en Droit'),
     ('licence', 'Licence'),
     ('master', 'Master');
 SQL,
@@ -585,10 +586,21 @@ INSERT IGNORE INTO ueb_filieres (code, libelle, faculte_id, type_formation, cycl
     ('BANQ_MF_M', 'Banque et Microfinance', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), 'classique', 'master'),
     ('MKT_SO_M', 'Marketing Stratégie Organisation', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), 'classique', 'master'),
     ('ENT_MI_M', 'Entrepreneuriat et Management de l''Innovation', (SELECT id FROM ueb_facultes WHERE code = 'FSEG'), 'classique', 'master'),
-    ('DPRIV', 'Droit Privé', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tous'),
-    ('DPUB', 'Droit Public', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tous'),
-    ('SCPOL', 'Science Politique', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tous'),
-    ('RI', 'Relations Internationales', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tous');
+    -- ===== FSJP — L1/L2 =====
+    ('DROIT_TC', 'Droit', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tronc_commun'),
+    ('SCPOL_TC', 'Sciences Politiques', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tronc_commun'),
+    ('ENGLAW_TC', 'English Law', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'tronc_commun'),
+    -- ===== FSJP — Licence 3 =====
+    ('SCPOL_L3', 'Sciences Politiques', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'licence_3'),
+    ('DPRIV_L3', 'Droit Privé', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'licence_3'),
+    ('DPUB_L3', 'Droit Public', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'licence_3'),
+    ('ENGLAW_L3', 'English Law', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'licence_3'),
+    -- ===== FSJP — Master =====
+    ('DPUB_M', 'Droit Public', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'master'),
+    ('ENGLAW_M', 'English Law', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'master'),
+    ('SCPOL_M', 'Sciences Politiques', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'master'),
+    ('DPRIV_CJ_M', 'Droit Privé — Carrière Judiciaire', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'master'),
+    ('DPRIV_AFF_M', 'Droit Privé — Droit des Affaires', (SELECT id FROM ueb_facultes WHERE code = 'FSJP'), 'classique', 'master');
 SQL,
         'ueb_situations_matrimoniales' => <<<SQL
 INSERT IGNORE INTO ueb_situations_matrimoniales (code, libelle) VALUES
