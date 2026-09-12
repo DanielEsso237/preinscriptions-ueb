@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Génération du PDF de préinscription — nouveau format 3 pages :
+ * Génération du PDF de préinscription — 4 pages :
  *
  *   Page 1 : fiche de préinscription + coupon récépissé de dépôt
  *            (détachable, ligne de découpe), QR code du numéro de dossier.
@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *   Page 3 : fiche d'examen médical officielle, reproduite telle quelle
  *            depuis le modèle du prof (image assets/pdf/, à remplir à la
  *            main par le médecin).
+ *   Page 4 : quitus de paiement des droits de préinscription, quatre
+ *            coupons détachables (étudiant, DAF, scolarité, banque) au
+ *            modèle du site d'inscription — cf. inc/quitus-pdf-functions.php.
  *
  * Le rendu est fait en primitives TCPDF natives (SetXY/Cell/MultiCell,
  * RoundedRect, write2DBarcode…) et non en writeHTML : le modèle exige un
@@ -253,6 +256,7 @@ function ueb_handle_pdf_generation() {
         'numero_dossier'         => $numero_dossier,
         'annee_academique'       => ueb_get_annee_academique(),
         'faculte'                => $faculte_row ? $faculte_row->nom_fr : '',
+        'faculte_en'             => $faculte_row ? $faculte_row->nom_en : '',
         'faculte_code'           => $faculte_row ? $faculte_row->code : '',
         'diplome_admission'      => ueb_pdf_lookup( 'ueb_diplomes_admission', $diplome_id, 'libelle' ),
         'serie_diplome'          => ueb_pdf_lookup( 'ueb_specialites_diplome', $serie_id, 'libelle' ),
@@ -308,7 +312,7 @@ add_action( 'template_redirect', 'ueb_handle_pdf_generation' );
 
 
 /**
- * Construit le document 3 pages à partir des données déjà résolues
+ * Construit le document 4 pages à partir des données déjà résolues
  * (libellés, pas d'IDs). Séparé du handler pour être testable en CLI
  * sans WordPress ni base de données.
  */
@@ -325,6 +329,7 @@ function ueb_pdf_build_document( array $d ) {
     ueb_pdf_page_fiche( $pdf, $d );
     ueb_pdf_page_medicale( $pdf, $d );
     ueb_pdf_page_examen( $pdf );
+    ueb_pdf_page_quitus( $pdf, $d ); // inc/quitus-pdf-functions.php
 
     return $pdf;
 }
