@@ -98,6 +98,77 @@
     var pageCourante  = 1;
     var rechercheTimeout = null;
     var idEnEdition   = 0; // 0 = création
+    var filtres       = {}; // colonne => valeur, pour la table courante
+
+    /* ================================================================
+       FILTRES
+       Une colonne est filtrable si PHP l'a marquee ainsi
+       (ueb_admin_ref_filtrable_columns) : cles etrangeres et enums, dont
+       le registre transporte deja les options. Rien n'est code en dur ici,
+       une nouvelle table filtrable apparait donc toute seule.
+       ================================================================ */
+    function colonnesFiltrables(cfg) {
+        if (!cfg) return [];
+        return Object.keys(cfg.columns).filter(function (cle) {
+            return cfg.columns[cle].filtrable && (cfg.columns[cle].options || []).length;
+        });
+    }
+
+    function filtresActifs() {
+        return Object.keys(filtres).filter(function (cle) { return filtres[cle] !== ''; });
+    }
+
+    function renderFiltres() {
+        var zone = $('admin-ref-filtres');
+        var cfg  = REGISTRY[cleCourante];
+        if (!zone) return;
+
+        var colonnes = colonnesFiltrables(cfg);
+        if (!colonnes.length) {
+            zone.innerHTML = '';
+            zone.hidden = true;
+            return;
+        }
+
+        var html = colonnes.map(function (cle) {
+            var colcfg = cfg.columns[cle];
+            var options = (colcfg.options || []).map(function (o) {
+                var sel = String(filtres[cle] || '') === String(o.id) ? ' selected' : '';
+                return '<option value="' + esc(o.id) + '"' + sel + '>' + esc(o.libelle) + '</option>';
+            }).join('');
+
+            return '<div class="admin-ref-filtre">' +
+                   '<label class="admin-ref-filtre-label" for="admin-ref-filtre-' + esc(cle) + '">' +
+                   esc(colcfg.label) + '</label>' +
+                   '<select class="admin-ref-filtre-select" id="admin-ref-filtre-' + esc(cle) + '" data-filtre="' + esc(cle) + '">' +
+                   '<option value="">Tous</option>' + options + '</select></div>';
+        }).join('');
+
+        if (filtresActifs().length) {
+            html += '<button type="button" class="admin-ref-filtre-reset" id="admin-ref-filtres-reset">' +
+                    icone('close', 'admin-icon--sm') + 'Réinitialiser</button>';
+        }
+
+        zone.innerHTML = html;
+        zone.hidden = false;
+    }
+
+    document.addEventListener('change', function (e) {
+        var select = e.target.closest('.admin-ref-filtre-select');
+        if (!select) return;
+        filtres[select.dataset.filtre] = select.value;
+        pageCourante = 1;
+        renderFiltres();
+        chargerListe();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('#admin-ref-filtres-reset')) return;
+        filtres = {};
+        pageCourante = 1;
+        renderFiltres();
+        chargerListe();
+    });
 
     /* ================================================================
        NAVIGATION (liste des tables, groupée)
@@ -134,9 +205,11 @@
             if (btn.dataset.ref === cleCourante) return;
             cleCourante = btn.dataset.ref;
             pageCourante = 1;
+            filtres = {}; // les colonnes different d'une table a l'autre
             var recherche = $('admin-ref-recherche');
             if (recherche) recherche.value = '';
             renderNav();
+            renderFiltres();
             chargerListe();
         });
     })();
@@ -188,9 +261,16 @@
         }
 
         if (!data.rows.length) {
-            wrap.innerHTML = '<div class="admin-table-wrap">' +
-                etat('inbox', 'Aucune donnée', 'Aucune ligne dans cette table pour le moment. Utilisez « Ajouter » pour en créer une.') +
-                '</div>';
+            var recherche = $('admin-ref-recherche');
+            var filtre = filtresActifs().length > 0;
+            var cherche = recherche && recherche.value.trim() !== '';
+            var vide = filtre || cherche
+                ? etat('search', 'Aucun résultat',
+                       'Aucune ligne ne correspond' + (filtre ? ' à ces filtres' : '') +
+                       (filtre && cherche ? ' et' : '') + (cherche ? ' à cette recherche' : '') + '.')
+                : etat('inbox', 'Aucune donnée',
+                       'Aucune ligne dans cette table pour le moment. Utilisez « Ajouter » pour en créer une.');
+            wrap.innerHTML = '<div class="admin-table-wrap">' + vide + '</div>';
             pagEl.innerHTML = '';
             return;
         }
@@ -230,11 +310,16 @@
     function chargerListe() {
         skeletons();
         var recherche = $('admin-ref-recherche');
-        return ajax('ueb_admin_ref_list', {
+        var params = {
             ref_key: cleCourante,
             recherche: recherche ? recherche.value : '',
             page: pageCourante
-        }).then(renderTable);
+        };
+        // PHP reconstitue $_POST['filtres'] a partir de ces cles.
+        filtresActifs().forEach(function (cle) {
+            params['filtres[' + cle + ']'] = filtres[cle];
+        });
+        return ajax('ueb_admin_ref_list', params).then(renderTable);
     }
 
     document.addEventListener('click', function (e) {
@@ -407,6 +492,7 @@
        CHARGEMENT INITIAL
        ================================================================ */
     renderNav();
+    renderFiltres();
     chargerListe();
 
 }());

@@ -113,6 +113,75 @@
 .admin-icon-btn:active { transform: scale(.94); }
 
 /* -------------------------------------------------------------------------
+   Barre de filtres (#admin-ref-filtres), construite par le JS pour les
+   colonnes à valeurs fermées de la table courante. Masquée via [hidden]
+   pour les tables qui n'en ont aucune.
+   ------------------------------------------------------------------------- */
+.admin-ref-filtres {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: .7rem;
+    margin-bottom: 1rem;
+    padding: .8rem .9rem;
+    background: var(--ueb-surface-2);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius-sm);
+}
+.admin-ref-filtre {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    min-width: 180px;
+}
+.admin-ref-filtre-label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ueb-text-muted);
+}
+.admin-ref-filtre-select {
+    min-height: 38px;
+    padding: .45rem .7rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    font-family: inherit;
+    font-size: .88rem;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
+}
+.admin-ref-filtre-select:focus {
+    outline: none;
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
+}
+/* N'apparaît que lorsqu'au moins un filtre est actif. */
+.admin-ref-filtre-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 38px;
+    padding: .45rem .8rem;
+    background: transparent;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    color: var(--ueb-text-soft);
+    font-family: inherit;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.admin-ref-filtre-reset:hover {
+    background: var(--ueb-surface-hover);
+    border-color: var(--ueb-primary);
+    color: var(--ueb-primary);
+}
+
+/* -------------------------------------------------------------------------
    Formulaire d'ajout / modification, à l'intérieur de la modale partagée
    (.admin-modal, définie dans admin-dashboard.css). Les champs reprennent
    le même gabarit que l'écran de connexion, redéclaré ici car scopé à
@@ -167,4 +236,6 @@
     .admin-ref-nav-group { display: contents; }
     .admin-ref-nav-heading { display: none; }
     .admin-ref-nav-btn { width: auto; border: 1px solid var(--ueb-border); border-radius: 999px; }
+    .admin-ref-filtre { min-width: 0; flex: 1 1 100%; }
+    .admin-ref-filtre-reset { flex: 1 1 100%; justify-content: center; }
 }
