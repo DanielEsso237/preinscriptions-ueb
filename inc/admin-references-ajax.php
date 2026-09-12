@@ -49,7 +49,18 @@ function ueb_admin_ref_ajax_list() {
     $search = isset( $_POST['recherche'] ) ? sanitize_text_field( wp_unslash( $_POST['recherche'] ) ) : '';
     $page   = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
 
-    $result = ueb_admin_ref_list( $key, $search, $page, 20 );
+    // Filtres envoyes en 'filtres[faculte_id]', 'filtres[type_formation]'...
+    // Meme approche generique que $_POST['champs'] pour l'enregistrement :
+    // ueb_admin_ref_list() ne retient que les colonnes reellement
+    // filtrables de la table ciblee et ignore le reste.
+    $filtres = array();
+    if ( isset( $_POST['filtres'] ) && is_array( $_POST['filtres'] ) ) {
+        foreach ( wp_unslash( $_POST['filtres'] ) as $col => $val ) {
+            $filtres[ sanitize_key( $col ) ] = sanitize_text_field( (string) $val );
+        }
+    }
+
+    $result = ueb_admin_ref_list( $key, $search, $page, 20, $filtres );
 
     wp_send_json_success( $result );
 }

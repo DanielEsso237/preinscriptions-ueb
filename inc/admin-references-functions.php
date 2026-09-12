@@ -346,13 +346,18 @@ function ueb_admin_ref_get_registry_for_js() {
     $out      = array();
 
     foreach ( $registry as $key => $cfg ) {
-        $columns = array();
+        $columns    = array();
+        $filtrables = ueb_admin_ref_filtrable_columns( $cfg );
 
         foreach ( $cfg['columns'] as $col => $colcfg ) {
             $entry = array(
-                'label'    => $colcfg['label'],
-                'type'     => $colcfg['type'],
-                'required' => ! empty( $colcfg['required'] ),
+                'label'     => $colcfg['label'],
+                'type'      => $colcfg['type'],
+                'required'  => ! empty( $colcfg['required'] ),
+                // Le JS construit la barre de filtres a partir de ce
+                // drapeau et des 'options' deja presentes ci-dessous : il
+                // n'a donc aucune liste a connaitre en dur.
+                'filtrable' => isset( $filtrables[ $col ] ),
             );
 
             if ( isset( $colcfg['maxlength'] ) ) {
@@ -385,6 +390,35 @@ function ueb_admin_ref_get_registry_for_js() {
 }
 
 /**
+ * Colonnes utilisables comme filtre pour une entrée du registre.
+ *
+ * Sont filtrables les colonnes à valeurs fermées, c'est-à-dire celles dont
+ * le formulaire propose déjà une liste : les clés étrangères (type
+ * 'select') et les énumérations (type 'enum'). Les colonnes libres (texte,
+ * nombre) sont volontairement exclues — la barre de recherche les couvre
+ * déjà, et un <select> sur un champ libre n'aurait pas de sens.
+ *
+ * Aucune configuration à ajouter au registre : une nouvelle table ou une
+ * nouvelle colonne devient filtrable du seul fait de son type.
+ *
+ * @param array $cfg Entrée du registre.
+ * @return array<string, array> colonne => sa config
+ */
+function ueb_admin_ref_filtrable_columns( $cfg ) {
+    $out = array();
+
+    foreach ( $cfg['columns'] as $col => $colcfg ) {
+        if ( 'select' === $colcfg['type'] && ! empty( $colcfg['fk'] ) ) {
+            $out[ $col ] = $colcfg;
+        } elseif ( 'enum' === $colcfg['type'] && ! empty( $colcfg['options'] ) ) {
+            $out[ $col ] = $colcfg;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Liste paginée + recherchée des lignes d'une table de référence, avec les
  * colonnes FK résolues en libellé (via LEFT JOIN) pour un affichage direct
  * dans le tableau sans requête supplémentaire côté JS.
@@ -393,9 +427,12 @@ function ueb_admin_ref_get_registry_for_js() {
  * @param string $search
  * @param int    $page
  * @param int    $per_page
+ * @param array  $filtres colonne => valeur. Seules les colonnes retournées
+ *                        par ueb_admin_ref_filtrable_columns() sont prises
+ *                        en compte ; le reste est ignoré en silence.
  * @return array { rows: array<array>, total: int, page: int, nb_pages: int }
  */
-function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20 ) {
+function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20, $filtres = array() ) {
     global $wpdb;
 
     $registry = ueb_admin_ref_registry();
@@ -433,6 +470,32 @@ function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20 ) {
             $params[] = '%' . $wpdb->esc_like( $search ) . '%';
         }
         $where .= ' AND (' . implode( ' OR ', $likes ) . ')';
+    }
+
+    // Filtres : une egalite stricte par colonne, cumulables (ET logique).
+    // On boucle sur les colonnes filtrables du registre plutot que sur ce
+    // qui arrive du client : un nom de colonne inconnu ne peut donc jamais
+    // atteindre le SQL, et l'identifiant inject dans la requete vient
+    // toujours du registre, jamais de $_POST.
+    if ( $filtres ) {
+        foreach ( ueb_admin_ref_filtrable_columns( $cfg ) as $col => $colcfg ) {
+            if ( ! isset( $filtres[ $col ] ) || '' === $filtres[ $col ] ) {
+                continue;
+            }
+
+            if ( 'select' === $colcfg['type'] ) {
+                $where .= " AND t.{$col} = %d";
+                $params[] = absint( $filtres[ $col ] );
+            } else {
+                // enum : on n'accepte que les valeurs declarees au registre.
+                $val = (string) $filtres[ $col ];
+                if ( ! isset( $colcfg['options'][ $val ] ) ) {
+                    continue;
+                }
+                $where .= " AND t.{$col} = %s";
+                $params[] = $val;
+            }
+        }
     }
 
     $sql_total = "SELECT COUNT(*) FROM {$table} t WHERE {$where}";

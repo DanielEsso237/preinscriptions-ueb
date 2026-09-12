@@ -67,7 +67,7 @@ add_action( 'wp_head', function() {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.4.5' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.4.6' );
 }
 
 /**

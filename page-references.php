@@ -163,6 +163,12 @@ get_header();
                         </button>
                     </div>
 
+                    <!-- Filtres de la table courante, construits par le JS a
+                         partir du registre (colonnes a valeurs fermees) :
+                         vide, et masque, pour les tables sans colonne
+                         filtrable. -->
+                    <div id="admin-ref-filtres" class="admin-ref-filtres" hidden></div>
+
                     <div id="admin-ref-table-wrap"></div>
                     <div id="admin-ref-pagination" class="admin-pagination"></div>
                 </div>
