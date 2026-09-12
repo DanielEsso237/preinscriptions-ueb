@@ -121,30 +121,76 @@ add_action( 'wp_ajax_ueb_get_specialites', 'ueb_ajax_get_specialites' );
 add_action( 'wp_ajax_nopriv_ueb_get_specialites', 'ueb_ajax_get_specialites' );
 
 /* ------------------------------------------------------------------ */
-/* Filières (selon faculté + type de formation)                        */
+/* Filières (selon faculté + type de formation + niveau LMD)           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Cycle d'études correspondant à un code de niveau LMD.
+ *
+ * Toutes les facultés n'ouvrent pas les mêmes filières à tous les
+ * niveaux : à la FSEG, les deux premières années se font en tronc commun,
+ * les parcours ne se choisissent qu'à partir de la L3, et le master a sa
+ * propre liste. La colonne ueb_filieres.cycle porte cette information ;
+ * cette fonction fait le pont entre un niveau et le cycle attendu.
+ *
+ * Le doctorat est rattaché au cycle master, faute de liste propre.
+ *
+ * @param string $code_niveau Code de ueb_niveaux_lmd (L1, L2, L3, M1...).
+ * @return string Valeur de l'ENUM ueb_filieres.cycle, '' si code inconnu.
+ */
+function ueb_cycle_pour_niveau( $code_niveau ) {
+    $map = array(
+        'L1'  => 'tronc_commun',
+        'L2'  => 'tronc_commun',
+        'L3'  => 'licence_3',
+        'M1'  => 'master',
+        'M2'  => 'master',
+        'DOC' => 'master',
+    );
+
+    return isset( $map[ $code_niveau ] ) ? $map[ $code_niveau ] : '';
+}
+
 function ueb_ajax_get_filieres() {
     ueb_ajax_check_nonce();
     global $wpdb;
 
     $faculte_id     = isset( $_POST['faculte_id'] ) ? absint( $_POST['faculte_id'] ) : 0;
     $type_formation = isset( $_POST['type_formation'] ) ? sanitize_text_field( $_POST['type_formation'] ) : 'classique';
+    $niveau_id      = isset( $_POST['niveau_lmd_id'] ) ? absint( $_POST['niveau_lmd_id'] ) : 0;
 
     if ( ! $faculte_id || ! in_array( $type_formation, array( 'classique', 'pro' ), true ) ) {
         wp_send_json_error( array( 'message' => 'Paramètres manquants ou invalides.' ) );
     }
 
-    $rows = $wpdb->get_results( $wpdb->prepare(
-        // actif = 1 : une filière fermée pour l'année en cours reste en
-        // base (les dossiers déjà déposés la référencent) mais n'est
-        // plus proposée au candidat. L'admin, les exports et les stats
-        // ne filtrent pas, eux, pour garder l'historique lisible.
-        "SELECT id, code, libelle FROM ueb_filieres
-         WHERE faculte_id = %d AND type_formation = %s AND actif = 1
-         ORDER BY libelle ASC",
-        $faculte_id,
-        $type_formation
-    ) );
+    // actif = 1 : une filière fermée pour l'année en cours reste en base
+    // (les dossiers déjà déposés la référencent) mais n'est plus proposée
+    // au candidat. L'admin, les exports et les stats ne filtrent pas, eux,
+    // pour garder l'historique lisible.
+    $sql    = "SELECT id, code, libelle FROM ueb_filieres
+               WHERE faculte_id = %d AND type_formation = %s AND actif = 1";
+    $params = array( $faculte_id, $type_formation );
+
+    // Niveau connu : on ne garde que les filières de son cycle, plus
+    // celles marquées 'tous' (facultés sans tronc commun, dont l'offre ne
+    // dépend pas du niveau). Niveau non encore choisi : on ne filtre pas,
+    // le JS rechargera la liste dès que le candidat l'aura renseigné.
+    if ( $niveau_id ) {
+        $code_niveau = $wpdb->get_var( $wpdb->prepare(
+            "SELECT code FROM ueb_niveaux_lmd WHERE id = %d",
+            $niveau_id
+        ) );
+        $cycle = ueb_cycle_pour_niveau( (string) $code_niveau );
+
+        if ( $cycle ) {
+            $sql     .= " AND cycle IN ('tous', %s)";
+            $params[] = $cycle;
+        }
+    }
+
+    $sql .= ' ORDER BY libelle ASC';
+
+    $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
 
     wp_send_json_success( $rows );
 }
@@ -358,7 +404,18 @@ add_action( 'wp_ajax_nopriv_ueb_get_situations_matrimoniales', 'ueb_ajax_get_sit
 function ueb_ajax_get_niveaux_lmd() {
     ueb_ajax_check_nonce();
     global $wpdb;
-    wp_send_json_success( $wpdb->get_results( "SELECT id, code, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ) );
+
+    $rows = $wpdb->get_results( "SELECT id, code, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" );
+
+    // Chaque niveau embarque son cycle : le formulaire sait ainsi qu'en
+    // tronc commun il n'y a qu'une filière possible (et masque les 2e et
+    // 3e choix) sans avoir à redéclarer la correspondance niveau => cycle
+    // côté JavaScript. Une seule source de vérité, ueb_cycle_pour_niveau().
+    foreach ( $rows as $row ) {
+        $row->cycle = ueb_cycle_pour_niveau( $row->code );
+    }
+
+    wp_send_json_success( $rows );
 }
 add_action( 'wp_ajax_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );
 add_action( 'wp_ajax_nopriv_ueb_get_niveaux_lmd', 'ueb_ajax_get_niveaux_lmd' );

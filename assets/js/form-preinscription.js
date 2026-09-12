@@ -59,6 +59,13 @@
     let filiere1Data  = []; // options pour le 1er choix
     let filiere23Data = []; // options pour les 2e et 3e choix
 
+    // Jeton de séquence des chargements de filières. Faculté, type de
+    // formation et niveau LMD déclenchent chacun un rechargement : sans
+    // ce garde-fou, une réponse lente à une requête abandonnée pourrait
+    // écraser la liste d'une requête plus récente (typiquement à la
+    // reprise d'un brouillon, où deux chargements partent coup sur coup).
+    let filieresSeq = 0;
+
     function getFaculteCode(faculteId) {
         const f = facultesCache.find(function (x) { return String(x.id) === String(faculteId); });
         return f ? f.code : '';
@@ -320,13 +327,20 @@
         }
 
         syncNiveauHidden();
+        updateFilieres();
     }
 
     function syncNiveauHidden() {
         if (niveauHidden) niveauHidden.value = niveauSelect.value;
     }
 
-    niveauSelect.addEventListener('change', syncNiveauHidden);
+    niveauSelect.addEventListener('change', function () {
+        syncNiveauHidden();
+        // Le cycle change avec le niveau : la liste des filières doit
+        // être rechargée, et les choix déjà faits remis à zéro s'ils
+        // n'appartiennent plus au nouveau cycle.
+        updateFilieres();
+    });
 
     /* ================================================================
        TYPE DE FORMATION : visible uniquement pour la faculté FS
@@ -343,6 +357,36 @@
             selectType.disabled = false;
         }
         updateFilieres();
+    }
+
+    /* ================================================================
+       CYCLE DU NIVEAU CHOISI
+       Le cycle arrive avec chaque niveau (cf. ueb_ajax_get_niveaux_lmd) :
+       la correspondance niveau => cycle n'est donc écrite qu'une fois,
+       en PHP, dans ueb_cycle_pour_niveau().
+       ================================================================ */
+    function getCycleCourant() {
+        const n = niveauxCache.find(function (x) { return String(x.id) === String(niveauSelect.value); });
+        return n ? (n.cycle || '') : '';
+    }
+
+    // En tronc commun (L1/L2) il n'existe qu'une filière : les 2e et 3e
+    // choix n'ont pas d'objet. On les masque et on retire leur caractère
+    // obligatoire, sinon l'étape resterait invalidable.
+    function updateVisibiliteChoixFilieres() {
+        const troncCommun = getCycleCourant() === 'tronc_commun';
+
+        [selectFiliere2, selectFiliere3].forEach(function (select) {
+            const groupe = select.closest('.form-group');
+            if (groupe) groupe.style.display = troncCommun ? 'none' : '';
+
+            if (troncCommun) {
+                select.value = '';
+                select.removeAttribute('required');
+            } else if (select === selectFiliere2) {
+                select.setAttribute('required', 'required');
+            }
+        });
     }
 
     /* ================================================================
@@ -406,20 +450,33 @@
             fillSelect(s, [], '— Chargement... —', false);
         });
 
-        uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: type })
+        // Le niveau conditionne le cycle, donc la liste des filières.
+        const niveauId = niveauSelect.value || '';
+        const seq      = ++filieresSeq;
+
+        uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: type, niveau_lmd_id: niveauId })
             .then(function (data) {
-                filiere1Data = data;
+                if (seq !== filieresSeq) return null; // requête dépassée
 
                 if (type === 'pro') {
-                    return uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique' })
+                    return uebFetch('ueb_get_filieres', { faculte_id: faculteId, type_formation: 'classique', niveau_lmd_id: niveauId })
                         .then(function (data2) {
+                            if (seq !== filieresSeq) return null;
+                            filiere1Data  = data;
                             filiere23Data = data2;
+                            return true;
                         });
                 }
 
+                filiere1Data  = data;
                 filiere23Data = data;
+                return true;
             })
-            .then(refreshFiliereCrossFilter);
+            .then(function (applique) {
+                if (!applique) return;
+                updateVisibiliteChoixFilieres();
+                refreshFiliereCrossFilter();
+            });
     }
 
     selectFaculte.addEventListener('change', function () {
@@ -1084,6 +1141,12 @@
             SECTIONS[key].forEach(function (fieldName) {
                 if (!fieldName) return;
                 const value    = getFieldValue(fieldName);
+
+                // Les 2e et 3e choix sont facultatifs, et carrement masques
+                // en tronc commun (L1/L2, ou une seule filiere existe) :
+                // afficher une ligne vide n'apprendrait rien au candidat.
+                if (!value && (fieldName === 'filiere_2' || fieldName === 'filiere_3')) return;
+
                 const labelFr  = LABELS[fieldName] || fieldName;
                 const labelEn  = LABELS_EN[fieldName] || '';
                 const item     = document.createElement('div');
@@ -1318,15 +1381,22 @@
                 proNotice.style.display = '';
             }
 
+            // Le niveau a ete repositionne juste au-dessus : il est deja
+            // renseigne ici, et conditionne les filieres a recharger.
+            const niveauId = niveauSelect.value || '';
+            filieresSeq++; // invalide tout chargement encore en vol
+
             filiere1Data = await uebFetch('ueb_get_filieres', {
                 faculte_id: donnees.faculte,
-                type_formation: type
+                type_formation: type,
+                niveau_lmd_id: niveauId
             });
 
             filiere23Data = (type === 'pro')
-                ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique' })
+                ? await uebFetch('ueb_get_filieres', { faculte_id: donnees.faculte, type_formation: 'classique', niveau_lmd_id: niveauId })
                 : filiere1Data;
 
+            updateVisibiliteChoixFilieres();
             refreshFiliereCrossFilter();
             if (donnees.filiere_1 && selectFiliere1.querySelector('option[value="' + donnees.filiere_1 + '"]')) {
                 selectFiliere1.value = donnees.filiere_1;

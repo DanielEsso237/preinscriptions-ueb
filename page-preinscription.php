@@ -251,6 +251,17 @@ get_header();
                             <span class="field-hint">La liste des séries s'adapte selon la faculté et le diplôme choisis.</span>
                         </div>
 
+                        <!-- Niveau LMD — place juste apres la serie : il conditionne
+                             desormais les filieres proposees (cf. colonne
+                             ueb_filieres.cycle), il doit donc etre renseigne avant. -->
+                        <div class="form-group full">
+                            <label for="niveau_lmd_select">Niveau LMD <span class="field-optional">(à quel niveau vous préinscrivez-vous ?)</span> <span class="required">*</span><span class="field-trans">LMD level</span></label>
+                            <select id="niveau_lmd_select" required disabled>
+                                <option value="">— Choisir d'abord le diplôme d'admission —</option>
+                            </select>
+                            <span class="field-hint">Ton diplôme d'admission détermine les niveaux auxquels tu peux postuler, et ton niveau détermine les filières proposées.</span>
+                        </div>
+
                         <!-- Type de formation -->
                         <div class="form-group full" id="type-formation-group" style="display:none;">
                             <label for="type_formation">Type de formation <span class="required">*</span><span class="field-trans">Training type</span></label>
@@ -291,15 +302,6 @@ get_header();
                             <select id="filiere_3" name="filiere_3" disabled>
                                 <option value="">— Aucun troisième choix —</option>
                             </select>
-                        </div>
-
-                        <!-- Niveau LMD -->
-                        <div class="form-group full">
-                            <label for="niveau_lmd_select">Niveau LMD <span class="required">*</span><span class="field-trans">LMD level</span></label>
-                            <select id="niveau_lmd_select" required disabled>
-                                <option value="">— Choisir d'abord le diplôme d'admission —</option>
-                            </select>
-                            <span class="field-hint">Ton diplôme d'admission détermine les niveaux auxquels tu peux postuler.</span>
                         </div>
 
                         <!-- Moyenne obtenue — réels dans [10, 20] -->

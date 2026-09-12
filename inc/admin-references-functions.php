@@ -103,6 +103,21 @@ function ueb_admin_ref_registry() {
                     'required' => true,
                     'options'  => array( 'classique' => 'Classique', 'pro' => 'Licence Pro (LP)' ),
                 ),
+                // Cycle auquel la filière est proposée. 'tous' = à tous les
+                // niveaux LMD (cas des facultés qui n'ont pas de tronc
+                // commun) ; sinon le formulaire ne la propose qu'au niveau
+                // correspondant (cf. ueb_cycle_pour_niveau()).
+                'cycle'          => array(
+                    'label'    => 'Cycle',
+                    'type'     => 'enum',
+                    'required' => true,
+                    'options'  => array(
+                        'tous'         => 'Tous les niveaux',
+                        'tronc_commun' => 'Tronc commun (L1–L2)',
+                        'licence_3'    => 'Licence 3',
+                        'master'       => 'Master (M1–M2)',
+                    ),
+                ),
                 // Une filière référencée par un dossier ne peut pas être
                 // supprimée (fk_pi_filiere1/2/3) : la passer à "Non" la
                 // retire du formulaire sans toucher aux dossiers déjà
