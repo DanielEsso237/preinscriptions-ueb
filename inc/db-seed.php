@@ -502,12 +502,14 @@ INSERT IGNORE INTO ueb_facultes (code, nom_fr, nom_en, logo) VALUES
     ('FSJP', 'Faculté des Sciences Juridiques et Politiques', 'Faculty of Law and Political Sciences', 'logo-fsjp.jpg');
 SQL,
         'ueb_diplomes_admission' => <<<SQL
-INSERT IGNORE INTO ueb_diplomes_admission (code, libelle) VALUES
-    ('bac', 'Baccalauréat'),
-    ('gce_ad', 'GCE ADVANCED-Level'),
-    ('capacite', 'Capacité en Droit'),
-    ('licence', 'Licence'),
-    ('master', 'Master');
+INSERT IGNORE INTO ueb_diplomes_admission (code, libelle, faculte_id) VALUES
+    ('bac', 'Baccalauréat', NULL),
+    ('gce_ad', 'GCE ADVANCED-Level', NULL),
+    -- Seule la FSJP recrute sur capacité en droit : le formulaire ne
+    -- propose donc ce diplôme qu'avec cette faculté.
+    ('capacite', 'Capacité en Droit', (SELECT id FROM ueb_facultes WHERE code = 'FSJP')),
+    ('licence', 'Licence', NULL),
+    ('master', 'Master', NULL);
 SQL,
         'ueb_specialites_diplome' => <<<SQL
 INSERT IGNORE INTO ueb_specialites_diplome (code, libelle, faculte_id, diplome_id) VALUES

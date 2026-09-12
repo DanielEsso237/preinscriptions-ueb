@@ -135,7 +135,7 @@
 
     const diplomesPromise = uebFetch('ueb_get_diplomes').then(function (data) {
         diplomesCache = data;
-        fillSelect(selectDiplome, data, '— Choisir —', true);
+        updateDiplomesDisponibles();
         return data;
     });
 
@@ -290,6 +290,35 @@
     if (moyenneInput) {
         moyenneInput.addEventListener('input', appliquerMention);
         moyenneInput.addEventListener('change', appliquerMention);
+    }
+
+    /* ================================================================
+       DIPLÔMES D'ADMISSION — certains sont propres à une faculté
+       (Capacité en Droit => FSJP). La restriction vit en base, dans
+       ueb_diplomes_admission.faculte_id : NULL = proposé partout. Le JS
+       ne connaît aucun diplôme par son code, il se contente de comparer
+       cette valeur à la faculté choisie.
+       ================================================================ */
+    function updateDiplomesDisponibles() {
+        const faculteId = selectFaculte.value;
+        const choixPrecedent = selectDiplome.value;
+
+        const options = diplomesCache.filter(function (d) {
+            if (!d.faculte_id) return true; // proposé par toutes les facultés
+            return String(d.faculte_id) === String(faculteId);
+        });
+
+        fillSelect(selectDiplome, options, '— Choisir —', true);
+
+        // On conserve le choix précédent s'il reste proposé ; sinon le
+        // select repart à vide et les champs qui en dépendent (série,
+        // niveau, filières) se remettent à jour en consequence.
+        const encoreValide = options.some(function (d) { return String(d.id) === choixPrecedent; });
+        if (choixPrecedent && encoreValide) {
+            selectDiplome.value = choixPrecedent;
+        }
+
+        return encoreValide || !choixPrecedent;
     }
 
     /* ================================================================
@@ -482,6 +511,11 @@
     }
 
     selectFaculte.addEventListener('change', function () {
+        // La faculté peut retirer de la liste le diplôme déjà choisi
+        // (Capacité en Droit hors FSJP) : on réévalue d'abord, puis on
+        // rafraîchit tout ce qui en dépend.
+        updateDiplomesDisponibles();
+        updateNiveauxDisponibles();
         updateSeries();
         updateTypeFormation();
     });
@@ -1346,6 +1380,10 @@
         }
 
         if (donnees.faculte) selectFaculte.value = donnees.faculte;
+        // La faculte doit etre posee AVANT de reinjecter le diplome : un
+        // diplome reserve a une faculte (Capacite en Droit) n'est present
+        // dans le select qu'une fois cette faculte choisie.
+        updateDiplomesDisponibles();
         if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
 
         updateNiveauxDisponibles();
