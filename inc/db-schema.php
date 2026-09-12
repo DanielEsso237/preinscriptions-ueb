@@ -95,9 +95,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         de structure : le reseed déclenché par cette version lance
  *         ueb_purge_diplomes_obsoletes(), qui retire de la base les
  *         diplômes devenus hors offre et non référencés par un dossier.
+ * - 2.6 : ajout de la colonne `actif` à ueb_filieres. Une filière fermée
+ *         pour l'année en cours ne peut pas être supprimée : les dossiers
+ *         déjà déposés la référencent (fk_pi_filiere1/2/3), et l'effacer
+ *         détruirait l'historique du choix du candidat. Elle se désactive
+ *         désormais depuis la page "Gestion des références" : le
+ *         formulaire ne la propose plus (cf. ueb_ajax_get_filieres()),
+ *         mais l'admin, les exports, les stats et les PDF continuent de
+ *         l'afficher pour les dossiers existants.
+ *         Première version appliquée par une vraie migration
+ *         (ueb_run_schema_migrations()) et non par un DROP TABLE manuel :
+ *         la base contient désormais de vrais dossiers candidats.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.5' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.6' );
  }
 
 /**
@@ -184,6 +195,7 @@ CREATE TABLE IF NOT EXISTS ueb_filieres (
     libelle VARCHAR(150) NOT NULL,
     faculte_id INT UNSIGNED NOT NULL,
     type_formation ENUM('classique','pro') NOT NULL DEFAULT 'classique',
+    actif TINYINT(1) NOT NULL DEFAULT 1,
     PRIMARY KEY (id),
     UNIQUE KEY uq_filiere (code, faculte_id, type_formation),
     KEY idx_faculte (faculte_id),
@@ -460,7 +472,74 @@ function ueb_maybe_upgrade_db() {
     }
 
     ueb_create_tables();
+    ueb_run_schema_migrations();
     update_option( 'ueb_db_version', UEB_DB_SCHEMA_VERSION );
+}
+
+/**
+ * Ajoute une colonne à une table existante si elle n'y est pas déjà.
+ *
+ * ueb_create_tables() ne sait que créer : "CREATE TABLE IF NOT EXISTS"
+ * laisse intacte une table déjà présente. Jusqu'à la version 2.5, tout
+ * changement de structure se réglait donc par un DROP TABLE manuel
+ * documenté dans le changelog en tête de fichier — acceptable tant que
+ * la base ne contenait que des données de test, inacceptable maintenant
+ * que de vrais dossiers candidats y sont enregistrés.
+ *
+ * On passe par information_schema plutôt que par
+ * "ALTER TABLE ... ADD COLUMN IF NOT EXISTS", non supporté par MySQL
+ * (seul MariaDB le connaît, et les deux se rencontrent sous XAMPP).
+ *
+ * @param string $table      Nom de la table (sans préfixe wp_).
+ * @param string $colonne    Nom de la colonne à ajouter.
+ * @param string $definition Définition SQL (type, NULL/NOT NULL, DEFAULT).
+ * @return bool true si la colonne existe à la sortie de la fonction.
+ */
+function ueb_add_column_if_missing( $table, $colonne, $definition ) {
+    global $wpdb;
+
+    $existe = $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = %s
+           AND COLUMN_NAME  = %s",
+        $table,
+        $colonne
+    ) );
+
+    if ( $existe ) {
+        return true;
+    }
+
+    // $table, $colonne et $definition sont des littéraux écrits dans ce
+    // fichier (jamais des entrées utilisateur) : ils ne peuvent pas être
+    // passés en paramètres liés, ALTER TABLE n'acceptant pas de
+    // placeholders sur les identifiants.
+    $ok = $wpdb->query( "ALTER TABLE $table ADD COLUMN $colonne $definition" );
+
+    if ( false === $ok ) {
+        error_log( sprintf(
+            '[UEB DB] Échec de l\'ajout de la colonne "%s.%s" : %s',
+            $table,
+            $colonne,
+            $wpdb->last_error
+        ) );
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Applique les changements de structure sur les tables déjà installées.
+ *
+ * Chaque migration doit être idempotente : la fonction est rejouée à
+ * chaque changement de UEB_DB_SCHEMA_VERSION, et sur une installation
+ * neuve les colonnes viennent déjà de ueb_create_tables().
+ */
+function ueb_run_schema_migrations() {
+    // 2.6 — désactivation d'une filière sans la supprimer.
+    ueb_add_column_if_missing( 'ueb_filieres', 'actif', 'TINYINT(1) NOT NULL DEFAULT 1' );
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );

@@ -103,6 +103,16 @@ function ueb_admin_ref_registry() {
                     'required' => true,
                     'options'  => array( 'classique' => 'Classique', 'pro' => 'Licence Pro (LP)' ),
                 ),
+                // Une filière référencée par un dossier ne peut pas être
+                // supprimée (fk_pi_filiere1/2/3) : la passer à "Non" la
+                // retire du formulaire sans toucher aux dossiers déjà
+                // déposés, qui continuent de l'afficher partout ailleurs.
+                'actif'          => array(
+                    'label'    => 'Ouverte aux candidatures',
+                    'type'     => 'enum',
+                    'required' => true,
+                    'options'  => array( '1' => 'Oui', '0' => 'Non' ),
+                ),
             ),
             'label_col' => 'libelle',
         ),
