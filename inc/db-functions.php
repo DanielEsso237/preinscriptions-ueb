@@ -271,8 +271,21 @@ function ueb_handle_db_save() {
         ), array( '%d', '%s', '%s' ) );
     }
 
-    /* Nettoyage : le brouillon n'a plus lieu d'être une fois le dossier soumis */
-    $wpdb->delete( 'ueb_preinscriptions_progression', array( 'numero_dossier' => $numero_dossier ), array( '%s' ) );
+    /* Le brouillon est CONSERVÉ, et marqué à l'étape 5.
+       Il était supprimé ici ; mais un candidat qui relit sa fiche et y repère
+       une erreur doit pouvoir revenir corriger : il saisit son numéro, et la
+       reprise le dépose sur le récapitulatif (étape 5), d'où chaque section
+       est modifiable. Sans cette ligne de progression, son numéro serait
+       « introuvable ». Les données restent celles de la dernière sauvegarde
+       automatique, déjà au format attendu par la reprise côté JavaScript.
+       La re-soumission écrase proprement la même ligne (upsert plus haut). */
+    $wpdb->update(
+        'ueb_preinscriptions_progression',
+        array( 'etape_atteinte' => 5 ),
+        array( 'numero_dossier' => $numero_dossier ),
+        array( '%d' ),
+        array( '%s' )
+    );
 
     /* Nettoyage session + cookie, pour qu'un futur candidat sur le même
        appareil reparte sur un numéro de dossier neuf (voir échanges avec

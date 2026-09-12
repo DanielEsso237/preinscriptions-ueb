@@ -690,6 +690,79 @@ input.date-field-input.error ~ .date-field-icon {
 }
 
 
+/* ===== Message de reprise automatique ===== */
+.reprise-auto {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--ueb-vert);
+    border-radius: 6px;
+    background-color: #eaf3ed;
+    color: var(--ueb-vert);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ===== Haut de page replié dès l'étape 2 =====
+   Le numéro de dossier et les numéros d'aide doivent rester atteignables à
+   toutes les étapes : un candidat peut avoir besoin d'appeler à n'importe
+   quel moment. Mais ils n'ont pas à coûter un écran de défilement avant
+   d'atteindre les champs. Dès qu'on quitte l'étape 1 — qui garde sa
+   présentation d'accueil intacte — tout ce bloc se replie en un bandeau
+   mince. Les sélecteurs sont composés, donc l'ordre des règles n'importe pas. */
+.aide-contact-court { display: none; }
+
+/* Replié, le hero n'est plus qu'une lisière de marque. Le titre n'y tient pas :
+   le conteneur remonte volontairement de 24 px sur la courbe du hero
+   (.preinscription-container { margin: -24px auto 0 }), si bien qu'un hero court
+   se fait manger son titre par le bandeau du numéro de dossier. On retire donc
+   le titre, la courbe décorative et cette remontée. */
+.etape-avancee .preinscription-hero { padding: 14px 24px; }
+.etape-avancee .preinscription-hero::after { display: none; }
+.etape-avancee .preinscription-eyebrow,
+.etape-avancee .preinscription-subtitle,
+.etape-avancee .preinscription-title { display: none; }
+.etape-avancee .preinscription-container { margin-top: 0; }
+
+.etape-avancee .dossier-banner {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    margin-bottom: 10px;
+}
+.etape-avancee .dossier-banner-hint { display: none; }
+
+.etape-avancee .aide-contact {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 14px;
+    margin-bottom: 14px;
+}
+.etape-avancee .aide-contact-intro { display: none; }
+.etape-avancee .aide-contact-court {
+    display: block;
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ueb-gris);
+}
+.etape-avancee .aide-contact-lien {
+    min-height: 36px;
+    padding: 0 11px;
+    font-size: 12.5px;
+}
+
+/* Sans objet une fois dans le formulaire : on est déjà dans un dossier. */
+.etape-avancee .reprise-dossier { display: none; }
+
+@media (max-width: 700px) {
+    /* Les pastilles portent le numéro en clair : l'intitulé devient
+       superflu quand la largeur manque. */
+    .etape-avancee .aide-contact-court { display: none; }
+}
+
 /* ===== Aide & contact WhatsApp ===== */
 .aide-contact {
     display: flex;

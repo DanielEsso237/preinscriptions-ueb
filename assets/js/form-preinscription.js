@@ -870,6 +870,14 @@
         });
 
         currentStep = n;
+
+        /* Dès l'étape 2, le haut de page se replie : le numéro de dossier et
+           les numéros d'aide restent là — on peut avoir besoin d'appeler à
+           tout moment — mais cessent d'occuper la hauteur d'un écran.
+           L'étape 1 garde sa présentation d'accueil. */
+        const page = document.querySelector('.preinscription-page');
+        if (page) page.classList.toggle('etape-avancee', n > 1);
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -1265,6 +1273,43 @@
         scheduleAutoSave();
     }, true);
 
+    /* Sauvegarde immédiate quand la page passe en arrière-plan ou se ferme.
+       La sauvegarde sur blur ne suffit pas : celui qui bascule sur WhatsApp
+       alors qu'il est encore DANS un champ n'a jamais déclenché de blur, et
+       perdrait sa dernière saisie si le système décharge l'onglet.
+       sendBeacon est fait pour ça — un fetch ordinaire peut être abandonné
+       au moment où l'onglet disparaît. */
+    function flushProgression() {
+        if (autoSaveTimeout) {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = null;
+        }
+
+        const numeroEl = document.getElementById('numero_dossier');
+        const numero   = numeroEl ? (numeroEl.value || '').trim() : '';
+        const url      = (window.uebAjax && window.uebAjax.ajax_url) || '';
+        if (!numero || !url) return;
+
+        const corps = new URLSearchParams({
+            action: 'ueb_save_progression',
+            nonce: (window.uebAjax && window.uebAjax.nonce) || '',
+            numero_dossier: numero,
+            etape: currentStep,
+            donnees: JSON.stringify(collectFormData())
+        });
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(url, new Blob([corps.toString()], { type: 'application/x-www-form-urlencoded' }));
+        } else {
+            saveProgression(currentStep);
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') flushProgression();
+    });
+    window.addEventListener('pagehide', flushProgression);
+
     /* ================================================================
        ÉVÉNEMENTS DE NAVIGATION
        ================================================================ */
@@ -1521,6 +1566,53 @@
         reprisePanel.style.display = '';
     }
 
-    showStep(1);
+    /* ================================================================
+       REPRISE AUTOMATIQUE AU CHARGEMENT
+       L'appareil porte déjà un numéro de dossier (session + cookie posés
+       côté PHP) : on ne repart donc pas d'une page vierge. On recharge le
+       brouillon et on replace le candidat exactement là où il s'était
+       arrêté — celui qui quitte le navigateur pour lire un message, ou dont
+       l'onglet a été déchargé par le téléphone, retrouve sa saisie intacte.
+       Après soumission, le cookie est effacé volontairement (poste partagé) :
+       la reprise repasse alors par la saisie du numéro, qui ramène à
+       l'étape 5 pour corriger.
+       ================================================================ */
+    function annoncerReprise() {
+        const zone = document.getElementById('reprise-auto');
+        if (!zone) return;
+        zone.textContent = 'Nous avons retrouvé ta saisie : tu reprends là où tu t’étais arrêté(e).';
+        zone.hidden = false;
+    }
+
+    function demarrer() {
+        const numeroEl = document.getElementById('numero_dossier');
+        const numero   = numeroEl ? (numeroEl.value || '').trim() : '';
+
+        if (!numero) {
+            showStep(1);
+            return;
+        }
+
+        uebFetchRaw('ueb_get_progression', { numero_dossier: numero }).then(function (json) {
+            if (!json || !json.success || !json.data) {
+                showStep(1);
+                return;
+            }
+
+            const etape   = parseInt(json.data.etape_atteinte, 10) || 1;
+            const donnees = json.data.donnees || {};
+
+            // Dossier tout juste ouvert : rien à restaurer, rien à annoncer.
+            if (etape <= 1 && !Object.keys(donnees).length) {
+                showStep(1);
+                return;
+            }
+
+            applyResumeData(json.data.numero_dossier || numero, etape, donnees)
+                .then(annoncerReprise);
+        });
+    }
+
+    demarrer();
 
 }());
