@@ -162,7 +162,10 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/js/form-preinscription.js',
             array(),
-            '4.7',
+            // À incrémenter à CHAQUE modification de form-preinscription.js :
+            // sans ça les navigateurs des candidats rejouent le fichier en
+            // cache (c'est ce qui a masqué le correctif GCE, cf. 27d0c59).
+            '4.8',
             true
         );
 

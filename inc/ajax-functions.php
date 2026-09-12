@@ -135,8 +135,12 @@ function ueb_ajax_get_filieres() {
     }
 
     $rows = $wpdb->get_results( $wpdb->prepare(
+        // actif = 1 : une filière fermée pour l'année en cours reste en
+        // base (les dossiers déjà déposés la référencent) mais n'est
+        // plus proposée au candidat. L'admin, les exports et les stats
+        // ne filtrent pas, eux, pour garder l'historique lisible.
         "SELECT id, code, libelle FROM ueb_filieres
-         WHERE faculte_id = %d AND type_formation = %s
+         WHERE faculte_id = %d AND type_formation = %s AND actif = 1
          ORDER BY libelle ASC",
         $faculte_id,
         $type_formation

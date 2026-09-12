@@ -24,12 +24,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Version des données de référence. Réutilise UEB_DB_SCHEMA_VERSION
- * (défini dans db-schema.php) : les données et la structure évoluent
- * ensemble pour cette version 1.0. Si un jour on ajoute une nationalité
- * ou un statut socio-professionnel sans toucher à la structure des
- * tables, on pourra dissocier avec sa propre constante.
+ * Version des DONNÉES de référence, volontairement distincte de
+ * UEB_DB_SCHEMA_VERSION (db-schema.php).
+ *
+ * Les deux constantes étaient confondues jusqu'en 2.5 : toucher à la
+ * STRUCTURE d'une table relançait donc aussi le seed complet. Sur une
+ * base de production où les références sont administrées à la main
+ * depuis la page « Gestion des références », c'est destructeur :
+ *   - INSERT IGNORE ne saute une ligne que sur conflit de clé unique.
+ *     Une ligne supprimée par un administrateur est donc RECRÉÉE, et
+ *     une ligne dont le `code` a été renommé revient EN DOUBLE sous son
+ *     code d'origine ;
+ *   - ueb_purge_diplomes_obsoletes() s'exécute dans la foulée.
+ *
+ * À n'incrémenter que pour diffuser de nouvelles données de référence,
+ * jamais pour un simple changement de structure.
  */
+if ( ! defined( 'UEB_SEED_VERSION' ) ) {
+    define( 'UEB_SEED_VERSION', '2.5' );
+}
+
 
 /**
  * Retourne la liste des INSERT de données de référence, dans l'ordre de
@@ -698,8 +712,8 @@ function ueb_purge_diplomes_obsoletes() {
 
 /**
  * Vérifie si les données de référence ont déjà été insérées pour la
- * version courante du schéma (UEB_DB_SCHEMA_VERSION, définie dans
- * db-schema.php). Si non, lance ueb_seed_reference_data().
+ * version courante des données (UEB_SEED_VERSION, en tête de fichier).
+ * Si non, lance ueb_seed_reference_data().
  *
  * Accroché aux mêmes hooks que ueb_maybe_upgrade_db() (db-schema.php),
  * et exécuté APRÈS elle (l'ordre des require_once dans functions.php
@@ -709,12 +723,43 @@ function ueb_purge_diplomes_obsoletes() {
 function ueb_maybe_seed_data() {
     $version_seedee = get_option( 'ueb_data_version' );
 
-    if ( $version_seedee === UEB_DB_SCHEMA_VERSION ) {
-        return; 
+    if ( $version_seedee === UEB_SEED_VERSION ) {
+        return;
+    }
+
+    // Base déjà peuplée = installation existante, pas une première mise
+    // en route. On ne rejoue alors JAMAIS le seed : les références y sont
+    // administrées à la main depuis « Gestion des références », et
+    // INSERT IGNORE recréerait les lignes supprimées, dupliquerait celles
+    // dont le code a été renommé, puis purgerait les diplômes hors liste
+    // blanche. On se contente d'enregistrer la version pour ne plus
+    // repasser ici.
+    if ( ueb_reference_data_existe() ) {
+        update_option( 'ueb_data_version', UEB_SEED_VERSION );
+        return;
     }
 
     ueb_seed_reference_data();
-    update_option( 'ueb_data_version', UEB_DB_SCHEMA_VERSION );
+    update_option( 'ueb_data_version', UEB_SEED_VERSION );
+}
+
+/**
+ * La base contient-elle déjà des données de référence ?
+ *
+ * ueb_facultes sert de témoin : c'est la première table peuplée par le
+ * seed, et une installation en service en contient forcément. Vide (ou
+ * absente) = première mise en route, le seed peut s'exécuter.
+ *
+ * @return bool
+ */
+function ueb_reference_data_existe() {
+    global $wpdb;
+
+    $nb = $wpdb->get_var( "SELECT COUNT(*) FROM ueb_facultes" );
+
+    // get_var() renvoie null si la requête échoue (table pas encore
+    // créée) : on considère alors la base comme vierge.
+    return ( null !== $nb && (int) $nb > 0 );
 }
 add_action( 'after_switch_theme', 'ueb_maybe_seed_data', 20 ); 
 add_action( 'admin_init', 'ueb_maybe_seed_data', 20 );
