@@ -106,9 +106,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         Première version appliquée par une vraie migration
  *         (ueb_run_schema_migrations()) et non par un DROP TABLE manuel :
  *         la base contient désormais de vrais dossiers candidats.
+ * - 2.7 : ajout de la colonne `cycle` à ueb_filieres. La FSEG n'ouvre pas
+ *         les mêmes filières à tous les niveaux : L1 et L2 se font en
+ *         tronc commun, les parcours ne se choisissent qu'à partir de la
+ *         L3, et le master a sa propre liste. Le formulaire n'affiche
+ *         donc que les filières du cycle correspondant au niveau LMD
+ *         choisi (cf. ueb_cycle_pour_niveau() dans inc/ajax-functions.php).
+ *         La valeur par défaut 'tous' laisse inchangées les filières des
+ *         autres facultés, proposées à tous les niveaux comme avant.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.6' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.7' );
  }
 
 /**
@@ -196,6 +204,7 @@ CREATE TABLE IF NOT EXISTS ueb_filieres (
     faculte_id INT UNSIGNED NOT NULL,
     type_formation ENUM('classique','pro') NOT NULL DEFAULT 'classique',
     actif TINYINT(1) NOT NULL DEFAULT 1,
+    cycle ENUM('tous','tronc_commun','licence_3','master') NOT NULL DEFAULT 'tous',
     PRIMARY KEY (id),
     UNIQUE KEY uq_filiere (code, faculte_id, type_formation),
     KEY idx_faculte (faculte_id),
@@ -537,6 +546,13 @@ function ueb_add_column_if_missing( $table, $colonne, $definition ) {
 function ueb_run_schema_migrations() {
     // 2.6 — désactivation d'une filière sans la supprimer.
     ueb_add_column_if_missing( 'ueb_filieres', 'actif', 'TINYINT(1) NOT NULL DEFAULT 1' );
+
+    // 2.7 — cycle d'études auquel une filière est proposée.
+    ueb_add_column_if_missing(
+        'ueb_filieres',
+        'cycle',
+        "ENUM('tous','tronc_commun','licence_3','master') NOT NULL DEFAULT 'tous'"
+    );
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
