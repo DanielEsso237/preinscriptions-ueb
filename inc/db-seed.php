@@ -727,8 +727,39 @@ function ueb_maybe_seed_data() {
         return;
     }
 
+    // Base déjà peuplée = installation existante, pas une première mise
+    // en route. On ne rejoue alors JAMAIS le seed : les références y sont
+    // administrées à la main depuis « Gestion des références », et
+    // INSERT IGNORE recréerait les lignes supprimées, dupliquerait celles
+    // dont le code a été renommé, puis purgerait les diplômes hors liste
+    // blanche. On se contente d'enregistrer la version pour ne plus
+    // repasser ici.
+    if ( ueb_reference_data_existe() ) {
+        update_option( 'ueb_data_version', UEB_SEED_VERSION );
+        return;
+    }
+
     ueb_seed_reference_data();
     update_option( 'ueb_data_version', UEB_SEED_VERSION );
+}
+
+/**
+ * La base contient-elle déjà des données de référence ?
+ *
+ * ueb_facultes sert de témoin : c'est la première table peuplée par le
+ * seed, et une installation en service en contient forcément. Vide (ou
+ * absente) = première mise en route, le seed peut s'exécuter.
+ *
+ * @return bool
+ */
+function ueb_reference_data_existe() {
+    global $wpdb;
+
+    $nb = $wpdb->get_var( "SELECT COUNT(*) FROM ueb_facultes" );
+
+    // get_var() renvoie null si la requête échoue (table pas encore
+    // créée) : on considère alors la base comme vierge.
+    return ( null !== $nb && (int) $nb > 0 );
 }
 add_action( 'after_switch_theme', 'ueb_maybe_seed_data', 20 ); 
 add_action( 'admin_init', 'ueb_maybe_seed_data', 20 );

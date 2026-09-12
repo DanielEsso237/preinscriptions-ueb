@@ -365,9 +365,6 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     profession_mere VARCHAR(150) DEFAULT NULL,
     nom_tuteur VARCHAR(150) DEFAULT NULL,
     numero_tuteur VARCHAR(20) DEFAULT NULL,
-    nom_urgence VARCHAR(150) DEFAULT NULL,
-    numero_urgence VARCHAR(20)  DEFAULT NULL,
-    adresse_urgence VARCHAR(255) DEFAULT NULL,
 
     -- Personne à contacter en cas d'urgence --
     nom_urgence VARCHAR(150) DEFAULT NULL,
