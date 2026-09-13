@@ -694,7 +694,6 @@ input.date-field-input.error ~ .date-field-icon {
 .reprise-auto {
     margin: 0 0 12px;
     padding: 10px 14px;
-    border-left: 3px solid var(--ueb-vert);
     border-radius: 6px;
     background-color: #eaf3ed;
     color: var(--ueb-vert);
@@ -844,13 +843,38 @@ input.date-field-input.error ~ .date-field-icon {
 }
 
 @media (max-width: 480px) {
+    /* Deux numéros par ligne plutôt qu'un : empilés, les quatre coûtaient
+       quatre lignes avant d'atteindre le formulaire. « auto-fit » garde deux
+       colonnes sur un téléphone courant (360–430 px) et retombe tout seul sur
+       une colonne en dessous de ~340 px, où deux numéros déborderaient de leur
+       pastille — le numéro ne doit jamais être coupé. */
     .aide-contact-liste {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
     }
 
     .aide-contact-lien {
         justify-content: center;
-        width: 100%;
+        width: auto;
+        gap: 6px;
+        padding: 0 8px;
+        font-size: 12px;
+        letter-spacing: 0;
+    }
+
+    .aide-contact-icone {
+        width: 15px;
+        height: 15px;
+    }
+
+    /* Replié, .aide-contact passe en ligne : la liste devient un élément flex
+       dimensionné sur son contenu, et une grille auto-fit/1fr dans un conteneur
+       ajusté au contenu s'effondre sur une seule colonne. On lui rend la largeur
+       de la ligne — l'intitulé court est masqué à cette largeur, elle est donc
+       seule. Au-dessus de 700 px, intitulé et pastilles restent côte à côte. */
+    .etape-avancee .aide-contact-liste {
+        flex: 1 1 100%;
     }
 }
 
