@@ -53,6 +53,39 @@ function preinscriptions_img( $file ) {
 }
 
 /**
+ * URL du logo d'un etablissement, a partir de la colonne `logo` de
+ * ueb_facultes (ex. « logo-fs.jpg »).
+ *
+ * Prefere systematiquement la variante .webp du dossier assets/images/logos/
+ * quand elle existe : c'est le meme dessin, mais logo-fs.jpg pese 423 Ko
+ * contre 12 Ko pour logos/logo-fs.webp — sur une vue d'ensemble qui affiche
+ * une carte par etablissement, la difference est celle entre 2 Mo et 60 Ko.
+ *
+ * La valeur vient d'un champ texte saisi dans les referentiels : on la
+ * reduit a un nom de fichier (basename) et on n'accepte qu'une extension
+ * d'image connue, pour qu'aucune saisie ne puisse pointer ailleurs.
+ *
+ * @param string $fichier Valeur de la colonne `logo`.
+ * @return string URL complete, ou '' si aucun fichier exploitable.
+ */
+function preinscriptions_logo_etablissement( $fichier ) {
+    $fichier = basename( trim( (string) $fichier ) );
+    if ( '' === $fichier || ! preg_match( '/^[A-Za-z0-9._-]+\.(webp|png|jpe?g|svg)$/', $fichier ) ) {
+        return '';
+    }
+
+    $base = get_template_directory() . '/assets/images/';
+    $nom  = preg_replace( '/\.[^.]+$/', '', $fichier );
+
+    foreach ( array( 'logos/' . $nom . '.webp', 'logos/' . $fichier, $fichier ) as $candidat ) {
+        if ( is_file( $base . $candidat ) ) {
+            return preinscriptions_img( $candidat );
+        }
+    }
+    return '';
+}
+
+/**
  * Chiffres cles de l'UEB.
  *
  * @return array[] { count, suffix, label }
@@ -374,5 +407,5 @@ function preinscriptions_bouton_url() {
  * @return bool
  */
 function preinscriptions_acces_anticipe() {
-    return is_user_logged_in() && current_user_can( 'voir_preinscriptions' );
+    return is_user_logged_in() && ueb_access_has_admin();
 }

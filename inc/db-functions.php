@@ -107,6 +107,10 @@ function ueb_handle_db_save() {
 
     $numero_dossier = isset( $posted['numero_dossier'] ) ? sanitize_text_field( $posted['numero_dossier'] ) : '';
 
+    if ( ! ueb_dossier_is_owner( $numero_dossier ) || ! ueb_recuperer_progression( $numero_dossier ) || $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_preinscriptions WHERE numero_dossier = %s', $numero_dossier ) ) ) {
+        wp_die( 'Dossier inaccessible ou déjà soumis.', '', array( 'response' => 403 ) );
+    }
+
     if ( ! $numero_dossier ) {
         wp_die( 'Numéro de dossier manquant. Merci de recharger la page.' );
     }
@@ -161,6 +165,9 @@ function ueb_handle_db_save() {
     foreach ( $champs_id as $key ) {
         $raw = isset( $posted[ $key ] ) ? $posted[ $key ] : '';
         $data[ $key ] = ( '' !== $raw ) ? absint( $raw ) : null;
+    }
+    if ( ! $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_facultes WHERE id = %d AND actif = 1', $data['faculte'] ) ) ) {
+        wp_die( 'Cet établissement n’accepte plus de candidatures. Choisissez un établissement actif.', '', array( 'response' => 400 ) );
     }
 
     // La mention découle de la moyenne (cf. ueb_mentions_bareme()) : on la
@@ -278,6 +285,8 @@ function ueb_handle_db_save() {
        appareil reparte sur un numéro de dossier neuf (voir échanges avec
        Esso Dictator sur la gestion session/cookie). */
     unset( $_SESSION['ueb_numero_dossier_en_cours'] );
+    unset( $_SESSION['ueb_dossier_access'][ $numero_dossier ] );
+    setcookie( 'ueb_dossier_access', '', array( 'expires' => time() - 3600, 'path' => COOKIEPATH ?: '/', 'domain' => COOKIE_DOMAIN ?: '', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ) );
     setcookie(
         'ueb_numero_dossier',
         '',

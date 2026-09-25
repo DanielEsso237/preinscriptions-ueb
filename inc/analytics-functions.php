@@ -204,7 +204,7 @@ function ueb_admin_stats_faculte_sexe( $filters = array() ) {
  */
 function ueb_admin_stats_evolution( $filters = array(), $max_jours = 90 ) {
     global $wpdb;
-    $clause = ueb_admin_build_where( $filters );
+    $clause = ueb_admin_build_where( $filters, array_merge( ueb_access_endpoint_caps(), array( 'ueb_view_trends' ) ) );
     $sql = "SELECT DATE(date_creation) AS label, COUNT(*) AS total
             FROM ueb_preinscriptions p WHERE {$clause['where']}
             GROUP BY DATE(date_creation) ORDER BY label ASC";
@@ -374,7 +374,7 @@ function ueb_admin_kpis( $filters = array() ) {
         'partFemmes'         => $total_sexes > 0 ? round( ( $femmes / $total_sexes ) * 100 ) : 0,
         'topFaculte'         => $top_faculte ? $top_faculte->label : '',
         'topFacultePart'     => ( $top_faculte && $total > 0 ) ? round( ( $top_faculte->total / $total ) * 100 ) : 0,
-        'sparkline'          => $sparkline,
+        'sparkline'          => ueb_access_has( 'ueb_view_trends' ) && ueb_access_scope( 'ueb_view_trends' ) === ueb_access_scope( ueb_access_endpoint_caps() ) ? $sparkline : array(),
     );
 }
 

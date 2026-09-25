@@ -910,3 +910,6 @@ input.date-field-input.error ~ .date-field-icon {
     letter-spacing: normal;
     margin-top: 1px;
 }
+.dossier-reprise-key { display:block; overflow-wrap:anywhere; user-select:all; font-size:12px; padding:12px 0; }
+.reprise-panel-row { flex-wrap:wrap; }
+.reprise-panel-row label { width:100%; }

@@ -46,7 +46,7 @@ function ueb_admin_ref_registry() {
 
         'facultes' => array(
             'table'          => 'ueb_facultes',
-            'label'          => 'Facultés',
+            'label'          => 'Établissements',
             'group'          => 'Formation',
             'order_by'       => 't.nom_fr ASC',
             'search_columns' => array( 'code', 'nom_fr', 'nom_en' ),
@@ -55,6 +55,8 @@ function ueb_admin_ref_registry() {
                 'nom_fr' => array( 'label' => 'Nom (FR)',     'type' => 'text', 'required' => true,  'maxlength' => 150 ),
                 'nom_en' => array( 'label' => 'Nom (EN)',     'type' => 'text', 'required' => true,  'maxlength' => 150 ),
                 'logo'   => array( 'label' => 'Logo (fichier)', 'type' => 'text', 'required' => false, 'maxlength' => 100 ),
+                'slug'   => array( 'label' => 'Slug', 'type' => 'text', 'required' => true, 'maxlength' => 180 ),
+                'actif'  => array( 'label' => 'Actif', 'type' => 'enum', 'required' => true, 'options' => array( '1' => 'Oui', '0' => 'Non' ) ),
             ),
             'label_col' => 'nom_fr',
         ),
@@ -337,7 +339,7 @@ function ueb_admin_ref_registry() {
  * @param string $key
  * @return array<object>
  */
-function ueb_admin_ref_fk_options( $key ) {
+function ueb_admin_ref_fk_options( $key, $owner_key = '' ) {
     global $wpdb;
 
     $registry = ueb_admin_ref_registry();
@@ -345,6 +347,13 @@ function ueb_admin_ref_fk_options( $key ) {
         return array();
     }
     $cfg = $registry[ $key ];
+
+    if ( 'facultes' === $key || isset( $cfg['columns']['faculte_id'] ) ) {
+        $column = 'facultes' === $key ? 'id' : 'faculte_id';
+        $scope = ueb_access_sql( $column, ueb_access_ref_cap( $owner_key ?: $key ) );
+        if ( 'facultes' !== $key ) $scope = '(' . $scope . ' OR faculte_id IS NULL)';
+        return $wpdb->get_results( "SELECT id, {$cfg['label_col']} AS libelle FROM {$cfg['table']} WHERE {$scope} ORDER BY {$cfg['label_col']}" );
+    }
 
     if ( ! empty( $cfg['fk_options_sql'] ) ) {
         return $wpdb->get_results( $cfg['fk_options_sql'] );
@@ -367,6 +376,7 @@ function ueb_admin_ref_get_registry_for_js() {
     $out      = array();
 
     foreach ( $registry as $key => $cfg ) {
+        if ( ! ueb_access_ref_allowed( $key ) ) continue;
         $columns    = array();
         $filtrables = ueb_admin_ref_filtrable_columns( $cfg );
 
@@ -386,7 +396,7 @@ function ueb_admin_ref_get_registry_for_js() {
             }
 
             if ( 'select' === $colcfg['type'] && ! empty( $colcfg['fk'] ) ) {
-                $entry['options'] = ueb_admin_ref_fk_options( $colcfg['fk'] );
+                $entry['options'] = ueb_admin_ref_fk_options( $colcfg['fk'], $key );
             }
 
             if ( 'enum' === $colcfg['type'] && ! empty( $colcfg['options'] ) ) {
@@ -401,6 +411,8 @@ function ueb_admin_ref_get_registry_for_js() {
         }
 
         $out[ $key ] = array(
+            'canDelete' => 'facultes' !== $key,
+            'canCreate' => 'facultes' !== $key || null === ueb_access_scope( 'ueb_manage_establishments' ),
             'label'   => $cfg['label'],
             'group'   => isset( $cfg['group'] ) ? $cfg['group'] : '',
             'columns' => $columns,
@@ -480,7 +492,7 @@ function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20, $fil
         }
     }
 
-    $where  = '1=1';
+    $where  = ueb_access_ref_where( $key, 't.' );
     $params = array();
 
     $search = trim( (string) $search );
@@ -566,7 +578,8 @@ function ueb_admin_ref_get( $key, $id ) {
     }
     $cfg = $registry[ $key ];
 
-    $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$cfg['table']} WHERE id = %d", absint( $id ) ), ARRAY_A );
+    $scope = ueb_access_ref_where( $key );
+    $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$cfg['table']} WHERE id = %d AND {$scope}", absint( $id ) ), ARRAY_A );
 
     return $row ?: null;
 }
@@ -628,6 +641,17 @@ function ueb_admin_ref_sanitize( $key, $raw ) {
         $data[ $col ] = $val;
     }
 
+    if ( 'facultes' === $key ) {
+        $data['slug'] = sanitize_title( $data['slug'] );
+        if ( ! $data['slug'] ) $errors[] = 'Le slug doit contenir des lettres ou des chiffres.';
+    }
+    // Vérifie les FK et leur portée même si la requête forge les options.
+    foreach ( $cfg['columns'] as $col => $colcfg ) {
+        if ( 'select' !== $colcfg['type'] || empty( $data[ $col ] ) ) continue;
+        $options = array_map( 'intval', wp_list_pluck( ueb_admin_ref_fk_options( $colcfg['fk'], $key ), 'id' ) );
+        if ( ! in_array( (int) $data[ $col ], $options, true ) ) $errors[] = $colcfg['label'] . ' non autorisé.';
+    }
+    if ( ! ueb_access_ref_allowed( $key ) || ( isset( $cfg['columns']['faculte_id'] ) && ! ueb_access_contains( ueb_access_ref_cap( $key ), $data['faculte_id'] ) ) ) $errors[] = 'Établissement non autorisé.';
     return array( 'data' => $data, 'errors' => $errors );
 }
 
@@ -645,7 +669,8 @@ function ueb_admin_ref_friendly_db_error( $error ) {
     if ( false !== stripos( $error, 'Duplicate entry' ) ) {
         return 'Cette valeur existe déjà (code ou libellé en double).';
     }
-    return 'Erreur base de données : ' . $error;
+    error_log( '[UEB références] ' . $error );
+    return 'Enregistrement impossible. Réessayez ou contactez le responsable du site.';
 }
 
 /**
@@ -657,6 +682,7 @@ function ueb_admin_ref_friendly_db_error( $error ) {
  */
 function ueb_admin_ref_create( $key, $raw ) {
     global $wpdb;
+    if ( ! ueb_access_ref_allowed( $key ) || ( 'facultes' === $key && null !== ueb_access_scope( 'ueb_manage_establishments' ) ) ) return array( 'success' => false, 'message' => 'Création non autorisée dans cette portée.' );
 
     $registry = ueb_admin_ref_registry();
     if ( ! isset( $registry[ $key ] ) ) {
@@ -687,6 +713,7 @@ function ueb_admin_ref_create( $key, $raw ) {
  */
 function ueb_admin_ref_update( $key, $id, $raw ) {
     global $wpdb;
+    if ( ! ueb_admin_ref_get( $key, $id ) ) return array( 'success' => false, 'message' => 'Élément inaccessible.' );
 
     $registry = ueb_admin_ref_registry();
     if ( ! isset( $registry[ $key ] ) ) {
@@ -720,6 +747,8 @@ function ueb_admin_ref_update( $key, $id, $raw ) {
  */
 function ueb_admin_ref_delete( $key, $id ) {
     global $wpdb;
+    if ( 'facultes' === $key ) return array( 'success' => false, 'message' => 'Un établissement se désactive depuis sa fiche ; son historique est conservé.' );
+    if ( ! ueb_admin_ref_get( $key, $id ) ) return array( 'success' => false, 'message' => 'Élément inaccessible.' );
 
     $registry = ueb_admin_ref_registry();
     if ( ! isset( $registry[ $key ] ) ) {

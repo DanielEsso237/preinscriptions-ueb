@@ -20,10 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * premier dans chaque handler de ce fichier.
  */
 function ueb_admin_ref_check_access() {
-    if ( ! is_user_logged_in() || ! current_user_can( 'manage_options' ) ) {
+    if ( ! is_user_logged_in() || ! ueb_access_ref_allowed( ueb_admin_ref_ajax_get_key() ) ) {
         wp_send_json_error( array( 'message' => 'Accès refusé.' ), 403 );
     }
     check_ajax_referer( 'ueb_admin_references', 'nonce' );
+    nocache_headers();
 }
 
 /**

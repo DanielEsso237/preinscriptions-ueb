@@ -47,6 +47,7 @@ if ( empty( $reseaux ) ) {
                 <?php endif; ?>
                 <li><a href="#facultes">Facultés</a></li>
                 <li><a href="#campus">Campus</a></li>
+                <li><a href="<?php echo esc_url( ueb_portal_url( 'home' ) ); ?>">Espace de gestion</a></li>
             </ul>
         </div>
         <div>

@@ -284,10 +284,10 @@
             var tds = Object.keys(cols).map(function (cle) {
                 return '<td>' + libelleColonne(cle, cols[cle], row) + '</td>';
             }).join('');
-            return '<tr style="--i:' + index + '">' + tds +
+            return '<tr class="admin-row-open" style="--i:' + index + '">' + tds +
                 '<td class="cell-actions admin-ref-row-actions">' +
                     '<button type="button" class="admin-icon-btn" data-edit="' + row.id + '" aria-label="Modifier">' + icone('edit', 'admin-icon--sm') + '</button>' +
-                    '<button type="button" class="admin-icon-btn admin-icon-btn--danger" data-delete="' + row.id + '" aria-label="Supprimer">' + icone('trash', 'admin-icon--sm') + '</button>' +
+                    (cfg.canDelete ? '<button type="button" class="admin-icon-btn admin-icon-btn--danger" data-delete="' + row.id + '" aria-label="Supprimer">' + icone('trash', 'admin-icon--sm') + '</button>' : '') +
                 '</td></tr>';
         }).join('');
 
@@ -308,6 +308,7 @@
     }
 
     function chargerListe() {
+        if ($('admin-ref-add')) $('admin-ref-add').hidden = !REGISTRY[cleCourante]?.canCreate;
         skeletons();
         var recherche = $('admin-ref-recherche');
         var params = {
@@ -417,6 +418,19 @@
 
     document.addEventListener('click', function (e) {
         if (e.target.closest('[data-close-ref-modal]')) { fermerModal(); return; }
+
+        // Cliquer n'importe où sur une ligne l'ouvre en modification, comme le
+        // bouton crayon : le bouton de suppression et toute sélection de
+        // texte en cours gardent leur propre comportement.
+        var ligneRef = e.target.closest('tr.admin-row-open');
+        if (ligneRef && !e.target.closest('a, button, input, select, textarea, label, summary')) {
+            var selectionEnCours = window.getSelection && window.getSelection().toString();
+            if (!selectionEnCours) {
+                var editerLigne = ligneRef.querySelector('[data-edit]');
+                if (editerLigne) editerLigne.click();
+            }
+            return;
+        }
 
         var addBtn = e.target.closest('#admin-ref-add');
         if (addBtn) {

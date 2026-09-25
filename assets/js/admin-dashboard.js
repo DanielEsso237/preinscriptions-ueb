@@ -503,6 +503,7 @@
         var pagEl     = $('admin-pagination');
 
         if (!data) {
+            if (window.uebDuplicates) window.uebDuplicates.summary(null);
             container.innerHTML = '<div class="admin-table-wrap">' +
                 etat('alert', 'Chargement impossible',
                      "Les dossiers n'ont pas pu être récupérés. Vérifiez votre connexion puis réessayez.",
@@ -512,13 +513,14 @@
             return;
         }
 
+        if (window.uebDuplicates) window.uebDuplicates.summary(data);
         countEl.textContent = nf(data.total) + ' dossier' + (data.total !== 1 ? 's' : '');
 
         if (!data.rows.length) {
             var aDesFiltres = filtresActifs().length > 0 || ($('admin-recherche').value || '') !== '';
             container.innerHTML = '<div class="admin-table-wrap">' +
                 etat('inbox',
-                     aDesFiltres ? 'Aucun résultat' : 'Aucun dossier pour le moment',
+                     data.duplicates ? 'Aucun doublon détecté' : (aDesFiltres ? 'Aucun résultat' : 'Aucun dossier pour le moment'),
                      aDesFiltres
                         ? 'Aucun dossier ne correspond à ces critères. Élargissez ou réinitialisez les filtres.'
                         : 'Les préinscriptions déposées depuis le formulaire public apparaîtront ici.') +
@@ -542,17 +544,18 @@
 
             // --i porte le rang de la ligne : le CSS en déduit son retard
             // d'entrée dans la cascade.
-            return '<tr style="--i:' + index + '">' +
-                '<td class="cell-dossier">' + esc(row.numero_dossier) + '</td>' +
-                '<td class="cell-nom">' + esc(row.nom) + '</td>' +
-                '<td>' + esc(row.prenom) + '</td>' +
+            var dup = window.uebDuplicates;
+            return (dup ? dup.header(row, data.rows[index - 1], index) : '') + '<tr data-dossier-id="' + row.id + '" class="' + (row.statut === 'doublon_desactive' ? 'dup-row-disabled' : '') + '" style="--i:' + Math.min(index, 10) + '">' +
+                '<td class="cell-dossier">' + esc(row.numero_dossier) + (dup ? dup.badge(row) : '') + '</td>' +
+                '<td class="cell-nom">' + (dup ? dup.field(row, 'nom', row.nom) + dup.identity(row) : esc(row.nom)) + '</td>' +
+                '<td>' + (dup ? dup.field(row, 'prenom', row.prenom) : esc(row.prenom)) + '</td>' +
                 '<td>' + sexe + '</td>' +
-                '<td>' + esc(row.faculte || '—') + '</td>' +
-                '<td>' + esc(row.filiere || '—') + '</td>' +
+                '<td>' + (dup ? dup.field(row, 'faculte_id', row.faculte) : esc(row.faculte || '—')) + '</td>' +
+                '<td>' + (dup ? dup.field(row, 'filiere_1_id', row.filiere) : esc(row.filiere || '—')) + '</td>' +
                 '<td class="cell-date">' + esc(formatDate(row.date_creation)) + '</td>' +
                 '<td class="cell-actions">' +
                     '<button type="button" class="admin-btn-voir" data-numero="' + esc(row.numero_dossier) + '">' +
-                    'Voir' + icone('arrow-right', 'admin-icon--sm') + '</button>' +
+                    'Voir' + icone('arrow-right', 'admin-icon--sm') + '</button>' + (dup ? dup.actions(row) : '') +
                 '</td></tr>';
         }).join('');
 
@@ -601,17 +604,29 @@
         }
     });
 
-    function loadListe() {
+    var listRequest = 0;
+    async function loadListe() {
+        if (!CFG.permissions.liste) return Promise.resolve();
+        var request = ++listRequest;
         skeletonsListe();
+        try { if (window.uebDuplicates) await window.uebDuplicates.scan(); } catch (_) { renderListe(null); return; }
 
-        var params = collectFilters();
+        var params = Object.assign(collectFilters(), window.uebDuplicates ? window.uebDuplicates.params() : {});
         params.recherche = $('admin-recherche').value || '';
         params.page = currentPage;
         params.orderby = tri.orderby;
         params.order = tri.order;
 
-        return ajax('ueb_admin_get_dossiers', params).then(renderListe);
+        return ajax('ueb_admin_get_dossiers', params).then(function(data) { if (request === listRequest) renderListe(data); });
     }
+
+    if (window.uebDuplicates) window.uebDuplicates.init({ filters: collectFilters, reload: function(reset) { if (reset) currentPage = 1; return loadListe(); } });
+    function refreshAfterDuplicates() {
+        loadListe(); loadStats();
+        if (CFG.permissions.effectifs && window.uebEffectifs) window.uebEffectifs.actualiser(true);
+    }
+    document.addEventListener('uebDuplicatesChanged', refreshAfterDuplicates);
+    window.addEventListener('storage', function(event) { if (event.key === 'ueb-statistics-change') refreshAfterDuplicates(); });
 
     var searchInput = $('admin-recherche');
     if (searchInput) {
@@ -661,6 +676,21 @@
 
     document.addEventListener('click', function (e) {
         if (e.target.closest('[data-close-modal]')) fermerModal();
+
+        // Cliquer n'importe où sur une ligne de dossier l'ouvre, comme le
+        // bouton « Voir » : les autres contrôles de la ligne (actions
+        // doublons, case de sélection de groupe) gardent leur propre clic,
+        // et une sélection de texte en cours (copier un e-mail, un numéro…)
+        // n'est jamais interprétée comme un clic.
+        var ligneOuvrable = e.target.closest('tr[data-dossier-id]');
+        if (ligneOuvrable && !e.target.closest('a, button, input, select, textarea, label, summary')) {
+            var selectionEnCours = window.getSelection && window.getSelection().toString();
+            if (!selectionEnCours) {
+                var voirDeLaLigne = ligneOuvrable.querySelector('.admin-btn-voir');
+                if (voirDeLaLigne) voirDeLaLigne.click();
+            }
+            return;
+        }
 
         var btn = e.target.closest('.admin-btn-voir');
         if (!btn) return;
@@ -720,6 +750,7 @@
        STATISTIQUES
        ================================================================ */
     function loadStats() {
+        if (!CFG.permissions.stats) return Promise.resolve();
         return ajax('ueb_admin_get_stats', collectFilters()).then(function (data) {
             if (!data) return;
             renderKpis(data.kpis);
@@ -965,7 +996,7 @@
 
     // Ordre des onglets dans la navigation : sert à déduire le sens du
     // glissement (on avance vers la droite, on revient vers la gauche).
-    var ORDRE_ONGLETS = ['stats', 'effectifs', 'liste'];
+    var ORDRE_ONGLETS = ['stats', 'effectifs', 'liste'].filter(function (tab) { return CFG.permissions[tab]; });
 
     // Titre de la barre du haut, par onglet.
     var TITRES_ONGLETS = {
@@ -1032,9 +1063,7 @@
        CHARGEMENT INITIAL
        ================================================================ */
     var ongletInitial = new URL(window.location.href).searchParams.get('onglet');
-    if (ongletInitial && ORDRE_ONGLETS.indexOf(ongletInitial) > 0) {
-        activerOnglet(ongletInitial);
-    }
+    activerOnglet(ORDRE_ONGLETS.includes(ongletInitial) ? ongletInitial : ORDRE_ONGLETS[0]);
 
     updateFilterBadge();
     renderChips();

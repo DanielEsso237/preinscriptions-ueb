@@ -24,10 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 function ueb_admin_get_reference_lists() {
     global $wpdb;
+    $scope = ueb_access_filter_sql( 'id' );
+    $diploma_scope = ueb_access_filter_sql( 'faculte_id' );
 
     return array(
-        'facultes'                 => $wpdb->get_results( "SELECT id, nom_fr AS libelle FROM ueb_facultes ORDER BY nom_fr ASC" ),
-        'diplomes'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_diplomes_admission ORDER BY libelle ASC" ),
+        'facultes'                 => $wpdb->get_results( "SELECT id, nom_fr AS libelle FROM ueb_facultes WHERE {$scope} ORDER BY nom_fr ASC" ),
+        'diplomes'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_diplomes_admission WHERE faculte_id IS NULL OR {$diploma_scope} ORDER BY libelle ASC" ),
         'niveaux_lmd'              => $wpdb->get_results( "SELECT id, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC" ),
         'mentions'                 => $wpdb->get_results( "SELECT id, libelle FROM ueb_mentions ORDER BY ordre ASC" ),
         'statuts_etudiant'         => $wpdb->get_results( "SELECT id, libelle FROM ueb_statuts_etudiants ORDER BY libelle ASC" ),
@@ -69,9 +71,24 @@ function ueb_admin_get_reference_lists() {
  * @param array $filters Tableau associatif de filtres (déjà sanitizés côté appelant).
  * @return array { where: string, params: array }
  */
-function ueb_admin_build_where( $filters ) {
-    $where  = array( '1=1' );
+function ueb_admin_build_where( $filters, $caps = null, $listing = false ) {
+    $where  = array( ueb_access_sql( 'p.faculte_id', $caps ?? ueb_access_endpoint_caps() ) );
     $params = array();
+    // Une demande de liste ne peut jamais changer la population des statistiques.
+    $status = $listing ? ( $filters['duplicate_status'] ?? '' ) : '';
+    if ( 'disabled' === $status ) $where[] = "p.statut = 'doublon_desactive'";
+    elseif ( 'all' !== $status ) $where[] = ueb_stats_population_sql();
+    foreach ( array( 'date_from' => '>=', 'date_to' => '<=' ) as $key => $operator ) {
+        if ( ! empty( $filters[ $key ] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $filters[ $key ] ) ) {
+            $where[] = "p.date_creation {$operator} %s";
+            $params[] = $filters[ $key ] . ( 'date_to' === $key ? ' 23:59:59' : ' 00:00:00' );
+        }
+    }
+
+    if ( ! empty( $filters['statut'] ) && in_array( $filters['statut'], array( 'brouillon', 'soumis' ), true ) ) {
+        $where[] = 'p.statut = %s';
+        $params[] = $filters['statut'];
+    }
 
     // Filtres "= un ID de FK", tous optionnels.
     $fk_filters = array(
@@ -160,7 +177,8 @@ function ueb_admin_colonnes_triables() {
 function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $par_page = 25, $orderby = 'date_creation', $order = 'DESC' ) {
     global $wpdb;
 
-    $clause = ueb_admin_build_where( $filters );
+    if ( ! empty( $filters['duplicates'] ) ) return ueb_duplicates_list( $filters, $recherche, $page, $par_page, $orderby, $order );
+    $clause = ueb_admin_build_where( $filters, null, true );
     $where  = $clause['where'];
     $params = $clause['params'];
 
@@ -192,7 +210,7 @@ function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $
     $col_sql  = isset( $colonnes[ $orderby ] ) ? $colonnes[ $orderby ] : $colonnes['date_creation'];
     $sens_sql = 'ASC' === strtoupper( (string) $order ) ? 'ASC' : 'DESC';
 
-    $sql = "SELECT p.numero_dossier, p.nom, p.prenom, p.sexe, p.date_creation,
+    $sql = "SELECT p.id, p.faculte_id, p.numero_dossier, p.nom, p.prenom, p.sexe, p.date_creation, p.statut,
                    f.nom_fr AS faculte_nom, fi1.libelle AS filiere1_libelle
             FROM ueb_preinscriptions p
             LEFT JOIN ueb_facultes f   ON f.id  = p.faculte_id
@@ -227,6 +245,7 @@ function ueb_admin_get_dossiers_filtres( $filters, $recherche = '', $page = 1, $
 function ueb_admin_get_dossier_detail( $numero_dossier ) {
     global $wpdb;
     $numero_dossier = sanitize_text_field( $numero_dossier );
+    $scope = ueb_access_sql( 'p.faculte_id', 'ueb_view_students' );
 
     $dossier = $wpdb->get_row( $wpdb->prepare(
         "SELECT p.*, f.nom_fr AS faculte_nom, d.libelle AS diplome_libelle,
@@ -244,7 +263,7 @@ function ueb_admin_get_dossier_detail( $numero_dossier ) {
          LEFT JOIN ueb_regions r ON r.id = p.region_origine_id
          LEFT JOIN ueb_departements dep ON dep.id = p.departement_origine_id
          LEFT JOIN ueb_communes c ON c.id = p.commune_origine_id
-         WHERE p.numero_dossier = %s",
+         WHERE p.numero_dossier = %s AND {$scope}",
         $numero_dossier
     ) );
 

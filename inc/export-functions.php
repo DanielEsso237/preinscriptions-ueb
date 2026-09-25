@@ -1,6 +1,12 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/** Neutralise les formules provenant de valeurs saisies par les candidats. */
+function ueb_export_csv_cell( $value ) {
+    $value = (string) $value;
+    return preg_match( '/^[\s]*[=+@\-]/u', $value ) ? "'" . $value : $value;
+}
+
 /**
  * Export de la liste des préinscrits — modèle « A · Officiel classique ».
  *
@@ -404,7 +410,9 @@ function ueb_admin_ajax_export() {
     $rows = ueb_export_get_rows( $filters, $recherche, $orderby, $order );
 
     global $wpdb;
-    $total_global = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ueb_preinscriptions' );
+    $scope = ueb_access_sql( 'p.faculte_id', 'ueb_export_students' );
+    $scope .= ' AND ' . ueb_stats_population_sql();
+    $total_global = (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE {$scope}" );
 
     $meta = ueb_export_meta( $filters, $recherche, count( $rows ), $total_global );
 

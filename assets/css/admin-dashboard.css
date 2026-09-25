@@ -266,10 +266,11 @@
 /* Contrôles natifs : sans couleurs explicites, les listes déroulantes et
    leurs options retombent sur la palette du système, qui n'a aucune raison
    de suivre le thème choisi ici. */
-.admin-page select,
-.admin-page input,
-.admin-page textarea,
-.admin-page button {
+/* Enveloppé dans :where() — spécificité nulle pour la liste d'éléments.
+   Écrit en sélecteurs de type, cette règle valait (0,1,1) et écrasait
+   .admin-tbtn--primary (0,1,0) : le bouton principal s'affichait en texte
+   sombre sur fond vert, soit un contraste d'environ 1,5:1. */
+.admin-page :where(select, input, textarea, button) {
     color: var(--ueb-text);
     font-family: inherit;
 }
@@ -1123,6 +1124,11 @@ th[aria-sort="descending"] .admin-icon { transform: rotate(180deg); }
     transition: background var(--ueb-fast) var(--ueb-ease);
 }
 .admin-table tbody tr:hover { background: var(--ueb-surface-hover); }
+/* Ligne cliquable dans toute sa largeur (dossiers, références) : le clic est
+   délégué en JS vers l'action principale de la ligne. Les boutons qu'elle
+   contient gardent leur propre curseur et leur propre clic. */
+.admin-table tbody tr[data-dossier-id],
+.admin-table tbody tr.admin-row-open { cursor: pointer; }
 .admin-table .cell-dossier {
     font-family: 'Sora', sans-serif;
     font-weight: 600;

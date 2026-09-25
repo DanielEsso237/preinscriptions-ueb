@@ -1,0 +1,519 @@
+/* =========================================================================
+   REVUE DES DOUBLONS — intégrée à la liste des dossiers
+   Aucun composant nouveau : la barre d'outils, les boutons et le tableau
+   sont ceux du tableau de bord (.admin-tbtn, .admin-table, tokens --ueb-*).
+   Cette feuille n'ajoute que le marquage propre aux groupes de doublons.
+
+   Deux règles du projet s'appliquent ici :
+   - pas de filet latéral décoratif : bordure complète 1px sur les blocs ;
+   - pas d'intitulé en capitales tracées au-dessus des titres.
+
+   Sommaire
+     1. Barre d'outils et état de l'analyse
+     2. Critères de détection
+     3. Bandeau de synthèse et actions groupées
+     4. En-tête de groupe dans le tableau
+     5. Badges, différences et actions de ligne
+     6. Dialogue de confirmation
+     7. Notification et journal
+     8. Responsive et mouvement réduit
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   1. BARRE D'OUTILS ET ÉTAT DE L'ANALYSE
+   ------------------------------------------------------------------------- */
+.dup-toolbar {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding: 1.1rem 0;
+    border-top: 1px solid var(--ueb-border);
+}
+.dup-field {
+    display: grid;
+    gap: .35rem;
+    flex: 1 1 10rem;
+}
+.dup-field label,
+.dup-settings label {
+    font-size: .76rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+}
+.dup-field select,
+.dup-field input,
+.dup-settings input[name="country"],
+.dup-dialog textarea {
+    min-height: 42px;
+    width: 100%;
+    padding: .55rem .7rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    font: inherit;
+    color-scheme: light;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
+}
+:root[data-ueb-theme="dark"] .dup-field input,
+:root[data-ueb-theme="dark"] .dup-field select { color-scheme: dark; }
+.dup-field select:focus,
+.dup-field input:focus,
+.dup-dialog textarea:focus {
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
+    outline: none;
+}
+.dup-toolbar button { min-height: 42px; }
+
+.dup-analysis {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 1.6rem;
+    padding-bottom: .75rem;
+    font-size: .78rem;
+    color: var(--ueb-text-soft);
+}
+/* Pastille qui bat pendant l'indexation : le seul mouvement continu de
+   l'écran, et il signale un travail réellement en cours. */
+.dup-analysis.is-scanning::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ueb-success);
+    flex-shrink: 0;
+    animation: dup-pulse 1s ease-in-out infinite alternate;
+}
+
+/* -------------------------------------------------------------------------
+   2. CRITÈRES DE DÉTECTION
+   ------------------------------------------------------------------------- */
+.dup-settings {
+    border-block: 1px solid var(--ueb-border);
+    margin-bottom: 1.15rem;
+    font-size: .83rem;
+}
+.dup-settings summary {
+    cursor: pointer;
+    min-height: 44px;
+    padding: .9rem 0;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+}
+.dup-settings summary:hover { color: var(--ueb-text); }
+.dup-settings form { padding-bottom: 1rem; }
+.dup-settings p {
+    margin: 0 0 .75rem;
+    color: var(--ueb-text-soft);
+    line-height: 1.6;
+}
+.dup-settings-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.75rem;
+    margin: 1rem 0;
+}
+.dup-settings-options label {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 44px;
+    font-size: .83rem;
+    font-weight: 400;
+    color: var(--ueb-text);
+    cursor: pointer;
+}
+/* Niveau de confiance associé au critère : une information, pas un titre. */
+.dup-settings-options span {
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+    padding: .1rem .4rem;
+    border: 1px solid var(--ueb-border);
+    border-radius: 999px;
+}
+.dup-settings input[type="checkbox"],
+.dup-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--ueb-primary);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.dup-settings-bottom {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: .9rem;
+}
+.dup-settings-bottom label { display: grid; gap: .35rem; }
+.dup-settings input[name="country"] { max-width: 10rem; }
+.dup-help {
+    max-width: 70ch;
+    font-size: .76rem;
+}
+
+/* -------------------------------------------------------------------------
+   3. BANDEAU DE SYNTHÈSE ET ACTIONS GROUPÉES
+   Bordure complète, pas de filet latéral : convention du projet.
+   ------------------------------------------------------------------------- */
+.dup-bulk {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.4rem;
+    padding: 1.15rem 1.25rem;
+    margin: .25rem 0 1.25rem;
+    background: var(--ueb-primary-wash);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius);
+}
+.dup-bulk[hidden],
+.dup-audit[hidden],
+.dup-hidden[hidden],
+.dup-notice[hidden],
+.dup-bulk-actions button[hidden] { display: none; }
+.dup-bulk strong {
+    font-family: 'Sora', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+.dup-bulk p {
+    margin: .35rem 0 0;
+    max-width: 52ch;
+    font-size: .76rem;
+    line-height: 1.6;
+    color: var(--ueb-text-soft);
+}
+.dup-bulk-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .5rem;
+    max-width: 31rem;
+}
+.dup-bulk-actions small {
+    width: 100%;
+    text-align: right;
+    font-size: .7rem;
+    color: var(--ueb-text-soft);
+}
+
+/* -------------------------------------------------------------------------
+   4. EN-TÊTE DE GROUPE DANS LE TABLEAU
+   Une ligne pleine largeur ouvre chaque groupe : la césure entre deux pages
+   reste lisible parce que le repère revient en tête de page suivante.
+   ------------------------------------------------------------------------- */
+.admin-table tr.dup-group td {
+    padding: 0;
+    border-top: 12px solid var(--ueb-bg);
+    background: var(--ueb-surface-2);
+}
+.dup-group-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border-block: 1px solid var(--ueb-border-strong);
+}
+.dup-group-title {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+.dup-group-title strong {
+    display: block;
+    font: 600 .875rem 'Sora', sans-serif;
+}
+/* Groupe repris d'une page à l'autre : la mention doit se distinguer du
+   numéro sans devenir un second titre. */
+.dup-suite {
+    display: inline-block;
+    margin-left: .35rem;
+    padding: .1rem .4rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    font: 600 .65rem/1.4 'Inter', sans-serif;
+    color: var(--ueb-text-soft);
+    vertical-align: middle;
+}
+.admin-table tr.dup-group--suite td { border-top-width: 6px; }
+.dup-count { font-variant-numeric: tabular-nums; }
+
+.dup-group-title div > span {
+    display: block;
+    margin-top: .25rem;
+    font-size: .7rem;
+    color: var(--ueb-text-soft);
+}
+.dup-group-actions {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------------
+   5. BADGES, DIFFÉRENCES ET ACTIONS DE LIGNE
+   ------------------------------------------------------------------------- */
+.dup-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    max-width: 100%;
+    padding: .3rem .5rem;
+    border: 1px solid var(--ueb-border);
+    border-radius: 6px;
+    font: 600 .7rem/1.35 'Inter', sans-serif;
+    white-space: normal;
+    vertical-align: middle;
+}
+.cell-dossier > .dup-badge {
+    display: flex;
+    width: fit-content;
+    min-width: 7.6rem;
+    margin-top: .5rem;
+}
+/* Le dossier conservé : vert, étoile pleine ET libellé. La couleur ne porte
+   jamais seule l'information. */
+.dup-badge--keeper,
+.dup-badge--certain {
+    color: var(--ueb-success);
+    background: var(--ueb-primary-wash);
+    border-color: color-mix(in srgb, var(--ueb-success) 30%, transparent);
+}
+.dup-star {
+    fill: currentColor;
+    stroke: none;
+    flex-shrink: 0;
+    animation: dup-star 320ms var(--ueb-spring) both;
+}
+.dup-badge--old {
+    color: var(--ueb-accent);
+    background: var(--ueb-accent-wash);
+    border-color: color-mix(in srgb, var(--ueb-accent) 30%, transparent);
+}
+.dup-badge--disabled {
+    color: var(--ueb-text-soft);
+    background: var(--ueb-surface-2);
+}
+
+.dup-action,
+.dup-link {
+    border: 0;
+    background: none;
+    padding: .6rem .3rem;
+    min-height: 44px;
+    text-align: left;
+    color: var(--ueb-primary);
+    font: 600 .76rem/1.5 'Inter', sans-serif;
+    cursor: pointer;
+    text-underline-offset: 3px;
+}
+.dup-action:hover,
+.dup-link:hover { text-decoration: underline; }
+.dup-action--quiet { color: var(--ueb-text-soft); font-weight: 500; }
+.cell-actions .dup-action { display: block; }
+.dup-action:disabled { opacity: .5; cursor: wait; }
+
+.dup-identity {
+    display: grid;
+    gap: .25rem;
+    max-width: 14rem;
+    margin-top: .5rem;
+    font-size: .7rem;
+    font-weight: 400;
+    color: var(--ueb-text-soft);
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+/* Champ qui diffère du dossier conservé : souligné en plus de la couleur. */
+.dup-different {
+    color: var(--ueb-accent);
+    border-bottom: 1px dotted currentColor;
+}
+.dup-row-disabled td { background: var(--ueb-surface-2); }
+.dup-hidden {
+    margin-bottom: .75rem;
+    font-size: .76rem;
+    color: var(--ueb-text-soft);
+}
+
+/* -------------------------------------------------------------------------
+   6. DIALOGUE DE CONFIRMATION
+   ------------------------------------------------------------------------- */
+.dup-dialog {
+    width: min(540px, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2.5rem);
+    padding: 1.85rem;
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: var(--ueb-radius-lg);
+    background: var(--ueb-surface);
+    color: var(--ueb-text);
+    box-shadow: var(--ueb-shadow-lg);
+}
+.dup-dialog::backdrop {
+    background: rgba(10, 25, 17, .58);
+    backdrop-filter: blur(3px);
+}
+.dup-dialog[open] { animation: dup-enter 240ms var(--ueb-ease) both; }
+.dup-dialog h2 {
+    margin: 0 0 .85rem;
+    font: 600 1.3rem/1.35 'Sora', sans-serif;
+}
+.dup-dialog p {
+    margin-bottom: 1.1rem;
+    font-size: .875rem;
+    line-height: 1.65;
+}
+/* Rappel de sécurité : encadré complet, pas un filet latéral. */
+.dup-dialog .dup-confirm-note {
+    padding: .7rem .85rem;
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface-2);
+    font-size: .76rem;
+    color: var(--ueb-text-soft);
+}
+.dup-dialog label {
+    display: block;
+    margin-bottom: .5rem;
+    font-size: .8rem;
+    font-weight: 600;
+}
+.dup-dialog label span { font-weight: 400; color: var(--ueb-text-soft); }
+.dup-dialog textarea { resize: vertical; }
+.dup-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .6rem;
+    margin-top: 1.4rem;
+}
+#dup-confirm-error {
+    margin-top: .6rem;
+    font-size: .8rem;
+    color: var(--ueb-danger);
+}
+
+/* -------------------------------------------------------------------------
+   7. NOTIFICATION ET JOURNAL
+   ------------------------------------------------------------------------- */
+.dup-notice {
+    position: fixed;
+    z-index: 10050;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    max-width: min(40rem, calc(100vw - 2rem));
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: .8rem 1rem;
+    border: 1px solid var(--ueb-success);
+    border-radius: var(--ueb-radius-sm);
+    background: var(--ueb-surface);
+    box-shadow: var(--ueb-shadow-lg);
+    font-size: .8rem;
+    animation: dup-enter 240ms var(--ueb-ease) both;
+}
+.dup-close {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--ueb-radius-sm);
+    background: transparent;
+    color: var(--ueb-text-soft);
+    cursor: pointer;
+}
+.dup-close:hover { color: var(--ueb-text); background: var(--ueb-surface-hover); }
+
+.dup-audit {
+    max-height: 30rem;
+    overflow: auto;
+    padding: 1.35rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+    background: var(--ueb-surface);
+}
+.dup-audit h3 {
+    margin: 0 0 .85rem;
+    font: 600 1rem 'Sora', sans-serif;
+}
+.dup-audit-entry {
+    padding: .75rem 0;
+    border-top: 1px solid var(--ueb-border);
+    font-size: .76rem;
+}
+.dup-audit-entry strong,
+.dup-audit-entry span { display: block; }
+.dup-audit-entry span { margin-top: .3rem; color: var(--ueb-text-soft); }
+.dup-audit-entry p { margin: .35rem 0 0; }
+
+/* La liste s'estompe le temps que le serveur réponde, sans sauter. */
+#admin-liste-container { transition: opacity 160ms var(--ueb-ease); }
+.dup-changing { opacity: .3; }
+
+.dup-toolbar :focus-visible,
+.dup-settings :focus-visible,
+.dup-group :focus-visible,
+.dup-dialog :focus-visible,
+.dup-notice :focus-visible,
+.dup-action:focus-visible,
+.dup-link:focus-visible {
+    outline: 2px solid var(--ueb-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@keyframes dup-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes dup-star {
+    from { opacity: 0; transform: scale(.75); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes dup-pulse { to { opacity: .35; } }
+
+/* -------------------------------------------------------------------------
+   8. RESPONSIVE ET MOUVEMENT RÉDUIT
+   ------------------------------------------------------------------------- */
+@media (max-width: 1000px) {
+    .dup-bulk { flex-direction: column; align-items: flex-start; }
+    .dup-bulk-actions { justify-content: flex-start; max-width: none; }
+    .dup-bulk-actions small { text-align: left; }
+    .dup-group-inner { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 600px) {
+    .dup-toolbar { gap: .6rem; }
+    .dup-field { flex-basis: calc(50% - .6rem); min-width: 0; }
+    .dup-field input,
+    .dup-field select { min-width: 0; font-size: .8rem; }
+    .dup-toolbar button { flex: 1; }
+    .dup-bulk { padding: 1rem; }
+    .dup-bulk-actions { display: grid; width: 100%; }
+    .dup-notice { right: 1rem; bottom: 1rem; gap: .4rem; flex-wrap: wrap; }
+    .dup-dialog { padding: 1.35rem; }
+    .dup-dialog-actions button { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dup-analysis::before,
+    .dup-star,
+    .dup-dialog[open],
+    .dup-notice { animation: none !important; }
+    #admin-liste-container { transition: none; }
+}

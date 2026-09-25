@@ -290,10 +290,10 @@ function ueb_quitus_colonne_entete( TCPDF $pdf, array $lignes, $x, $y, $largeur,
 function ueb_quitus_lignes_entete( $langue, array $etab, array $c ) {
     $fr     = 'fr' === $langue;
     $lignes = array(
-        array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['encre'] ),
-        array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['gris'] ),
+        array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['etab'] ),
+        array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['etab'] ),
         array( 'type' => 'sep' ),
-        array( 'type' => 'txt', 'texte' => mb_strtoupper( UEB_QUITUS_UNIVERSITE[ $langue ] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['ueb'] ),
+        array( 'type' => 'txt', 'texte' => mb_strtoupper( UEB_QUITUS_UNIVERSITE[ $langue ] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['etab'] ),
     );
     if ( $etab[ $langue ] !== '' ) {
         $long     = mb_strlen( $etab[ $langue ] ) > 44;

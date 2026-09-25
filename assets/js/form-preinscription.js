@@ -1498,7 +1498,7 @@
             btnRepriseValider.disabled = true;
             btnRepriseValider.textContent = 'Recherche...';
 
-            uebFetchRaw('ueb_get_progression', { numero_dossier: numero }).then(function (json) {
+            uebFetchRaw('ueb_get_progression', { numero_dossier: numero, cle_reprise: (document.getElementById('reprise-cle')?.value || '').trim() }).then(function (json) {
                 btnRepriseValider.disabled = false;
                 btnRepriseValider.textContent = 'Reprendre';
 
@@ -1508,6 +1508,8 @@
                 }
 
                 showRepriseMessage('Dossier retrouvé, chargement en cours...', false);
+                const cleBanner = document.querySelector('.dossier-reprise-key');
+                if (cleBanner) cleBanner.textContent = json.data.cle_reprise || '';
                 applyResumeData(json.data.numero_dossier, json.data.etape_atteinte, json.data.donnees || {}).then(function () {
                     reprisePanel.style.display = 'none';
                     btnToggleReprise.style.display = 'none';

@@ -47,6 +47,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function ueb_effectifs_ventilations( $where, $params = array() ) {
     global $wpdb;
+    $population = ueb_stats_population_sql();
+    $where .= ' AND ' . $population . ' AND ' . ueb_access_sql( 'p.faculte_id', array( 'ueb_section_effectifs', 'ueb_view_stats' ) );
 
     $sql = "SELECT
                 SUM(CASE WHEN p.sexe = 'M' THEN 1 ELSE 0 END)        AS hommes,
@@ -107,6 +109,9 @@ function ueb_effectifs_ventilations( $where, $params = array() ) {
  */
 function ueb_effectifs_vue_universite() {
     global $wpdb;
+    $population = ueb_stats_population_sql();
+    $scope = ueb_access_sql( 'f.id', array( 'ueb_section_effectifs', 'ueb_view_stats' ) );
+    $data_scope = $population . ' AND ' . ueb_access_sql( 'p.faculte_id', array( 'ueb_section_effectifs', 'ueb_view_stats' ) );
 
     $rows = $wpdb->get_results(
         "SELECT f.id, f.code, f.nom_fr AS libelle,
@@ -115,13 +120,14 @@ function ueb_effectifs_vue_universite() {
                 SUM(CASE WHEN p.sexe = 'F' THEN 1 ELSE 0 END)       AS femmes,
                 SUM(CASE WHEN p.handicap = 'oui' THEN 1 ELSE 0 END) AS handicap
          FROM ueb_facultes f
-         LEFT JOIN ueb_preinscriptions p ON p.faculte_id = f.id
+         LEFT JOIN ueb_preinscriptions p ON p.faculte_id = f.id AND {$population}
+         WHERE {$scope}
          GROUP BY f.id, f.code, f.nom_fr
          ORDER BY total DESC, f.nom_fr ASC"
     );
 
     $lignes = array_map( 'ueb_effectifs_normaliser_ligne', $rows ? $rows : array() );
-    $total  = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ueb_preinscriptions p' );
+    $total  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE {$data_scope}" );
 
     // Les dossiers sans établissement n'apparaissent dans aucune ligne :
     // sans cette ligne d'appoint, le pied de tableau annoncerait un total
@@ -167,8 +173,10 @@ function ueb_effectifs_vue_universite() {
  */
 function ueb_effectifs_vue_etablissement( $faculte_id ) {
     global $wpdb;
+    $population = ueb_stats_population_sql();
 
     $faculte_id = absint( $faculte_id );
+    if ( ! ueb_access_contains( array( 'ueb_section_effectifs', 'ueb_view_stats' ), $faculte_id ) ) return null;
 
     $faculte = $wpdb->get_row( $wpdb->prepare(
         'SELECT id, code, nom_fr AS libelle FROM ueb_facultes WHERE id = %d',
@@ -187,7 +195,7 @@ function ueb_effectifs_vue_etablissement( $faculte_id ) {
                 SUM(CASE WHEN p.handicap = 'oui' THEN 1 ELSE 0 END) AS handicap
          FROM ueb_filieres fi
          LEFT JOIN ueb_preinscriptions p
-                ON p.filiere_1_id = fi.id AND p.faculte_id = fi.faculte_id
+                ON p.filiere_1_id = fi.id AND p.faculte_id = fi.faculte_id AND {$population}
          WHERE fi.faculte_id = %d
          GROUP BY fi.id, fi.code, fi.libelle, fi.type_formation
          ORDER BY total DESC, fi.libelle ASC",
@@ -205,7 +213,7 @@ function ueb_effectifs_vue_etablissement( $faculte_id ) {
     }
 
     $total = (int) $wpdb->get_var( $wpdb->prepare(
-        'SELECT COUNT(*) FROM ueb_preinscriptions p WHERE p.faculte_id = %d',
+        "SELECT COUNT(*) FROM ueb_preinscriptions p WHERE p.faculte_id = %d AND {$population}",
         $faculte_id
     ) );
 
@@ -256,6 +264,7 @@ function ueb_effectifs_vue_etablissement( $faculte_id ) {
  */
 function ueb_effectifs_vue_filiere( $filiere_id ) {
     global $wpdb;
+    $population = ueb_stats_population_sql();
 
     $filiere_id = absint( $filiere_id );
 
@@ -268,11 +277,12 @@ function ueb_effectifs_vue_filiere( $filiere_id ) {
         $filiere_id
     ) );
 
-    if ( ! $filiere ) {
+    if ( ! $filiere || ! ueb_access_contains( array( 'ueb_section_effectifs', 'ueb_view_stats' ), $filiere->faculte_id ) ) {
         return null;
     }
 
-    $where  = 'p.filiere_1_id = %d';
+    $scope = ueb_access_sql( 'p.faculte_id', array( 'ueb_section_effectifs', 'ueb_view_stats' ) );
+    $where  = $population . ' AND p.filiere_1_id = %d AND ' . $scope . $wpdb->prepare( ' AND p.faculte_id = %d', $filiere->faculte_id );
     $params = array( $filiere_id );
 
     $total = (int) $wpdb->get_var( $wpdb->prepare(
@@ -289,10 +299,11 @@ function ueb_effectifs_vue_filiere( $filiere_id ) {
          FROM ueb_niveaux_lmd n
          LEFT JOIN ueb_preinscriptions p
                 ON p.niveau_lmd_id = n.id AND p.filiere_1_id = %d
+                   AND p.faculte_id = %d AND {$scope} AND {$population}
          GROUP BY n.id, n.code, n.libelle, n.ordre
          HAVING total > 0
          ORDER BY n.ordre ASC",
-        $filiere_id
+        $filiere_id, $filiere->faculte_id
     ) );
 
     $lignes = array_map( 'ueb_effectifs_normaliser_ligne', $rows ? $rows : array() );
@@ -375,6 +386,8 @@ function ueb_effectifs_normaliser_ligne( $row ) {
  */
 function ueb_effectifs_ligne_reste( $libelle, $total, $where ) {
     global $wpdb;
+    $population = ueb_stats_population_sql();
+    $where .= ' AND ' . $population . ' AND ' . ueb_access_sql( 'p.faculte_id', array( 'ueb_section_effectifs', 'ueb_view_stats' ) );
 
     $row = $wpdb->get_row(
         "SELECT SUM(CASE WHEN p.sexe = 'M' THEN 1 ELSE 0 END)       AS hommes,

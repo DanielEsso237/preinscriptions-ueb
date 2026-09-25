@@ -4,7 +4,7 @@
  *
  * Page de connexion + tableau de bord pour les gestionnaires de
  * préinscriptions. Accès réservé aux comptes ayant la capacité
- * "voir_preinscriptions" (rôle gestionnaire_preinscriptions).
+ * métier correspondant aux sections et aux données demandées.
  *
  * Le dashboard a deux vues (Vue d'ensemble / Dossiers) qui partagent un même
  * panneau de filtres (tous les champs à choix du formulaire de
@@ -22,126 +22,35 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/* ================================================================
-   TRAITEMENT DE LA CONNEXION (avant tout affichage)
-   ================================================================ */
+// La connexion et sa limitation sont centralisées dans le portail.
 $ueb_login_error = '';
-
-if ( isset( $_POST['ueb_admin_login'] ) ) {
-
-    if ( ! isset( $_POST['ueb_admin_login_nonce'] ) ||
-         ! wp_verify_nonce( $_POST['ueb_admin_login_nonce'], 'ueb_admin_login' ) ) {
-        $ueb_login_error = 'Erreur de sécurité, merci de réessayer.';
-    } else {
-        $creds = array(
-            'user_login'    => sanitize_text_field( wp_unslash( $_POST['ueb_username'] ?? '' ) ),
-            'user_password' => $_POST['ueb_password'] ?? '',
-            'remember'      => true,
-        );
-
-        $user = wp_signon( $creds, is_ssl() );
-
-        if ( is_wp_error( $user ) ) {
-            $ueb_login_error = 'Identifiant ou mot de passe incorrect.';
-        } elseif ( ! user_can( $user, 'voir_preinscriptions' ) ) {
-            wp_logout();
-            $ueb_login_error = "Ce compte n'a pas accès au tableau de bord.";
-        } else {
-            wp_safe_redirect( get_permalink() );
-            exit;
-        }
-    }
-}
-
-$ueb_is_authorized = is_user_logged_in() && current_user_can( 'voir_preinscriptions' );
-$ueb_user          = wp_get_current_user();
+$ueb_is_authorized = is_user_logged_in() && ueb_access_has_admin();
+$ueb_user = wp_get_current_user();
+if ( ! ueb_access_has_admin() ) wp_die( 'Accès refusé.', '', array( 'response' => 403 ) );
 
 get_header();
 ?>
 
 <!-- Sprite d'icônes : défini une fois, référencé partout via <use>. -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
-    <symbol id="ueb-i-overview" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 5-7"/></symbol>
-    <symbol id="ueb-i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
-    <symbol id="ueb-i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8Z"/></symbol>
-    <symbol id="ueb-i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
-    <symbol id="ueb-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
-    <symbol id="ueb-i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
-    <symbol id="ueb-i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
-    <symbol id="ueb-i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
-    <symbol id="ueb-i-sort" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
-    <symbol id="ueb-i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-    <symbol id="ueb-i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></symbol>
-    <symbol id="ueb-i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-    <symbol id="ueb-i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
-    <symbol id="ueb-i-trend" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
-    <symbol id="ueb-i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M9 6h.01M15 6h.01M9 10h.01M15 10h.01M9 14h.01M15 14h.01"/></symbol>
-    <symbol id="ueb-i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
-    <symbol id="ueb-i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
-    <symbol id="ueb-i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
-    <symbol id="ueb-i-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></symbol>
-    <symbol id="ueb-i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
-    <symbol id="ueb-i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
-    <symbol id="ueb-i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-    <symbol id="ueb-i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
-    <!-- Formats d'export : une feuille commune, un signe distinctif par format. -->
-    <symbol id="ueb-i-file-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-4h1.5a1.5 1.5 0 0 1 0 3H9"/><path d="M14 13h2.5"/><path d="M14 17v-4"/></symbol>
-    <symbol id="ueb-i-file-sheet" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 12h9M8 16h9M11.5 12v7"/></symbol>
-    <symbol id="ueb-i-file-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></symbol>
-    <!-- Effectifs : un organigramme, soit exactement ce que l'onglet parcourt. -->
-    <symbol id="ueb-i-org" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v4M5 17v-2h14v2"/><path d="M12 11v4"/></symbol>
-    <symbol id="ueb-i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-    <symbol id="ueb-i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></symbol>
-    <symbol id="ueb-i-accessibility" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M4.5 8.5 12 10l7.5-1.5"/><path d="M12 10v4.5"/><path d="m8.5 21 3.5-6.5 3.5 6.5"/></symbol>
-</svg>
+<?php
+// Sprite d'icônes partagé avec le portail (inc/icons.php) :
+// une seule définition par icône pour tout le back-office.
+ueb_icons_sprite();
+?>
 
 <div class="admin-page">
 
-<?php if ( ! $ueb_is_authorized ) : ?>
 
-    <!-- ===== FORMULAIRE DE CONNEXION ===== -->
-    <div class="admin-login-wrap">
-        <h1>Espace gestion — Préinscriptions UEB</h1>
-
-        <?php if ( is_user_logged_in() && ! current_user_can( 'voir_preinscriptions' ) ) : ?>
-            <p class="admin-error" role="alert">
-                <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-alert"/></svg>
-                Votre compte n'a pas les droits nécessaires pour accéder à cette page.
-            </p>
-        <?php endif; ?>
-
-        <?php if ( $ueb_login_error ) : ?>
-            <p class="admin-error" role="alert">
-                <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-alert"/></svg>
-                <?php echo esc_html( $ueb_login_error ); ?>
-            </p>
-        <?php endif; ?>
-
-        <form method="post" action="<?php echo esc_url( get_permalink() ); ?>" class="admin-login-form">
-            <?php wp_nonce_field( 'ueb_admin_login', 'ueb_admin_login_nonce' ); ?>
-
-            <div class="form-group">
-                <label for="ueb_username">Identifiant</label>
-                <input type="text" id="ueb_username" name="ueb_username" required autofocus autocomplete="username">
-            </div>
-
-            <div class="form-group">
-                <label for="ueb_password">Mot de passe</label>
-                <input type="password" id="ueb_password" name="ueb_password" required autocomplete="current-password">
-            </div>
-
-            <button type="submit" name="ueb_admin_login" value="1" class="btn btn-primary">Se connecter</button>
-        </form>
-    </div>
-
-<?php else : ?>
 
     <!-- ===== TABLEAU DE BORD ===== -->
     <div class="admin-shell">
 
         <aside class="admin-sidebar">
             <div class="admin-sidebar-brand">
-                <span class="admin-sidebar-logo" aria-hidden="true">UEB</span>
+                <!-- Même sceau que le portail, sur pastille blanche. -->
+                <span class="admin-sidebar-logo admin-sidebar-logo--image" aria-hidden="true">
+                    <img src="<?php echo esc_url( preinscriptions_img( 'logo-ueb.webp' ) ); ?>" width="38" height="38" alt="" decoding="async">
+                </span>
                 <span class="admin-sidebar-brand-text">
                     <span class="admin-sidebar-mark">Préinscriptions</span>
                     <span class="admin-sidebar-title">Université d'Ébolowa</span>
@@ -151,23 +60,23 @@ get_header();
             <nav class="admin-sidebar-nav" role="tablist" aria-label="Sections du tableau de bord">
                 <span class="admin-sidebar-heading">Navigation</span>
 
-                <button type="button" class="admin-tab-btn active" data-tab="stats"
+                <?php if ( ueb_access_has( array( 'ueb_section_stats', 'ueb_view_stats' ) ) ) : ?><button type="button" class="admin-tab-btn active" data-tab="stats"
                         role="tab" aria-selected="true" aria-controls="admin-tab-stats" id="admin-tabbtn-stats">
                     <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-overview"/></svg>
                     Vue d'ensemble
-                </button>
+                </button><?php endif; ?>
 
-                <button type="button" class="admin-tab-btn" data-tab="effectifs"
+                <?php if ( ueb_access_has( array( 'ueb_section_effectifs', 'ueb_view_stats' ) ) ) : ?><button type="button" class="admin-tab-btn" data-tab="effectifs"
                         role="tab" aria-selected="false" aria-controls="admin-tab-effectifs" id="admin-tabbtn-effectifs">
                     <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-org"/></svg>
                     Effectifs
-                </button>
+                </button><?php endif; ?>
 
-                <button type="button" class="admin-tab-btn" data-tab="liste"
+                <?php if ( ueb_access_has( array( 'ueb_section_dossiers', 'ueb_view_students' ) ) ) : ?><button type="button" class="admin-tab-btn" data-tab="liste"
                         role="tab" aria-selected="false" aria-controls="admin-tab-liste" id="admin-tabbtn-liste">
                     <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-list"/></svg>
                     Dossiers
-                </button>
+                </button><?php endif; ?>
             </nav>
 
             <div class="admin-sidebar-footer">
@@ -175,10 +84,10 @@ get_header();
                     <span class="admin-sidebar-user-avatar" aria-hidden="true"><?php echo esc_html( mb_substr( $ueb_user->display_name, 0, 1 ) ); ?></span>
                     <span class="admin-sidebar-user-meta">
                         <span class="admin-sidebar-user-name"><?php echo esc_html( $ueb_user->display_name ); ?></span>
-                        <span class="admin-sidebar-user-role">Gestionnaire</span>
+                        <span class="admin-sidebar-user-role"><?php echo esc_html( ueb_access_role_label() ); ?></span>
                     </span>
                 </div>
-                <a href="<?php echo esc_url( wp_logout_url( get_permalink() ) ); ?>" class="admin-sidebar-logout">
+                <a href="<?php echo esc_url( ueb_portal_url( 'logout', array( 'nonce' => wp_create_nonce( 'ueb_logout' ) ) ) ); ?>" class="admin-sidebar-logout">
                     <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-logout"/></svg>
                     Déconnexion
                 </a>
@@ -193,7 +102,7 @@ get_header();
                     <p class="admin-subtitle">Préinscriptions — Université d'Ébolowa</p>
                 </div>
 
-                <div class="admin-topbar-actions">
+                <div class="admin-topbar-actions"><a class="admin-tbtn" href="<?php echo esc_url( ueb_portal_home() ); ?>">Mon espace</a>
                     <button type="button" id="admin-theme-toggle" class="admin-tbtn admin-tbtn--icon"
                             aria-label="Basculer entre le thème clair et sombre" title="Thème clair / sombre">
                         <svg class="admin-icon admin-theme-icon--moon" aria-hidden="true"><use href="#ueb-i-moon"/></svg>
@@ -202,7 +111,7 @@ get_header();
 
                     <!-- Export de la liste filtrée : le format est un choix,
                          pas un réglage caché — les trois sont donnés d'emblée. -->
-                    <div class="admin-export" id="admin-export-wrap">
+                    <?php if ( ueb_access_has( 'ueb_export_students' ) ) : ?><div class="admin-export" id="admin-export-wrap">
                         <button type="button" id="admin-export" class="admin-tbtn"
                                 aria-haspopup="menu" aria-expanded="false" aria-controls="admin-export-menu">
                             <svg class="admin-icon admin-icon--sm" aria-hidden="true"><use href="#ueb-i-download"/></svg>
@@ -246,7 +155,7 @@ get_header();
                         </div>
 
                         <p id="admin-export-status" class="admin-export-status" role="status" aria-live="polite" hidden></p>
-                    </div>
+                    </div><?php endif; ?>
 
                     <button type="button" id="admin-filter-toggle" class="admin-tbtn admin-tbtn--primary"
                             aria-controls="admin-filter-drawer" aria-expanded="false">
@@ -261,7 +170,7 @@ get_header();
             <div id="admin-active-filters" class="admin-active-filters" aria-live="polite"></div>
 
             <!-- ===== VUE D'ENSEMBLE ===== -->
-            <div id="admin-tab-stats" class="admin-tab-panel active" role="tabpanel" aria-labelledby="admin-tabbtn-stats" tabindex="-1">
+            <?php if ( ueb_access_has( array( 'ueb_section_stats', 'ueb_view_stats' ) ) ) : ?><div id="admin-tab-stats" class="admin-tab-panel active" role="tabpanel" aria-labelledby="admin-tabbtn-stats" tabindex="-1">
 
                 <div id="admin-kpi-grid" class="admin-kpi-grid admin-stagger">
                     <!-- Squelettes : la place est réservée dès le premier rendu,
@@ -275,7 +184,7 @@ get_header();
 
                 <div class="admin-charts-grid admin-stagger">
 
-                    <section class="admin-chart-card admin-chart-card--full">
+                    <?php if ( ueb_access_has( 'ueb_view_trends' ) ) : ?><section class="admin-chart-card admin-chart-card--full">
                         <div class="admin-chart-head">
                             <div>
                                 <h2 class="admin-chart-title">Évolution des dépôts</h2>
@@ -284,7 +193,7 @@ get_header();
                             <span class="admin-chart-total" data-total-for="chart-evolution"></span>
                         </div>
                         <div class="admin-chart-body"><canvas id="chart-evolution"></canvas></div>
-                    </section>
+                    </section><?php endif; ?>
 
                     <section class="admin-chart-card admin-chart-card--third">
                         <div class="admin-chart-head">
@@ -337,7 +246,7 @@ get_header();
                     </section>
 
                 </div>
-            </div>
+            </div><?php endif; ?>
 
             <!-- ===== EFFECTIFS =====
                  Un même gabarit sert les quatre paliers de l'organigramme
@@ -346,7 +255,7 @@ get_header();
                  Tout le contenu est peint par admin-effectifs.js à partir de
                  la base ; ce balisage ne pose que la coque et les squelettes,
                  pour que la place soit réservée avant la première réponse. -->
-            <div id="admin-tab-effectifs" class="admin-tab-panel" role="tabpanel" aria-labelledby="admin-tabbtn-effectifs" tabindex="-1">
+            <?php if ( ueb_access_has( array( 'ueb_section_effectifs', 'ueb_view_stats' ) ) ) : ?><div id="admin-tab-effectifs" class="admin-tab-panel" role="tabpanel" aria-labelledby="admin-tabbtn-effectifs" tabindex="-1">
 
                 <!-- Fil du parcours : chaque palier traversé garde son
                      effectif sous les yeux, pour que « 96 » se lise toujours
@@ -408,10 +317,10 @@ get_header();
                     </section>
 
                 </div>
-            </div>
+            </div><?php endif; ?>
 
             <!-- ===== DOSSIERS ===== -->
-            <div id="admin-tab-liste" class="admin-tab-panel" role="tabpanel" aria-labelledby="admin-tabbtn-liste" tabindex="-1">
+            <?php if ( ueb_access_has( array( 'ueb_section_dossiers', 'ueb_view_students' ) ) ) : ?><div id="admin-tab-liste" class="admin-tab-panel" role="tabpanel" aria-labelledby="admin-tabbtn-liste" tabindex="-1">
 
                 <div class="admin-liste-toolbar">
                     <div class="admin-search">
@@ -424,9 +333,10 @@ get_header();
                     <div id="admin-results-count" class="admin-results-count" aria-live="polite">Chargement…</div>
                 </div>
 
+                <?php require get_template_directory() . '/templates/admin-duplicates.php'; ?>
                 <div id="admin-liste-container"></div>
                 <div id="admin-pagination" class="admin-pagination"></div>
-            </div>
+            </div><?php endif; ?>
 
         </div>
     </div>
@@ -570,7 +480,7 @@ get_header();
         </div>
     </div>
 
-<?php endif; ?>
+
 
 </div>
 

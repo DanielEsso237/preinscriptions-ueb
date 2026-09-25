@@ -25,6 +25,7 @@ function ueb_templates_non_indexables() {
         'page-administration.php',
         'page-compte-rebours.php',
         'page-maintenance.php',
+        'templates/access-portal.php',
     );
 }
 
@@ -67,7 +68,7 @@ add_action( 'wp_head', function() {
  * Version du theme, utilisee pour le versioning des assets (cache busting).
  */
 if ( ! defined( 'PREINSCRIPTIONS_VERSION' ) ) {
-    define( 'PREINSCRIPTIONS_VERSION', '1.4.6' );
+    define( 'PREINSCRIPTIONS_VERSION', '1.6.0' );
 }
 
 /**
@@ -156,7 +157,7 @@ function preinscriptions_form_assets() {
             'preinscriptions-form',
             get_template_directory_uri() . '/assets/css/form-preinscription.css',
             array( 'preinscriptions-style' ),
-            '2.4'
+            '2.5'
         );
         wp_enqueue_script(
             'preinscriptions-form',
@@ -165,7 +166,7 @@ function preinscriptions_form_assets() {
             // À incrémenter à CHAQUE modification de form-preinscription.js :
             // sans ça les navigateurs des candidats rejouent le fichier en
             // cache (c'est ce qui a masqué le correctif GCE, cf. 27d0c59).
-            '4.11',
+            '4.12',
             true
         );
 
@@ -186,21 +187,25 @@ require_once( get_template_directory() . '/inc/analytics-functions.php' );
  * pour les comptes ayant la capacité 'voir_preinscriptions'.
  */
 function preinscriptions_admin_assets() {
-    if ( ! is_page_template( 'page-administration.php' ) ) return;
+    if ( ! ueb_access_is_admin_page() ) return;
 
     wp_enqueue_style( 'preinscriptions-admin', get_template_directory_uri() . '/assets/css/admin-dashboard.css', array( 'preinscriptions-style' ), PREINSCRIPTIONS_VERSION );
 
-    if ( ! is_user_logged_in() || ! current_user_can( 'voir_preinscriptions' ) ) return;
+    if ( ! is_user_logged_in() || ! ueb_access_has_admin() ) return;
 
     wp_enqueue_script( 'chartjs', get_template_directory_uri() . '/assets/js/vendor/chart.umd.min.js', array(), '4.4.0', true );
     wp_enqueue_script( 'preinscriptions-admin-analytics', get_template_directory_uri() . '/assets/js/admin-analytics.js', array( 'chartjs' ), PREINSCRIPTIONS_VERSION, true );
     wp_enqueue_script( 'preinscriptions-admin-effectifs', get_template_directory_uri() . '/assets/js/admin-effectifs.js', array( 'chartjs', 'preinscriptions-admin-analytics' ), PREINSCRIPTIONS_VERSION, true );
-    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs', 'preinscriptions-admin-analytics', 'preinscriptions-admin-effectifs' ), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_style( 'preinscriptions-admin-duplicates', get_template_directory_uri() . '/assets/css/admin-duplicates.css', array( 'preinscriptions-admin' ), filemtime( get_template_directory() . '/assets/css/admin-duplicates.css' ) );
+    wp_enqueue_script( 'preinscriptions-admin-duplicates', get_template_directory_uri() . '/assets/js/admin-duplicates.js', array( 'preinscriptions-admin-effectifs' ), filemtime( get_template_directory() . '/assets/js/admin-duplicates.js' ), true );
+    wp_enqueue_script( 'preinscriptions-admin-dashboard', get_template_directory_uri() . '/assets/js/admin-dashboard.js', array( 'chartjs', 'preinscriptions-admin-analytics', 'preinscriptions-admin-effectifs', 'preinscriptions-admin-duplicates' ), filemtime( get_template_directory() . '/assets/js/admin-dashboard.js' ), true );
 
     wp_localize_script( 'preinscriptions-admin-effectifs', 'uebAdminDashboard', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'ueb_admin_dashboard' ),
         'refs'     => ueb_admin_get_reference_lists(),
+        'duplicates' => array( 'view' => ueb_access_has( array( 'ueb_view_students', 'ueb_view_duplicates' ) ), 'manage' => ueb_access_has( array( 'ueb_view_students', 'ueb_view_duplicates', 'ueb_manage_duplicates' ) ), 'configure' => ueb_access_has( 'ueb_configure_duplicates' ) && null === ueb_access_scope( 'ueb_configure_duplicates' ), 'settings' => ueb_duplicates_settings() ),
+        'permissions' => array( 'stats' => ueb_access_has( array( 'ueb_section_stats', 'ueb_view_stats' ) ), 'liste' => ueb_access_has( array( 'ueb_section_dossiers', 'ueb_view_students' ) ), 'effectifs' => ueb_access_has( array( 'ueb_section_effectifs', 'ueb_view_stats' ) ) ),
     ) );
 }
 
@@ -272,12 +277,12 @@ add_action( 'wp_enqueue_scripts', 'preinscriptions_admin_assets' );
  * juste le complément propre à cette page.
  */
 function preinscriptions_references_assets() {
-    if ( ! is_page_template( 'page-references.php' ) ) return;
+    if ( ! ueb_access_is_ref_page() ) return;
 
     wp_enqueue_style( 'preinscriptions-admin', get_template_directory_uri() . '/assets/css/admin-dashboard.css', array( 'preinscriptions-style' ), PREINSCRIPTIONS_VERSION );
     wp_enqueue_style( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/css/admin-references.css', array( 'preinscriptions-admin' ), PREINSCRIPTIONS_VERSION );
 
-    if ( ! is_user_logged_in() || ! current_user_can( 'manage_options' ) ) return;
+    if ( ! is_user_logged_in() || ! ueb_access_has_refs() ) return;
 
     wp_enqueue_script( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/js/admin-references.js', array(), PREINSCRIPTIONS_VERSION, true );
 
@@ -304,11 +309,11 @@ add_action( 'wp_enqueue_scripts', 'preinscriptions_references_assets' );
  * @return bool
  */
 function ueb_est_dashboard_plein_ecran() {
-    if ( is_page_template( 'page-administration.php' ) ) {
-        return is_user_logged_in() && current_user_can( 'voir_preinscriptions' );
+    if ( ueb_access_is_admin_page() ) {
+        return is_user_logged_in() && ueb_access_has_admin();
     }
-    if ( is_page_template( 'page-references.php' ) ) {
-        return is_user_logged_in() && current_user_can( 'manage_options' );
+    if ( ueb_access_is_ref_page() ) {
+        return is_user_logged_in() && ueb_access_has_refs();
     }
     return false;
 }
@@ -332,7 +337,7 @@ function ueb_est_dashboard_plein_ecran() {
  * thème.
  */
 function preinscriptions_admin_theme_boot() {
-    if ( ! is_page_template( 'page-administration.php' ) && ! is_page_template( 'page-references.php' ) ) return;
+    if ( ! ueb_access_is_admin_page() && ! ueb_access_is_ref_page() && ! ueb_portal_route() ) return;
     ?>
     <script>
     (function () {
@@ -373,25 +378,10 @@ function preinscriptions_register_cpt() {
 }
 add_action( 'init', 'preinscriptions_register_cpt' );
 
-/* ── Création du rôle "Gestionnaire Préinscriptions" ── */
-function ueb_register_roles() {
-    add_role(
-        'gestionnaire_preinscriptions',
-        'Gestionnaire Préinscriptions',
-        array(
-            'read'                 => true,  // accès de base à l'admin WP
-            'voir_preinscriptions' => true,
-        )
-    );
+// Les rôles métier sont créés depuis le portail ; migration additive des
+// rôles historiques dans inc/access-control.php, sans rôle métier figé.
 
-    // Donner aussi la capacité aux administrateurs
-    $admin = get_role( 'administrator' );
-    if ( $admin ) {
-        $admin->add_cap( 'voir_preinscriptions' );
-    }
-}
-add_action( 'after_switch_theme', 'ueb_register_roles' );
-
+require_once( get_template_directory() . '/inc/icons.php' );
 require_once( get_template_directory() . '/inc/db-functions.php' );
 require_once( get_template_directory() . '/inc/pdf-functions.php' );
 require_once( get_template_directory() . '/inc/quitus-pdf-functions.php' );
@@ -409,6 +399,10 @@ require_once( get_template_directory() . '/inc/admin-references-ajax.php' );
 require_once( get_template_directory() . '/inc/export-functions.php' );
 require_once( get_template_directory() . '/inc/export-office.php' );
 require_once( get_template_directory() . '/inc/social-medias-functions.php' );
+require_once get_template_directory() . '/inc/access-control.php';
+require_once get_template_directory() . '/inc/duplicates-functions.php';
+require_once get_template_directory() . '/inc/duplicates-ajax.php';
+require_once get_template_directory() . '/inc/access-portal.php';
 
 /* =========================================================
    SEO DU SITE

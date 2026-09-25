@@ -18,10 +18,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  * chaque handler AJAX de ce fichier.
  */
 function ueb_admin_ajax_check_access() {
-    if ( ! is_user_logged_in() || ! current_user_can( 'voir_preinscriptions' ) ) {
-        wp_send_json_error( array( 'message' => 'Accès refusé.' ), 403 );
+    $action = sanitize_key( $_REQUEST['action'] ?? '' );
+    if ( in_array( $action, array( 'ueb_admin_get_filieres', 'ueb_admin_get_specialites', 'ueb_admin_get_departements', 'ueb_admin_get_communes' ), true ) ) {
+        if ( ! is_user_logged_in() || ( ! ueb_access_has( 'ueb_view_stats' ) && ! ueb_access_has( 'ueb_view_students' ) && ! ueb_access_has( 'ueb_export_students' ) ) ) wp_send_json_error( array( 'message' => 'Accès refusé.' ), 403 );
+        check_ajax_referer( 'ueb_admin_dashboard', 'nonce' );
+        $id = absint( $_REQUEST['faculte_id'] ?? 0 );
+        if ( $id && ! ueb_access_contains( 'ueb_view_stats', $id ) && ! ueb_access_contains( 'ueb_view_students', $id ) && ! ueb_access_contains( 'ueb_export_students', $id ) ) wp_send_json_error( array( 'message' => 'Accès refusé.' ), 403 );
+        nocache_headers();
+        return;
     }
-    check_ajax_referer( 'ueb_admin_dashboard', 'nonce' );
+    ueb_access_require( ueb_access_endpoint_caps(), 'ueb_admin_dashboard' );
+    $id = absint( $_REQUEST['faculte'] ?? $_REQUEST['faculte_id'] ?? 0 );
+    if ( $id && ! ueb_access_contains( ueb_access_endpoint_caps(), $id ) ) wp_send_json_error( array( 'message' => 'Accès refusé.' ), 403 );
 }
 
 /**
@@ -34,7 +42,8 @@ function ueb_admin_ajax_extract_filters() {
         'faculte', 'diplome_admission', 'specialite_diplome', 'niveau_lmd', 'mention',
         'statut_etudiant', 'nationalite', 'premiere_langue', 'situation_matrimoniale',
         'statut_socio_professionnel', 'region_origine', 'departement_origine', 'commune_origine',
-        'sport_prefere', 'art_pratique', 'filiere', 'type_formation', 'sexe', 'handicap',
+        'sport_prefere', 'art_pratique', 'filiere', 'type_formation', 'sexe', 'handicap', 'statut',
+        'duplicates', 'duplicate_status', 'date_from', 'date_to',
     );
 
     // $_REQUEST et non $_POST : l'export CSV historique s'appelle en GET
@@ -43,6 +52,16 @@ function ueb_admin_ajax_extract_filters() {
     $filters = array();
     foreach ( $keys as $key ) {
         $filters[ $key ] = isset( $_REQUEST[ $key ] ) ? sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) ) : '';
+    }
+
+    // Une FK de filtre forgée ne doit pas révéler un libellé hors portée
+    // dans l'en-tête d'un export, même lorsque le résultat est vide.
+    global $wpdb;
+    foreach ( array( 'filiere' => 'ueb_filieres', 'specialite_diplome' => 'ueb_specialites_diplome', 'diplome_admission' => 'ueb_diplomes_admission' ) as $key => $table ) {
+        if ( empty( $filters[ $key ] ) ) continue;
+        $scope = ueb_access_sql( 'faculte_id', ueb_access_endpoint_caps() );
+        if ( 'diplome_admission' === $key ) $scope = '(' . $scope . ' OR faculte_id IS NULL)';
+        if ( ! $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d AND {$scope}", absint( $filters[ $key ] ) ) ) ) wp_send_json_error( array( 'message' => 'Filtre non autorisé.' ), 403 );
     }
 
     return $filters;
@@ -63,9 +82,16 @@ function ueb_admin_ajax_get_dossiers() {
 
     $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, $page, 25, $orderby, $order );
 
+    if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 403 );
+    // Une seule lecture du contexte doublons pour toute la page, avant la
+    // boucle : ueb_duplicates_row_meta() se contente ensuite du cache.
+    ueb_duplicates_preload( wp_list_pluck( $result['rows'], 'id' ) );
+
     $rows = array();
     foreach ( $result['rows'] as $row ) {
         $rows[] = array(
+            'id' => (int) $row->id,
+            'duplicate' => ueb_duplicates_row_meta( $row ),
             'numero_dossier' => $row->numero_dossier,
             'nom'            => $row->nom,
             'prenom'         => $row->prenom,
@@ -73,10 +99,13 @@ function ueb_admin_ajax_get_dossiers() {
             'faculte'        => $row->faculte_nom,
             'filiere'        => $row->filiere1_libelle,
             'date_creation'  => $row->date_creation,
+            'statut'         => $row->statut,
         );
     }
 
     wp_send_json_success( array(
+        'duplicates' => $result['duplicates'] ?? null,
+        'hidden_disabled' => ueb_duplicates_hidden_count( $filters, $recherche ),
         'rows'     => $rows,
         'total'    => $result['total'],
         'page'     => $result['page'],
@@ -106,6 +135,7 @@ function ueb_admin_ajax_export_csv() {
     // 1 page de très grande taille = tout le résultat filtré.
     $result = ueb_admin_get_dossiers_filtres( $filters, $recherche, 1, 100000, $orderby, $order );
 
+    if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 403 );
     $nom_fichier = 'preinscriptions-ueb-' . date_i18n( 'Y-m-d-Hi' ) . '.csv';
 
     nocache_headers();
@@ -121,7 +151,7 @@ function ueb_admin_ajax_export_csv() {
     fputcsv( $sortie, array( 'N° dossier', 'Nom', 'Prénom', 'Sexe', 'Faculté', 'Filière (1er choix)', 'Date de création' ), ';' );
 
     foreach ( $result['rows'] as $row ) {
-        fputcsv( $sortie, array(
+        fputcsv( $sortie, array_map( 'ueb_export_csv_cell', array(
             $row->numero_dossier,
             $row->nom,
             $row->prenom,
@@ -129,7 +159,7 @@ function ueb_admin_ajax_export_csv() {
             $row->faculte_nom,
             $row->filiere1_libelle,
             $row->date_creation,
-        ), ';' );
+        ) ), ';' );
     }
 
     fclose( $sortie );
@@ -192,7 +222,7 @@ function ueb_admin_ajax_get_stats() {
         'parFiliere'  => ueb_admin_stats_par_filiere( $filters ),
         'parRegion'   => ueb_admin_stats_par_region( $filters ),
         'parSexe'     => ueb_admin_stats_par_sexe( $filters ),
-        'evolution'   => ueb_admin_stats_evolution( $filters ),
+        'evolution'   => ueb_access_has( 'ueb_view_trends' ) ? ueb_admin_stats_evolution( $filters ) : array(),
         'faculteSexe' => ueb_admin_stats_faculte_sexe( $filters ),
     ) );
 }
