@@ -1,241 +1,1021 @@
 /* =========================================================================
-   PAGE "GESTION DES RÉFÉRENCES" — page-references.php
-   Complément à admin-dashboard.css (chargé en dépendance juste avant ce
-   fichier) : réutilise ses tokens de couleur et ses composants génériques
-   (boutons, tableau, modale, états, squelettes) et n'ajoute ici que ce qui
-   est propre à cette page : la coquille sans sidebar, la navigation par
-   table de référence, les boutons d'action icône et le formulaire
-   d'ajout/modification.
+   PAGE « RÉFÉRENTIELS » — page-references.php
+   Complément à admin-dashboard.css (chargé juste avant) : mêmes tokens
+   --ueb-*, même coque (barre latérale vert nuit + zone claire), mêmes
+   composants (boutons, modale, squelettes, états). Ce fichier n'ajoute que
+   ce qui est propre à cette page.
+
+   Parti pris : la barre latérale EST l'index des tables, avec le nombre de
+   lignes de chacune. C'est le seul élément appuyé de la page ; le panneau
+   de données, lui, reste sobre et dense, comme un outil qu'on utilise tous
+   les jours.
+
+   Sommaire
+     1. Tokens locaux
+     2. Index des tables (barre latérale)
+     3. En-tête de la table courante
+     4. Panneau : barre d'outils, filtres
+     5. Tableau
+     6. Pied du panneau : plage et pagination
+     7. Formulaire d'ajout / modification
+     8. Confirmation de suppression
+     9. Messages (toasts)
+     10. Responsive
+     11. Mouvement réduit
    ========================================================================= */
 
 /* -------------------------------------------------------------------------
-   Coquille sans sidebar — cette page n'a qu'une seule vue, une sidebar de
-   navigation entre onglets n'a pas de sens ici.
+   1. TOKENS LOCAUX
    ------------------------------------------------------------------------- */
-.admin-shell--simple {
-    grid-template-columns: 1fr;
+.ref-page {
+    --ref-on-danger:  #ffffff;
+    --ref-success-wash: rgba(31, 111, 67, .1);
+    /* Les toasts sont en négatif du thème : leurs icônes suivent donc le
+       fond inverse, pas le fond de la page. */
+    --ref-toast-ok:   #8fd3a8;
+    --ref-toast-err:  #f4a29b;
+    /* Le panneau occupe toute la largeur disponible : plafonné, il laissait
+       une bande vide à droite sur les grands écrans. */
+    --ref-content-max: none;
 }
-
-/* Bouton secondaire — .btn-secondary n'est défini dans aucune feuille de
-   style chargée sur cette page (form-preinscription.css et
-   landing-page.css, qui le définissent, ne sont pas enqueue ici). */
-.admin-page .btn-secondary {
-    background: var(--ueb-surface);
-    border: 1px solid var(--ueb-border-strong);
-    color: var(--ueb-text);
-}
-.admin-page .btn-secondary:hover {
-    background: var(--ueb-surface-hover);
-    border-color: var(--ueb-primary);
+:root[data-ueb-theme="dark"] .ref-page {
+    --ref-on-danger:  #1a0806;
+    --ref-success-wash: rgba(92, 179, 126, .14);
+    --ref-toast-ok:   #1f6f43;
+    --ref-toast-err:  #b3261e;
 }
 
 /* -------------------------------------------------------------------------
-   Navigation par table de référence, groupée par catégorie
+   2. INDEX DES TABLES (barre latérale)
    ------------------------------------------------------------------------- */
-.admin-ref-layout {
-    display: grid;
-    grid-template-columns: 210px minmax(0, 1fr);
-    gap: 1.4rem;
-    align-items: start;
+/* Sceau posé sur une pastille blanche : ses traits foncés disparaîtraient
+   sur le vert nuit. Même traitement que dans le portail. */
+.ref-brand-logo {
+    background: #ffffff;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, .25);
+}
+.ref-brand-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.ref-sidebar { padding-bottom: 1.2rem; }
+
+.ref-nav-toggle { display: none; }
+
+.ref-nav {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 .8rem 1.4rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .18) transparent;
 }
 
-.admin-ref-nav {
-    background: var(--ueb-surface);
-    border: 1px solid var(--ueb-border);
-    border-radius: var(--ueb-radius);
-    box-shadow: var(--ueb-shadow-sm);
-    padding: .9rem .7rem;
-    position: sticky;
-    top: 1.2rem;
+/* La liste défile quand l'écran est court : un fondu en bas le signale,
+   plutôt qu'une coupure nette au milieu d'un intitulé. */
+.ref-nav.is-scrollable {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.2rem), transparent);
+            mask-image: linear-gradient(to bottom, #000 calc(100% - 2.2rem), transparent);
+}
+.ref-nav.is-scrollable.is-end {
+    -webkit-mask-image: none;
+            mask-image: none;
+}
+
+.ref-nav-group + .ref-nav-group { margin-top: .7rem; }
+.ref-nav-heading {
+    display: block;
+    padding: .2rem .75rem .4rem;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ueb-nav-text);
+    opacity: .72;
+}
+
+.ref-nav-item {
+    position: relative;
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    gap: .3rem;
-}
-.admin-ref-nav-group + .admin-ref-nav-group { margin-top: .5rem; }
-.admin-ref-nav-heading {
-    display: block;
-    font-size: .66rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--ueb-text-muted);
-    padding: .35rem .6rem .3rem;
-}
-.admin-ref-nav-btn {
-    display: block;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
     width: 100%;
-    text-align: left;
+    min-height: 34px;
+    padding: .4rem .75rem;
     background: transparent;
     border: none;
     border-radius: var(--ueb-radius-sm);
-    padding: .5rem .6rem;
     font-family: inherit;
-    font-size: .85rem;
+    font-size: .86rem;
     font-weight: 500;
-    color: var(--ueb-text-soft);
+    line-height: 1.3;
+    text-align: left;
+    color: var(--ueb-nav-text);
     cursor: pointer;
     transition: background var(--ueb-fast) var(--ueb-ease),
-                color var(--ueb-fast) var(--ueb-ease);
+                color var(--ueb-normal) var(--ueb-ease);
 }
-.admin-ref-nav-btn:hover { background: var(--ueb-surface-hover); color: var(--ueb-text); }
-.admin-ref-nav-btn.active {
-    background: var(--ueb-primary-wash);
-    color: var(--ueb-primary);
-    font-weight: 700;
-}
-
-.admin-ref-content { min-width: 0; }
-.admin-ref-empty { color: var(--ueb-text-muted); }
-
-/* Actions (modifier / supprimer) : icônes seules, gabarit carré compact,
-   même logique de couleurs que le reste du dashboard (danger = suppression). */
-.admin-ref-row-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: .35rem;
-}
-.admin-icon-btn {
-    display: inline-grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
+.ref-nav-item:hover { background: var(--ueb-nav-hover); color: var(--ueb-nav-text-hi); }
+.ref-nav-item.active,
+.ref-nav-item.active:hover {
     background: transparent;
-    border: 1px solid var(--ueb-border-strong);
-    border-radius: var(--ueb-radius-sm);
-    color: var(--ueb-text-soft);
-    cursor: pointer;
-    transition: background var(--ueb-fast) var(--ueb-ease),
-                border-color var(--ueb-fast) var(--ueb-ease),
-                color var(--ueb-fast) var(--ueb-ease);
+    color: var(--ueb-nav-active-tx);
+    font-weight: 600;
 }
-.admin-icon-btn:hover { background: var(--ueb-surface-hover); border-color: var(--ueb-primary); color: var(--ueb-primary); }
-.admin-icon-btn--danger:hover { background: var(--ueb-danger-wash); border-color: var(--ueb-danger); color: var(--ueb-danger); }
-.admin-icon-btn:active { transform: scale(.94); }
+/* Sans l'indicateur (JS pas encore prêt), l'élément actif porte son fond. */
+.ref-nav:not(.has-indicator) .ref-nav-item.active { background: var(--ueb-nav-active-bg); }
 
-/* -------------------------------------------------------------------------
-   Barre de filtres (#admin-ref-filtres), construite par le JS pour les
-   colonnes à valeurs fermées de la table courante. Masquée via [hidden]
-   pour les tables qui n'en ont aucune.
-   ------------------------------------------------------------------------- */
-.admin-ref-filtres {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: .7rem;
-    margin-bottom: 1rem;
-    padding: .8rem .9rem;
-    background: var(--ueb-surface-2);
-    border: 1px solid var(--ueb-border);
-    border-radius: var(--ueb-radius-sm);
+.ref-nav-count {
+    flex-shrink: 0;
+    font-size: .76rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: .75;
 }
-.admin-ref-filtre {
+.ref-nav-item.active .ref-nav-count { opacity: .85; }
+
+.ref-page :where(.ref-nav) :focus-visible {
+    outline-color: var(--ueb-nav-active-bg);
+}
+
+/* Pastille or qui glisse d'une table à l'autre : le mouvement relie ce qui
+   était ouvert à ce qui s'ouvre. Positionnée en JS (--y, --h). */
+.ref-nav-indicator {
+    position: absolute;
+    top: 0;
+    left: .8rem;
+    right: .8rem;
+    height: var(--h, 36px);
+    transform: translate3d(0, var(--y, 0), 0);
+    background: var(--ueb-nav-active-bg);
+    border-radius: var(--ueb-radius-sm);
+    z-index: 0;
+    pointer-events: none;
+}
+.ref-nav.is-ready .ref-nav-indicator {
+    transition: transform var(--ueb-slow) var(--ueb-ease),
+                height var(--ueb-fast) var(--ueb-ease);
+}
+
+/* Compte, en pied de barre. Une seule grille pour tout le bloc : même
+   retrait que les tables de l'index (.8rem + .75rem), une case de 32 px
+   pour l'avatar comme pour les icônes, et tous les textes qui démarrent
+   sur la même verticale. */
+.ref-account {
     display: flex;
     flex-direction: column;
-    gap: .3rem;
-    min-width: 180px;
+    gap: .2rem;
+    margin-top: 0;
+    padding: .85rem .8rem 0;
 }
-.admin-ref-filtre-label {
-    font-size: .78rem;
+.ref-account-user {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    padding: .2rem .75rem .6rem;
+    min-width: 0;
+}
+.ref-account-meta {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    min-width: 0;
+    padding-top: .05rem;
+}
+.ref-account-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .88rem;
     font-weight: 600;
+    line-height: 1.3;
+    color: var(--ueb-nav-text-hi);
+}
+.ref-account-role {
+    font-size: .76rem;
+    line-height: 1.35;
+    color: var(--ueb-nav-text);
+    overflow-wrap: anywhere;
+}
+
+.ref-account-actions {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    padding-top: .45rem;
+    border-top: 1px solid var(--ueb-nav-border);
+}
+.ref-account-btn {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    min-height: 38px;
+    padding: .3rem .75rem;
+    border-radius: var(--ueb-radius-sm);
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--ueb-nav-text);
+    text-decoration: none;
+    transition: background var(--ueb-fast) var(--ueb-ease), color var(--ueb-fast) var(--ueb-ease);
+}
+.ref-account-btn:hover { background: var(--ueb-nav-hover); color: var(--ueb-nav-text-hi); }
+.ref-page .ref-account-btn:focus-visible { outline-color: var(--ueb-nav-active-bg); }
+.ref-account-ico {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+}
+
+/* -------------------------------------------------------------------------
+   3. EN-TÊTE DE LA TABLE COURANTE
+   ------------------------------------------------------------------------- */
+.ref-main { padding-top: 1.8rem; }
+
+.ref-head,
+.ref-panel { max-width: var(--ref-content-max); }
+
+.ref-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.4rem;
+}
+.ref-head-text { min-width: 0; }
+.ref-head-text.is-swapping { animation: ueb-fade var(--ueb-normal) var(--ueb-ease) both; }
+
+.ref-title-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .35rem .8rem;
+}
+.ref-title-row h1 {
+    margin: 0;
+    font-family: 'Sora', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    color: var(--ueb-text);
+}
+.ref-total {
+    font-size: .9rem;
+    font-weight: 500;
+    color: var(--ueb-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.ref-desc {
+    margin: .45rem 0 0;
+    max-width: 68ch;
+    font-size: .92rem;
+    line-height: 1.55;
+    color: var(--ueb-text-soft);
+}
+
+/* Liens entre tables : ce dont la table dépend, et ce qui s'appuie sur
+   elle. Ils disent l'effet d'une modification avant qu'on la fasse. */
+.ref-liens {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem 1.4rem;
+    margin-top: .85rem;
+}
+.ref-liens[hidden] { display: none; }
+.ref-liens-groupe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+.ref-liens-label {
+    font-size: .8rem;
     color: var(--ueb-text-muted);
 }
-.admin-ref-filtre-select {
-    min-height: 38px;
-    padding: .45rem .7rem;
-    border: 1px solid var(--ueb-border-strong);
-    border-radius: var(--ueb-radius-sm);
-    background: var(--ueb-surface);
-    color: var(--ueb-text);
-    font-family: inherit;
-    font-size: .88rem;
-    transition: border-color var(--ueb-fast) var(--ueb-ease),
-                box-shadow var(--ueb-fast) var(--ueb-ease);
-}
-.admin-ref-filtre-select:focus {
-    outline: none;
-    border-color: var(--ueb-primary);
-    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
-}
-/* N'apparaît que lorsqu'au moins un filtre est actif. */
-.admin-ref-filtre-reset {
+.ref-lien {
     display: inline-flex;
     align-items: center;
     gap: .35rem;
-    min-height: 38px;
-    padding: .45rem .8rem;
+    min-height: 30px;
+    padding: .25rem .7rem .25rem .55rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ueb-text);
+    cursor: pointer;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease),
+                background var(--ueb-fast) var(--ueb-ease);
+}
+.ref-lien .admin-icon { color: var(--ueb-text-muted); transition: color var(--ueb-fast) var(--ueb-ease); }
+.ref-lien:hover { border-color: var(--ueb-primary); color: var(--ueb-primary); background: var(--ueb-surface-hover); }
+.ref-lien:hover .admin-icon { color: var(--ueb-primary); }
+
+/* -------------------------------------------------------------------------
+   4. PANNEAU : BARRE D'OUTILS, FILTRES
+   ------------------------------------------------------------------------- */
+.ref-panel {
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius-lg);
+    box-shadow: var(--ueb-shadow);
+    overflow: hidden;
+}
+
+.ref-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    padding: .85rem 1rem;
+    border-bottom: 1px solid var(--ueb-border);
+}
+
+.ref-search {
+    flex: 1 1 260px;
+    min-width: 200px;
+    max-width: 380px;
+}
+.ref-search .admin-recherche-input {
+    min-height: 40px;
+    border-radius: 999px;
+    background: var(--ueb-surface-2);
+}
+.ref-search .admin-recherche-input:focus { background: var(--ueb-surface); }
+.ref-search .admin-recherche-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.ref-filtres {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+}
+.ref-filtres[hidden] { display: none; }
+
+/* Un filtre = une pastille qui porte son intitulé et sa valeur : on lit
+   « Faculté  FSEG » d'un seul regard, sans légende au-dessus. */
+.ref-filtre {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    min-height: 40px;
+    padding: 0 2.1rem 0 .95rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    font-size: .84rem;
+    cursor: pointer;
+    transition: border-color var(--ueb-fast) var(--ueb-ease),
+                background var(--ueb-fast) var(--ueb-ease),
+                box-shadow var(--ueb-fast) var(--ueb-ease);
+}
+.ref-filtre:hover { border-color: var(--ueb-primary); }
+.ref-filtre:focus-within {
+    border-color: var(--ueb-primary);
+    box-shadow: 0 0 0 3px var(--ueb-primary-wash);
+}
+.ref-filtre.is-active {
+    border-color: var(--ueb-primary);
+    background: var(--ueb-primary-wash);
+}
+.ref-filtre-label {
+    font-weight: 600;
+    color: var(--ueb-text);
+    white-space: nowrap;
+}
+.ref-filtre.is-active .ref-filtre-label { font-weight: 500; color: var(--ueb-text-muted); }
+.ref-filtre-valeur {
+    display: none;
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--ueb-primary);
+}
+.ref-filtre.is-active .ref-filtre-valeur { display: block; }
+.ref-page .ref-filtre-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    font-size: 16px; /* évite le zoom automatique d'iOS */
+    cursor: pointer;
+}
+.ref-page .ref-filtre-select:focus-visible { outline: none; }
+.ref-filtre > .admin-icon {
+    position: absolute;
+    right: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ueb-text-muted);
+    pointer-events: none;
+}
+
+.ref-filtres-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    min-height: 40px;
+    padding: .4rem .6rem;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+    cursor: pointer;
+    transition: color var(--ueb-fast) var(--ueb-ease), background var(--ueb-fast) var(--ueb-ease);
+}
+.ref-filtres-reset:hover { color: var(--ueb-primary); background: var(--ueb-surface-hover); }
+
+.ref-add { margin-left: auto; }
+.ref-toolbar.has-filtres-ligne .ref-add { order: 2; }
+.ref-toolbar.has-filtres-ligne .ref-filtres { order: 3; flex: 1 1 100%; }
+.ref-add[hidden] { display: none; }
+
+/* -------------------------------------------------------------------------
+   5. TABLEAU
+   ------------------------------------------------------------------------- */
+.ref-table-zone { position: relative; min-height: 120px; }
+.ref-table-zone.is-loading .ref-table { opacity: .5; transition: opacity var(--ueb-fast) var(--ueb-ease); }
+
+.ref-skeleton { padding: .6rem 1rem 1rem; }
+.ref-skeleton .admin-skeleton--row { height: 40px; margin-bottom: 6px; border-radius: var(--ueb-radius-sm); }
+
+.ref-table { font-size: .875rem; }
+/* En-têtes en casse normale : ils nomment des colonnes, ils n'ont pas à
+   crier. Même sélecteur que admin-dashboard.css, chargé après lui. */
+.ref-table thead th {
+    padding: .65rem 1rem;
+    background: var(--ueb-surface-2);
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ueb-text-muted);
+}
+.ref-table td { padding: .62rem 1rem; }
+.ref-table th:first-child,
+.ref-table td:first-child { padding-left: 1.15rem; }
+.ref-table tr:first-child td { border-top: none; }
+.ref-table tbody tr:focus-within { background: var(--ueb-surface-hover); }
+
+.ref-td-main { color: var(--ueb-text); font-weight: 500; }
+.ref-td-court { white-space: nowrap; }
+.ref-sigle {
+    font-family: 'Sora', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--ueb-text);
+    cursor: help;
+}
+.ref-td-num { font-variant-numeric: tabular-nums; }
+
+/* Codes : ils se lisent comme des identifiants, pas comme du texte. */
+.ref-code {
+    display: inline-block;
+    padding: .1rem .45rem;
+    background: var(--ueb-surface-2);
+    border: 1px solid var(--ueb-border);
+    border-radius: 6px;
+    font-family: 'Sora', sans-serif;
+    font-size: .76rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--ueb-text);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* État (actif, ouverte, affiché) : un point ET un mot, jamais la couleur
+   seule. */
+.ref-etat {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .14rem .6rem .14rem .5rem;
+    border-radius: 999px;
+    font-size: .76rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.ref-etat::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.ref-etat--on  { background: var(--ref-success-wash); color: var(--ueb-success); }
+.ref-etat--off { background: var(--ueb-surface-2); color: var(--ueb-text-muted); box-shadow: inset 0 0 0 1px var(--ueb-border); }
+
+.ref-vide { color: var(--ueb-text-muted); }
+.ref-muted { color: var(--ueb-text-muted); }
+
+.ref-url {
+    display: inline-block;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.ref-logo {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 3px;
+    background: #ffffff;
+    border: 1px solid var(--ueb-border);
+    border-radius: 9px;
+}
+.ref-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.ref-mark {
+    background: var(--ueb-accent-wash);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 .08em;
+}
+
+/* Actions de ligne : discrètes au repos, nettes au survol. */
+.ref-actions {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+}
+.ref-actions-inner { display: inline-flex; gap: .25rem; }
+.ref-act {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
     background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ueb-radius-sm);
+    color: var(--ueb-text-muted);
+    cursor: pointer;
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease),
+                transform var(--ueb-fast) var(--ueb-ease);
+}
+.ref-act:hover { background: var(--ueb-surface); border-color: var(--ueb-border-strong); color: var(--ueb-primary); }
+.ref-act--danger:hover { background: var(--ueb-danger-wash); border-color: transparent; color: var(--ueb-danger); }
+.ref-act:active { transform: scale(.94); }
+.ref-act[disabled] { opacity: .4; cursor: progress; }
+
+.ref-state-action { margin-top: .6rem; }
+
+/* -------------------------------------------------------------------------
+   6. PIED DU PANNEAU : PLAGE ET PAGINATION
+   ------------------------------------------------------------------------- */
+.ref-panel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem 1rem .7rem 1.15rem;
+    border-top: 1px solid var(--ueb-border);
+    background: var(--ueb-surface-2);
+    font-size: .82rem;
+    color: var(--ueb-text-muted);
+}
+.ref-panel-foot:empty { display: none; }
+.ref-range { font-variant-numeric: tabular-nums; }
+.ref-range strong { color: var(--ueb-text); font-weight: 600; }
+
+.ref-pager {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+.ref-pager-info {
+    min-width: 4.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.ref-page-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    background: var(--ueb-surface);
     border: 1px solid var(--ueb-border-strong);
     border-radius: var(--ueb-radius-sm);
     color: var(--ueb-text-soft);
-    font-family: inherit;
-    font-size: .85rem;
-    font-weight: 600;
     cursor: pointer;
     transition: background var(--ueb-fast) var(--ueb-ease),
                 border-color var(--ueb-fast) var(--ueb-ease),
                 color var(--ueb-fast) var(--ueb-ease);
 }
-.admin-ref-filtre-reset:hover {
-    background: var(--ueb-surface-hover);
-    border-color: var(--ueb-primary);
-    color: var(--ueb-primary);
-}
+.ref-page-btn:hover:not(:disabled) { border-color: var(--ueb-primary); color: var(--ueb-primary); }
+.ref-page-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* -------------------------------------------------------------------------
-   Formulaire d'ajout / modification, à l'intérieur de la modale partagée
-   (.admin-modal, définie dans admin-dashboard.css). Les champs reprennent
-   le même gabarit que l'écran de connexion, redéclaré ici car scopé à
-   #admin-ref-form (l'écran de connexion de CETTE page n'a pas cette classe).
+   7. FORMULAIRE D'AJOUT / MODIFICATION
    ------------------------------------------------------------------------- */
-#admin-ref-form .form-group { margin-bottom: 1rem; }
-#admin-ref-form .form-group:last-child { margin-bottom: 0; }
-#admin-ref-form label {
-    display: block;
-    margin-bottom: .35rem;
-    font-weight: 600;
-    font-size: .85rem;
-    color: var(--ueb-text-soft);
+.ref-modal .admin-modal-box { width: min(540px, 100%); }
+.ref-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
 }
-#admin-ref-form input,
-#admin-ref-form select {
+.ref-form .admin-modal-body { flex: 1 1 auto; padding-top: 1.25rem; }
+.ref-form .admin-error { margin-bottom: 1rem; }
+/* .admin-error est en display:flex : sans cette règle, [hidden] ne masque
+   rien et un bandeau vide reste affiché au-dessus des champs. */
+.ref-page .admin-error[hidden] { display: none; }
+
+.ref-form-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem .9rem;
+}
+.ref-field {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.ref-field--court { grid-column: span 1; }
+/* Une légende échappe à la mise en flex de son fieldset : l'écart avec
+   les choix se pose donc sur elle. */
+legend.ref-field-label { margin-bottom: .45rem; }
+
+.ref-field-label {
+    padding: 0;
+    margin-bottom: 0;
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--ueb-text);
+}
+.ref-opt {
+    margin-left: .35rem;
+    font-weight: 400;
+    color: var(--ueb-text-muted);
+}
+
+.ref-page .ref-input {
     width: 100%;
-    padding: .65rem .8rem;
+    min-height: 42px;
+    padding: .6rem .8rem;
+    background: var(--ueb-surface);
     border: 1px solid var(--ueb-border-strong);
     border-radius: var(--ueb-radius-sm);
-    background: var(--ueb-surface);
-    color: var(--ueb-text);
-    font-family: inherit;
     font-size: .92rem;
+    color: var(--ueb-text);
     transition: border-color var(--ueb-fast) var(--ueb-ease),
                 box-shadow var(--ueb-fast) var(--ueb-ease);
 }
-#admin-ref-form input:focus,
-#admin-ref-form select:focus {
+.ref-page .ref-input:hover { border-color: var(--ueb-text-muted); }
+.ref-page .ref-input:focus {
     outline: none;
     border-color: var(--ueb-primary);
     box-shadow: 0 0 0 3px var(--ueb-primary-wash);
 }
-.admin-ref-form-actions {
-    display: flex;
-    gap: .6rem;
-    margin-top: 1.3rem;
+.ref-page .ref-input[aria-invalid="true"] { border-color: var(--ueb-danger); }
+
+.ref-select { position: relative; }
+.ref-page .ref-select .ref-input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.3rem;
+    cursor: pointer;
 }
-.admin-ref-form-actions .btn { flex: 1; text-align: center; min-height: 42px; }
+.ref-select > .admin-icon {
+    position: absolute;
+    right: .8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ueb-text-muted);
+    pointer-events: none;
+}
+
+.ref-field-help {
+    margin: 0;
+    font-size: .78rem;
+    color: var(--ueb-text-muted);
+}
+.ref-field-error {
+    margin: 0;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--ueb-danger);
+}
+
+/* Choix fermés (Oui/Non, type, cycle) : tous visibles d'un coup, un clic
+   suffit — pas de liste déroulante pour deux ou quatre valeurs. */
+.ref-seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+.ref-seg-opt {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+}
+.ref-seg-opt span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 40px;
+    padding: .45rem .95rem;
+    background: var(--ueb-surface);
+    border: 1px solid var(--ueb-border-strong);
+    border-radius: 999px;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+    transition: background var(--ueb-fast) var(--ueb-ease),
+                border-color var(--ueb-fast) var(--ueb-ease),
+                color var(--ueb-fast) var(--ueb-ease);
+}
+.ref-seg-opt:hover span { border-color: var(--ueb-primary); color: var(--ueb-text); }
+.ref-seg-opt input:checked + span {
+    background: var(--ueb-primary);
+    border-color: var(--ueb-primary);
+    color: var(--ueb-on-primary);
+}
+.ref-seg-opt input:focus-visible + span {
+    outline: 2px solid var(--ueb-accent);
+    outline-offset: 2px;
+}
+
+.ref-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+    padding: .9rem 1.35rem;
+    border-top: 1px solid var(--ueb-border);
+    background: var(--ueb-surface-2);
+}
+.ref-modal-actions .btn { min-height: 42px; padding: .6rem 1.3rem; }
+.ref-page .btn.is-busy { cursor: progress; opacity: .75; }
 
 /* -------------------------------------------------------------------------
-   Responsive
+   8. CONFIRMATION DE SUPPRESSION
    ------------------------------------------------------------------------- */
-@media (max-width: 860px) {
-    .admin-ref-layout { grid-template-columns: 1fr; }
-    .admin-ref-nav {
-        position: static;
-        flex-direction: row;
+.ref-confirm .admin-modal-box { width: min(420px, 100%); }
+.ref-confirm-body { padding: 1.5rem 1.5rem 1.2rem; }
+.ref-confirm-ico {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--ueb-danger-wash);
+    color: var(--ueb-danger);
+}
+.ref-confirm-body h2 {
+    margin: .95rem 0 .4rem;
+    font-family: 'Sora', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--ueb-text);
+    overflow-wrap: anywhere;
+}
+.ref-confirm-body p {
+    margin: 0;
+    font-size: .88rem;
+    line-height: 1.55;
+    color: var(--ueb-text-soft);
+}
+.ref-confirm-body .admin-error { margin: 1rem 0 0; }
+
+.ref-page .ref-btn-danger {
+    background: var(--ueb-danger);
+    border-color: var(--ueb-danger);
+    color: var(--ref-on-danger);
+}
+.ref-page .ref-btn-danger:hover {
+    background: color-mix(in srgb, var(--ueb-danger) 86%, #000000);
+    border-color: color-mix(in srgb, var(--ueb-danger) 86%, #000000);
+}
+
+/* -------------------------------------------------------------------------
+   9. MESSAGES (TOASTS)
+   ------------------------------------------------------------------------- */
+.ref-toasts {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .5rem;
+    pointer-events: none;
+}
+.ref-toast {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    max-width: min(420px, calc(100vw - 2rem));
+    padding: .75rem 1.05rem .75rem .85rem;
+    background: var(--ueb-text);
+    color: var(--ueb-surface);
+    border-radius: var(--ueb-radius);
+    box-shadow: var(--ueb-shadow-lg);
+    font-size: .86rem;
+    font-weight: 500;
+    line-height: 1.4;
+    pointer-events: auto;
+    animation: ueb-rise var(--ueb-normal) var(--ueb-ease) both;
+}
+.ref-toast .admin-icon { color: var(--ref-toast-ok); }
+.ref-toast--error .admin-icon { color: var(--ref-toast-err); }
+.ref-toast.is-leaving { animation: ueb-modal-out var(--ueb-exit) var(--ueb-ease-in) both; }
+
+/* -------------------------------------------------------------------------
+   10. RESPONSIVE
+   ------------------------------------------------------------------------- */
+/* Tablette et téléphone : la barre latérale devient une barre du haut, et
+   l'index se replie derrière le nom de la table courante. */
+@media (max-width: 900px) {
+    .ref-sidebar {
+        position: sticky;
+        top: var(--ueb-chrome, 0px);
+        z-index: 30;
         flex-wrap: wrap;
-        gap: .4rem;
+        gap: .75rem;
+        padding: .65rem 1rem;
     }
-    .admin-ref-nav-group { display: contents; }
-    .admin-ref-nav-heading { display: none; }
-    .admin-ref-nav-btn { width: auto; border: 1px solid var(--ueb-border); border-radius: 999px; }
-    .admin-ref-filtre { min-width: 0; flex: 1 1 100%; }
-    .admin-ref-filtre-reset { flex: 1 1 100%; justify-content: center; }
+    .ref-nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .6rem;
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 44px;
+        padding: .35rem .9rem;
+        background: var(--ueb-nav-hover);
+        border: 1px solid var(--ueb-nav-border);
+        border-radius: var(--ueb-radius-sm);
+        font-family: inherit;
+        color: var(--ueb-nav-text-hi);
+        cursor: pointer;
+        text-align: left;
+    }
+    .ref-nav-toggle-text { display: flex; flex-direction: column; min-width: 0; }
+    .ref-nav-toggle-hint { font-size: .72rem; color: var(--ueb-nav-text); }
+    .ref-nav-toggle-label {
+        font-size: .9rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ref-nav-toggle .admin-icon { transition: transform var(--ueb-normal) var(--ueb-ease); }
+    .ref-sidebar.is-open .ref-nav-toggle .admin-icon { transform: rotate(180deg); }
+
+    .ref-nav {
+        display: none;
+        order: 3;
+        flex: 1 1 100%;
+        max-height: min(62vh, 520px);
+        padding: .4rem 0 .3rem;
+        border-top: 1px solid var(--ueb-nav-border);
+    }
+    .ref-sidebar.is-open .ref-nav {
+        display: block;
+        animation: ueb-fade var(--ueb-normal) var(--ueb-ease) both;
+    }
+    .ref-nav-indicator { left: 0; right: 0; }
+
+    /* Barre du haut : seule la déconnexion reste, en icône de 44 px ;
+       son libellé passe aux lecteurs d'écran. */
+    .ref-account { flex-direction: row; margin: 0; padding: 0; }
+    .ref-account-user { display: none; }
+    .ref-account-actions { flex-direction: row; gap: .15rem; padding: 0; border: none; }
+    .ref-account-btn { justify-content: center; width: 44px; height: 44px; padding: 0; }
+    .ref-account-ico { flex-basis: auto; width: auto; }
+    .ref-account-label {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+    .ref-nav.is-scrollable { -webkit-mask-image: none; mask-image: none; }
+
+    .ref-main { padding-top: 1.3rem; }
+    .ref-title-row h1 { font-size: 1.45rem; }
+}
+
+@media (max-width: 620px) {
+    .ref-toolbar { padding: .75rem; }
+    .ref-search { flex: 1 1 100%; max-width: none; }
+    /* Les filtres défilent sur une seule rangée plutôt que de s'étirer
+       sur plusieurs lignes inégales. */
+    .ref-filtres,
+    .ref-toolbar.has-filtres-ligne .ref-filtres {
+        flex: 1 1 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin: 0 -.75rem;
+        padding: 0 .75rem 2px;
+        scrollbar-width: none;
+    }
+    .ref-filtres::-webkit-scrollbar { display: none; }
+    .ref-filtre,
+    .ref-filtres-reset { flex: 0 0 auto; }
+    .ref-add { flex: 1 1 100%; margin-left: 0; }
+
+    /* Le tableau se lit en fiches : une ligne = un bloc, l'intitulé en
+       tête, les autres colonnes étiquetées en dessous. Plus de défilement
+       horizontal. */
+    .admin-table.ref-table { min-width: 0; }
+    .ref-table,
+    .ref-table tbody { display: block; }
+    .ref-table thead {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+    .ref-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: .6rem;
+        row-gap: .3rem;
+        padding: .85rem .6rem .85rem 1rem;
+        border-top: 1px solid var(--ueb-border);
+    }
+    .ref-table tbody tr:first-child { border-top: none; }
+    .ref-table td,
+    .ref-table td:first-child {
+        grid-column: 1;
+        display: flex;
+        align-items: baseline;
+        gap: .6rem;
+        padding: 0;
+        border: none;
+        font-size: .85rem;
+    }
+    .ref-table td::before {
+        content: attr(data-label);
+        flex: 0 0 7.5rem;
+        font-size: .78rem;
+        color: var(--ueb-text-muted);
+    }
+    .ref-table td.ref-td-main {
+        order: -1;
+        font-size: .95rem;
+        font-weight: 600;
+    }
+    .ref-table td.ref-td-main::before { content: none; }
+    .ref-code,
+    .ref-etat,
+    .ref-sigle,
+    .ref-logo { flex-shrink: 0; }
+    .ref-table td.ref-actions {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        align-self: start;
+        width: auto;
+    }
+    .ref-table td.ref-actions::before { content: none; }
+
+    .ref-panel-foot { padding: .7rem .75rem; }
+
+    .ref-form-fields { grid-template-columns: minmax(0, 1fr); }
+    .ref-field--court { grid-column: 1 / -1; }
+    .ref-modal-actions .btn { flex: 1 1 0; }
+
+    .ref-toasts { left: 1rem; right: 1rem; bottom: 1rem; align-items: stretch; }
+    .ref-toast { max-width: none; }
+}
+
+/* -------------------------------------------------------------------------
+   11. MOUVEMENT RÉDUIT
+   Les animations sont déjà neutralisées par admin-dashboard.css ; restent
+   les déplacements portés par des transitions de transform.
+   ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .ref-nav.is-ready .ref-nav-indicator { transition: none; }
+    .ref-act:active { transform: none; }
+    .ref-nav-toggle .admin-icon { transition: none; }
 }

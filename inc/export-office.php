@@ -2,12 +2,14 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Rendus Excel (.xlsx) et Word (.docx) de la liste des préinscrits, au même
- * modèle « A · Officiel classique » que le PDF (inc/export-functions.php).
+ * Rendus Excel (.xlsx) et Word (.docx) de la liste des préinscrits. Le Word
+ * suit le modèle « A · Officiel classique » du PDF (inc/export-functions.php) ;
+ * le classeur Excel, lui, est un tableau de données sans en-tête
+ * institutionnel (voir ueb_export_rendre_xlsx()).
  *
  * Les deux formats sont des archives ZIP de fichiers XML (OOXML) écrites
  * directement, sans PhpSpreadsheet ni PHPWord : le document produit est
- * simple — un en-tête, un tableau, un bloc de signature — et une librairie
+ * simple — un en-tête, un tableau, une formule d'arrêt — et une librairie
  * de plusieurs mégaoctets serait hors de proportion pour ce besoin, dans un
  * thème qui embarque déjà TCPDF.
  *
@@ -67,205 +69,107 @@ function ueb_export_logo_binaire() {
    ============================================================ */
 
 /**
- * Feuille de calcul reprenant le modèle A : en-tête bilingue avec
- * armoiries, références, titre, tableau à filets et bloc de clôture.
+ * Classeur de données : un tableau brut, sans le modèle A.
  *
- * La ligne d'en-tête du tableau est figée et filtrable : c'est ce qu'on
- * attend d'un classeur, et cela n'enlève rien à la mise en forme du modèle.
+ * Le PDF et le Word sont des documents de service (en-tête institutionnel,
+ * formule d'arrêt). Le fichier Excel, lui, sert à trier, filtrer et
+ * retravailler la liste : l'en-tête administratif, les cellules fusionnées
+ * et le bloc de clôture y gênaient le tri et le filtre. Il ne contient donc
+ * que le tableau.
+ *
+ *   - ligne 1 : intitulés des colonnes, figée et filtrable ;
+ *   - un champ par colonne, avec son vrai type : le rang est un nombre, la
+ *     date de dépôt une vraie date Excel, le reste du texte ;
+ *   - largeurs calculées sur le contenu réel, pour qu'aucune valeur ne soit
+ *     coupée ni ne déborde sur la colonne voisine ;
+ *   - à l'impression : paysage, ajusté en largeur, intitulés répétés.
  */
 function ueb_export_rendre_xlsx( $rows, $meta ) {
     $colonnes = ueb_export_colonnes();
-    $nb_cols  = count( $colonnes );
-    $derniere = 'H'; // 8 colonnes
+    $derniere = chr( 64 + count( $colonnes ) ); // 8 colonnes : H
+    $nb       = count( $rows );
+    $l_fin    = 1 + $nb; // dernière ligne occupée (1 si aucune donnée)
 
-    $logo = ueb_export_logo_binaire();
+    // Index des styles, cf. ueb_export_xlsx_styles().
+    $s_entete = array( 'L' => 1, 'C' => 2 );
+    $s_cell   = array( 'L' => 3, 'C' => 4 );
+    $s_date   = 5;
 
-    /* ---- Trame du document : numéros de ligne ---- */
-    $l_entete_tableau = 14;
-    $l_premiere_donnee = $l_entete_tableau + 1;
-    $l_derniere_donnee = $l_premiere_donnee + max( 0, count( $rows ) ) - 1;
-    if ( ! $rows ) {
-        $l_derniere_donnee = $l_entete_tableau;
-    }
-
-    $l_arrete    = $l_derniere_donnee + 2;
-    $l_signataire = $l_arrete + 2;
-    $l_signature = $l_signataire + 2;
-    $l_pied      = $l_signature + 2;
-
-    /* ---- Lignes ---- */
-    $lignes = array();
-
-    $cell = static function ( $col, $ligne, $valeur, $style, $type = 'inlineStr' ) {
-        $ref = $col . $ligne;
-        if ( '' === $valeur && 'inlineStr' === $type ) {
+    $texte = static function ( $ref, $valeur, $style ) {
+        if ( '' === $valeur ) {
             return '<c r="' . $ref . '" s="' . $style . '"/>';
         }
+        // Chaîne typée : une valeur saisie par un candidat qui commence par
+        // « = » reste du texte, jamais une formule.
         return '<c r="' . $ref . '" s="' . $style . '" t="inlineStr"><is><t xml:space="preserve">'
             . ueb_export_xml( $valeur ) . '</t></is></c>';
     };
 
-    /** Une ligne complète A..H, la première cellule portant la valeur fusionnée. */
-    $ligne_fusion = static function ( $num, $valeur, $style, $hauteur = null ) use ( $cell ) {
-        $cells = $cell( 'A', $num, $valeur, $style );
-        foreach ( array( 'B', 'C', 'D', 'E', 'F', 'G', 'H' ) as $c ) {
-            $cells .= $cell( $c, $num, '', $style );
-        }
-        $ht = $hauteur ? ' ht="' . $hauteur . '" customHeight="1"' : '';
-        return '<row r="' . $num . '"' . $ht . '>' . $cells . '</row>';
-    };
-
-    // 1–4 : en-tête bilingue (FR : A–C, armoiries : D–E, EN : F–H).
-    $entete = array(
-        array( 'RÉPUBLIQUE DU CAMEROUN', 'REPUBLIC OF CAMEROON', 1 ),
-        array( 'Paix – Travail – Patrie', 'Peace – Work – Fatherland', 2 ),
-        array( "MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR", 'MINISTRY OF HIGHER EDUCATION', 3 ),
-        array( "UNIVERSITÉ D'ÉBOLOWA", 'THE UNIVERSITY OF EBOLOWA', 4 ),
-    );
-
-    foreach ( $entete as $i => $bloc ) {
-        $num   = $i + 1;
-        $style = $bloc[2];
-        $cells = $cell( 'A', $num, $bloc[0], $style )
-            . $cell( 'B', $num, '', $style )
-            . $cell( 'C', $num, '', $style )
-            . $cell( 'D', $num, '', 0 )
-            . $cell( 'E', $num, '', 0 )
-            . $cell( 'F', $num, $bloc[1], $style )
-            . $cell( 'G', $num, '', $style )
-            . $cell( 'H', $num, '', $style );
-        $lignes[] = '<row r="' . $num . '" ht="16" customHeight="1">' . $cells . '</row>';
-    }
-
-    // 5 : filet double sous l'en-tête.
-    $lignes[] = $ligne_fusion( 5, '', 17, 6 );
-
-    // 6 : références.
-    $lignes[] = '<row r="6">'
-        . $cell( 'A', 6, 'N/Réf. : ' . $meta['reference'], 8 )
-        . $cell( 'B', 6, '', 8 ) . $cell( 'C', 6, '', 8 ) . $cell( 'D', 6, '', 8 )
-        . $cell( 'E', 6, $meta['lieu_date'], 9 )
-        . $cell( 'F', 6, '', 9 ) . $cell( 'G', 6, '', 9 ) . $cell( 'H', 6, '', 9 )
-        . '</row>';
-
-    $lignes[] = '<row r="7"/>';
-    $lignes[] = $ligne_fusion( 8, $meta['titre'], 5, 22 );
-    $lignes[] = $ligne_fusion( 9, $meta['titre_en'], 6 );
-    $lignes[] = $ligne_fusion( 10, $meta['annee'], 7 );
-    $lignes[] = '<row r="11"/>';
-
-    // 12 : contexte (situation à gauche, périmètre à droite).
-    $lignes[] = '<row r="12">'
-        . $cell( 'A', 12, $meta['situation'], 8 )
-        . $cell( 'B', 12, '', 8 ) . $cell( 'C', 12, '', 8 ) . $cell( 'D', 12, '', 8 )
-        . $cell( 'E', 12, $meta['perimetre'], 9 )
-        . $cell( 'F', 12, '', 9 ) . $cell( 'G', 12, '', 9 ) . $cell( 'H', 12, '', 9 )
-        . '</row>';
-
-    $lignes[] = '<row r="13"/>';
-
-    // 14 : en-tête du tableau.
+    /* ---- Intitulés ---- */
     $cells = '';
     foreach ( $colonnes as $i => $col ) {
-        $cells .= $cell( chr( 65 + $i ), $l_entete_tableau, $col['titre'], 10 );
+        $cells .= $texte( chr( 65 + $i ) . '1', $col['titre'], $s_entete[ $col['align'] ] );
     }
-    $lignes[] = '<row r="' . $l_entete_tableau . '" ht="26" customHeight="1">' . $cells . '</row>';
+    $lignes = array( '<row r="1" ht="24" customHeight="1">' . $cells . '</row>' );
 
-    // Données.
-    $num = $l_premiere_donnee;
+    /* ---- Données ---- */
+    $num = 2;
     foreach ( $rows as $row ) {
         $cells = '';
         foreach ( $colonnes as $i => $col ) {
-            // 12 = cellule centrée, 11 = cellule alignée à gauche.
-            $style = ( 'C' === $col['align'] ) ? 12 : 11;
-            $cells .= $cell( chr( 65 + $i ), $num, $row[ $col['cle'] ], $style );
+            $ref = chr( 65 + $i ) . $num;
+
+            if ( 'index' === $col['cle'] ) {
+                $cells .= '<c r="' . $ref . '" s="' . $s_cell['C'] . '"><v>' . (int) $row['index'] . '</v></c>';
+            } elseif ( 'date' === $col['cle'] && ! empty( $row['date_iso'] ) ) {
+                $cells .= '<c r="' . $ref . '" s="' . $s_date . '"><v>' . ueb_export_xlsx_date( $row['date_iso'] ) . '</v></c>';
+            } else {
+                $cells .= $texte( $ref, (string) $row[ $col['cle'] ], $s_cell[ $col['align'] ] );
+            }
         }
         $lignes[] = '<row r="' . $num . '">' . $cells . '</row>';
         $num++;
     }
 
-    if ( ! $rows ) {
-        $lignes[] = $ligne_fusion( $l_premiere_donnee, 'Aucun dossier ne correspond à la sélection.', 6 );
-        $l_derniere_donnee = $l_premiere_donnee;
-        $l_arrete          = $l_derniere_donnee + 2;
-        $l_signataire      = $l_arrete + 2;
-        $l_signature       = $l_signataire + 2;
-        $l_pied            = $l_signature + 2;
-    }
-
-    // Clôture.
-    $lignes[] = $ligne_fusion( $l_arrete, $meta['arrete'], 13, 28 );
-
-    $lignes[] = '<row r="' . $l_signataire . '">'
-        . $cell( 'A', $l_signataire, '', 0 ) . $cell( 'B', $l_signataire, '', 0 )
-        . $cell( 'C', $l_signataire, '', 0 ) . $cell( 'D', $l_signataire, '', 0 )
-        . $cell( 'E', $l_signataire, '', 0 )
-        . $cell( 'F', $l_signataire, $meta['signataire'], 14 )
-        . $cell( 'G', $l_signataire, '', 14 ) . $cell( 'H', $l_signataire, '', 14 )
-        . '</row>';
-
-    $lignes[] = '<row r="' . $l_signature . '" ht="34" customHeight="1">'
-        . $cell( 'F', $l_signature, $meta['signature'], 15 )
-        . $cell( 'G', $l_signature, '', 15 ) . $cell( 'H', $l_signature, '', 15 )
-        . '</row>';
-
-    $lignes[] = $ligne_fusion( $l_pied, $meta['pied'], 16 );
-
-    /* ---- Fusions ---- */
-    $fusions = array(
-        'A1:C1', 'F1:H1', 'A2:C2', 'F2:H2', 'A3:C3', 'F3:H3', 'A4:C4', 'F4:H4',
-        'D1:E4', 'A5:H5', 'A6:D6', 'E6:H6', 'A8:H8', 'A9:H9', 'A10:H10',
-        'A12:D12', 'E12:H12',
-        'A' . $l_arrete . ':H' . $l_arrete,
-        'F' . $l_signataire . ':H' . $l_signataire,
-        'F' . $l_signature . ':H' . $l_signature,
-        'A' . $l_pied . ':H' . $l_pied,
-    );
-    if ( ! $rows ) {
-        $fusions[] = 'A' . $l_premiere_donnee . ':H' . $l_premiere_donnee;
-    }
-
-    $xml_fusions = '<mergeCells count="' . count( $fusions ) . '">';
-    foreach ( $fusions as $f ) {
-        $xml_fusions .= '<mergeCell ref="' . $f . '"/>';
-    }
-    $xml_fusions .= '</mergeCells>';
-
-    /* ---- Largeurs de colonnes ---- */
-    // Excel compte en caractères : ~1,85 mm par caractère à la taille par défaut.
+    /* ---- Largeurs : ajustées au contenu ---- */
+    // Excel mesure en largeurs du chiffre « 0 » ; majuscules et tirets des
+    // numéros de dossier sont plus larges, d'où les 10 % de plus, puis le
+    // retrait et une marge. On part de la plus longue valeur de la colonne,
+    // intitulé compris, dans des bornes raisonnables.
     $xml_cols = '<cols>';
     foreach ( $colonnes as $i => $col ) {
-        $xml_cols .= '<col min="' . ( $i + 1 ) . '" max="' . ( $i + 1 ) . '" width="'
-            . round( $col['largeur'] / 1.85, 2 ) . '" customWidth="1"/>';
+        $max = mb_strlen( $col['titre'] ) + 3; // place de la flèche du filtre
+        foreach ( $rows as $row ) {
+            $max = max( $max, mb_strlen( (string) $row[ $col['cle'] ] ) );
+        }
+        $largeur = min( 70, max( 8, (int) ceil( $max * 1.1 ) + 3 ) );
+        $xml_cols .= '<col min="' . ( $i + 1 ) . '" max="' . ( $i + 1 ) . '" width="' . $largeur . '" customWidth="1"/>';
     }
     $xml_cols .= '</cols>';
 
     /* ---- Feuille ---- */
-    $plage_filtre = 'A' . $l_entete_tableau . ':' . $derniere . max( $l_derniere_donnee, $l_entete_tableau );
+    $plage = 'A1:' . $derniere . $l_fin;
 
     $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
         . ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        . '<dimension ref="A1:' . $derniere . $l_pied . '"/>'
-        . '<sheetViews><sheetView showGridLines="0" tabSelected="1" workbookViewId="0">'
-        . '<pane ySplit="' . $l_entete_tableau . '" topLeftCell="A' . $l_premiere_donnee . '" activePane="bottomLeft" state="frozen"/>'
+        . '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'
+        . '<dimension ref="' . $plage . '"/>'
+        . '<sheetViews><sheetView tabSelected="1" workbookViewId="0">'
+        . '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
+        . '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/>'
         . '</sheetView></sheetViews>'
-        . '<sheetFormatPr defaultRowHeight="14.5"/>'
+        . '<sheetFormatPr defaultRowHeight="18" customHeight="1"/>'
         . $xml_cols
         . '<sheetData>' . implode( '', $lignes ) . '</sheetData>'
-        . ( $rows ? '<autoFilter ref="' . $plage_filtre . '"/>' : '' )
-        . $xml_fusions
+        . ( $nb ? '<autoFilter ref="' . $plage . '"/>' : '' )
         . '<printOptions horizontalCentered="1"/>'
-        . '<pageMargins left="0.5" right="0.5" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'
-        // Mise à l'échelle en largeur seulement : une contrainte de hauteur
-        // (fitToHeight) fait tenir de force toute la liste sur une page, et
-        // les tableurs coupent alors tout ce qui dépasse à l'impression.
-        . '<pageSetup paperSize="9" orientation="portrait" scale="88"/>'
-        . ( $logo ? '<drawing r:id="rId1"/>' : '' )
+        . '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.3" footer="0.3"/>'
+        // Ajusté en largeur seulement (fitToHeight="0") : la liste s'imprime
+        // sur autant de pages qu'il faut, sans être écrasée sur une seule.
+        . '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'
+        . '<headerFooter><oddFooter>&amp;R&amp;8Page &amp;P / &amp;N</oddFooter></headerFooter>'
         . '</worksheet>';
-
-    /* ---- Styles ---- */
-    $styles = ueb_export_xlsx_styles();
 
     /* ---- Archive ---- */
     $fichiers = array(
@@ -274,11 +178,9 @@ function ueb_export_rendre_xlsx( $rows, $meta ) {
             . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
             . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             . '<Default Extension="xml" ContentType="application/xml"/>'
-            . '<Default Extension="png" ContentType="image/png"/>'
             . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            . ( $logo ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '' )
             . '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
             . '</Types>',
 
@@ -289,6 +191,7 @@ function ueb_export_rendre_xlsx( $rows, $meta ) {
             . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
             . '</Relationships>',
 
+        // Titre, année et auteur restent dans les propriétés du fichier.
         'docProps/core.xml' => ueb_export_core_xml( $meta ),
 
         'xl/workbook.xml' =>
@@ -296,11 +199,12 @@ function ueb_export_rendre_xlsx( $rows, $meta ) {
             . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
             . ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             . '<sheets><sheet name="Préinscrits" sheetId="1" r:id="rId1"/></sheets>'
-            // Titres d'impression : la ligne d'en-tête du tableau se répète
-            // en haut de chaque page imprimée.
-            . '<definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">'
-            . 'Préinscrits!$' . $l_entete_tableau . ':$' . $l_entete_tableau
-            . '</definedName></definedNames>'
+            . '<definedNames>'
+            // Plage du filtre, attendue par Excel pour un autoFilter.
+            . ( $nb ? '<definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Préinscrits!$A$1:$' . $derniere . '$' . $l_fin . '</definedName>' : '' )
+            // Titres d'impression : la ligne des intitulés en haut de chaque page.
+            . '<definedName name="_xlnm.Print_Titles" localSheetId="0">Préinscrits!$1:$1</definedName>'
+            . '</definedNames>'
             . '</workbook>',
 
         'xl/_rels/workbook.xml.rels' =>
@@ -310,41 +214,9 @@ function ueb_export_rendre_xlsx( $rows, $meta ) {
             . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
             . '</Relationships>',
 
-        'xl/styles.xml'            => $styles,
+        'xl/styles.xml'            => ueb_export_xlsx_styles(),
         'xl/worksheets/sheet1.xml' => $sheet,
     );
-
-    if ( $logo ) {
-        $fichiers['xl/worksheets/_rels/sheet1.xml.rels'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
-            . '</Relationships>';
-
-        // Armoiries ancrées sur la colonne D, en regard des quatre lignes d'en-tête.
-        $fichiers['xl/drawings/drawing1.xml'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
-            . ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
-            . '<xdr:oneCellAnchor>'
-            . '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>190500</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>19050</xdr:rowOff></xdr:from>'
-            . '<xdr:ext cx="792000" cy="756000"/>'
-            . '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Armoiries UEB" descr="Logo de l\'Université d\'Ébolowa"/>'
-            . '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
-            . '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/>'
-            . '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
-            . '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="792000" cy="756000"/></a:xfrm>'
-            . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
-            . '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
-
-        $fichiers['xl/drawings/_rels/drawing1.xml.rels'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo-ueb.png"/>'
-            . '</Relationships>';
-
-        $fichiers['xl/media/logo-ueb.png'] = $logo;
-    }
 
     ueb_export_envoyer_zip(
         $fichiers,
@@ -354,63 +226,58 @@ function ueb_export_rendre_xlsx( $rows, $meta ) {
 }
 
 /**
+ * Numéro de série Excel d'une date AAAA-MM-JJ (jours depuis le 30/12/1899).
+ * Seul le jour est gardé : un filtre par date regroupe alors les dépôts d'une
+ * même journée, quelle que soit l'heure.
+ */
+function ueb_export_xlsx_date( $iso ) {
+    $jour = DateTimeImmutable::createFromFormat( '!Y-m-d', $iso, new DateTimeZone( 'UTC' ) );
+    return $jour ? intdiv( $jour->getTimestamp(), 86400 ) + 25569 : '';
+}
+
+/**
  * Table des styles du classeur. L'ordre des <xf> définit les index utilisés
  * par les cellules (attribut s="…") :
- *   0 normal · 1 république · 2 devise · 3 ministère · 4 université
- *   5 titre · 6 sous-titre anglais · 7 année · 8 texte à gauche
- *   9 texte à droite · 10 en-tête de tableau · 11 cellule gauche
- *   12 cellule centrée · 13 formule d'arrêt · 14 signataire
- *   15 ligne de signature · 16 pied de page · 17 filet double
+ *   0 normal · 1 intitulé aligné à gauche · 2 intitulé centré
+ *   3 cellule texte à gauche · 4 cellule centrée · 5 date (jj/mm/aaaa)
+ *
+ * Intitulés en blanc sur le vert de l'université, grille gris clair : le
+ * tableau se lit comme un tableau, sans rien d'autre autour.
  */
 function ueb_export_xlsx_styles() {
+    $bordure = '<border>'
+        . '<left style="thin"><color rgb="FFD3DAD5"/></left>'
+        . '<right style="thin"><color rgb="FFD3DAD5"/></right>'
+        . '<top style="thin"><color rgb="FFD3DAD5"/></top>'
+        . '<bottom style="thin"><color rgb="FFD3DAD5"/></bottom>'
+        . '<diagonal/></border>';
+
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        . '<fonts count="11">'
-        . '<font><sz val="10"/><name val="Times New Roman"/></font>'                                    // 0
-        . '<font><b/><sz val="11"/><name val="Times New Roman"/></font>'                                 // 1
-        . '<font><i/><sz val="10"/><name val="Times New Roman"/></font>'                                 // 2
-        . '<font><sz val="9"/><name val="Times New Roman"/></font>'                                      // 3
-        . '<font><b/><sz val="10.5"/><color rgb="FF166A3A"/><name val="Times New Roman"/></font>'        // 4
-        . '<font><b/><u/><sz val="15"/><name val="Times New Roman"/></font>'                             // 5
-        . '<font><b/><sz val="10"/><name val="Times New Roman"/></font>'                                 // 6
-        . '<font><b/><sz val="9"/><name val="Times New Roman"/></font>'                                  // 7
-        . '<font><sz val="8"/><color rgb="FF5A645E"/><name val="Times New Roman"/></font>'               // 8
-        . '<font><i/><sz val="9.5"/><name val="Times New Roman"/></font>'                                // 9
-        . '<font><sz val="9.5"/><name val="Times New Roman"/></font>'                                    // 10
+        . '<numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>'
+        . '<fonts count="2">'
+        . '<font><sz val="10"/><color rgb="FF1C2621"/><name val="Arial"/><family val="2"/></font>'          // 0
+        . '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/><family val="2"/></font>'     // 1
         . '</fonts>'
         . '<fills count="3">'
         . '<fill><patternFill patternType="none"/></fill>'
         . '<fill><patternFill patternType="gray125"/></fill>'
-        . '<fill><patternFill patternType="solid"><fgColor rgb="FFEDF0EE"/><bgColor indexed="64"/></patternFill></fill>'
+        . '<fill><patternFill patternType="solid"><fgColor rgb="FF1A4A2E"/><bgColor indexed="64"/></patternFill></fill>'
         . '</fills>'
-        . '<borders count="4">'
+        . '<borders count="2">'
         . '<border><left/><right/><top/><bottom/><diagonal/></border>'
-        . '<border><left style="thin"><color rgb="FF969E98"/></left><right style="thin"><color rgb="FF969E98"/></right>'
-        . '<top style="thin"><color rgb="FF969E98"/></top><bottom style="thin"><color rgb="FF969E98"/></bottom><diagonal/></border>'
-        . '<border><left/><right/><top/><bottom style="double"><color rgb="FF1A1A1A"/></bottom><diagonal/></border>'
-        . '<border><left/><right/><top style="thin"><color rgb="FF1A1A1A"/></top><bottom/><diagonal/></border>'
+        . $bordure
         . '</borders>'
         . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        . '<cellXfs count="18">'
-        . '<xf xfId="0" fontId="0" fillId="0" borderId="0"/>'                                                                                     // 0
-        . '<xf xfId="0" fontId="1" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' // 1
-        . '<xf xfId="0" fontId="2" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' // 2
-        . '<xf xfId="0" fontId="3" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 3
-        . '<xf xfId="0" fontId="4" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' // 4
-        . '<xf xfId="0" fontId="5" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' // 5
-        . '<xf xfId="0" fontId="9" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>'                  // 6
-        . '<xf xfId="0" fontId="7" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>'                  // 7
-        . '<xf xfId="0" fontId="10" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>' // 8
-        . '<xf xfId="0" fontId="10" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>' // 9
-        . '<xf xfId="0" fontId="6" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 10
-        . '<xf xfId="0" fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'   // 11
-        . '<xf xfId="0" fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' // 12
-        . '<xf xfId="0" fontId="9" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>'      // 13
-        . '<xf xfId="0" fontId="6" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>'                  // 14
-        . '<xf xfId="0" fontId="8" fillId="0" borderId="3" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>'   // 15
-        . '<xf xfId="0" fontId="8" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>'                    // 16
-        . '<xf xfId="0" fontId="0" fillId="0" borderId="2" applyBorder="1"/>'                                                                       // 17
+        . '<cellXfs count="6">'
+        . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                                                   // 0
+        . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>'   // 1
+        . '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'           // 2
+        . '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>'                            // 3
+        . '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'                                      // 4
+        . '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'            // 5
         . '</cellXfs>'
+        . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
         . '</styleSheet>';
 }
 
@@ -600,22 +467,6 @@ function ueb_export_rendre_docx( $rows, $meta ) {
         . '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>' . $grid . '</w:tblGrid>'
         . $ligne_titres . $lignes_donnees . '</w:tbl>';
 
-    /* ---- Bloc de signature : tableau aligné à droite ---- */
-    $col_vide = $largeur - 68;
-    $table_signature = '<w:tbl><w:tblPr><w:tblW w:w="' . ueb_export_mm_twips( $largeur ) . '" w:type="dxa"/>'
-        . '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>'
-        . '</w:tblPr><w:tblGrid>'
-        . '<w:gridCol w:w="' . ueb_export_mm_twips( $col_vide ) . '"/><w:gridCol w:w="' . ueb_export_mm_twips( 68 ) . '"/>'
-        . '</w:tblGrid><w:tr>'
-        . ueb_export_docx_tc( ueb_export_docx_p( '' ), $col_vide, $sans_bord )
-        . ueb_export_docx_tc(
-            ueb_export_docx_p( $meta['signataire'], array( 'align' => 'center', 'gras' => true, 'taille' => 18, 'apres' => 720 ) )
-            . ueb_export_docx_p( $meta['signature'], array( 'align' => 'center', 'taille' => 15, 'couleur' => '5A645E', 'bordure_haut' => 'single' ) ),
-            68,
-            $sans_bord
-        )
-        . '</w:tr></w:tbl>';
-
     /* ---- Corps du document ---- */
     $corps = $table_entete
         . ueb_export_docx_p( '', array( 'bordure_bas' => 'double', 'apres' => 120 ) )
@@ -628,8 +479,6 @@ function ueb_export_rendre_docx( $rows, $meta ) {
         . ueb_export_docx_p( '', array( 'bordure_bas' => 'single', 'apres' => 160 ) )
         . $table_liste
         . ueb_export_docx_p( $meta['arrete'], array( 'italique' => true, 'taille' => 17, 'avant' => 240 ) )
-        . ueb_export_docx_p( '' )
-        . $table_signature
         . '<w:sectPr>'
         . '<w:footerReference w:type="default" r:id="rId6"/>'
         . '<w:pgSz w:w="11906" w:h="16838"/>'

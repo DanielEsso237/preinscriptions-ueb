@@ -567,6 +567,38 @@
         });
         filtres.addEventListener('submit', e => { e.preventDefault(); rechargerDossiers(true); });
 
+        /* Filtres détaillés (filière, niveau…) : panneau repliable. Ses
+           champs sont dans le formulaire : la liste et l'export les suivent
+           sans code supplémentaire. Le badge compte les filtres actifs, pour
+           qu'un panneau refermé ne cache pas une sélection en cours. */
+        const plus = $('portal-more');
+        const boutonPlus = $('portal-more-toggle');
+        if (plus && boutonPlus) {
+            const compteur = $('portal-more-count');
+            const effacer = $('portal-more-reset');
+            const champsPlus = () => [...plus.querySelectorAll('select, input')];
+            const majCompteur = () => {
+                const actifs = champsPlus().filter(c => c.value !== '').length;
+                compteur.textContent = actifs;
+                compteur.hidden = actifs === 0;
+                effacer.hidden = actifs === 0;
+            };
+            boutonPlus.addEventListener('click', () => {
+                const ouvrir = plus.hidden;
+                plus.hidden = !ouvrir;
+                boutonPlus.setAttribute('aria-expanded', String(ouvrir));
+                if (ouvrir) champsPlus()[0]?.focus();
+            });
+            plus.addEventListener('change', majCompteur);
+            effacer.addEventListener('click', () => {
+                champsPlus().forEach(c => { c.value = ''; });
+                majCompteur();
+                rechargerDossiers(true);
+                boutonPlus.focus();
+            });
+            majCompteur();
+        }
+
         rechargerDossiers(true);
         window.addEventListener('storage', e => {
             if (e.key === 'ueb-statistics-change') rechargerDossiers(false);
@@ -622,16 +654,32 @@
         const boutonExport = $('portal-export');
         if (boutonExport) {
             const menu = $('portal-export-menu');
-            const fermer = () => { menu.hidden = true; boutonExport.setAttribute('aria-expanded', 'false'); };
+            const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            // .admin-export-menu reste à opacity 0 tant qu'il n'a pas la classe
+            // is-open (admin-dashboard.css) : retirer [hidden] ne suffit pas, le
+            // menu s'ouvrait invisible et le bouton semblait ne rien faire.
+            const ouvrir = () => {
+                menu.hidden = false;
+                requestAnimationFrame(() => menu.classList.add('is-open'));
+                boutonExport.setAttribute('aria-expanded', 'true');
+                const premier = menu.querySelector('[data-format]');
+                if (premier) premier.focus();
+            };
+            const fermer = () => {
+                if (menu.hidden) return;
+                menu.classList.remove('is-open');
+                boutonExport.setAttribute('aria-expanded', 'false');
+                setTimeout(() => { if (!menu.classList.contains('is-open')) menu.hidden = true; }, reduit ? 0 : 140);
+            };
             boutonExport.addEventListener('click', () => {
-                const ouvert = !menu.hidden;
-                menu.hidden = ouvert;
-                boutonExport.setAttribute('aria-expanded', String(!ouvert));
+                if (menu.hidden) ouvrir(); else fermer();
             });
             document.addEventListener('click', e => {
                 if (!e.target.closest('#portal-export-wrap')) fermer();
             });
-            document.addEventListener('keydown', e => { if (e.key === 'Escape') fermer(); });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && !menu.hidden) { fermer(); boutonExport.focus(); }
+            });
 
             menu.querySelectorAll('[data-format]').forEach(item => {
                 item.addEventListener('click', async () => {
