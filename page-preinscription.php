@@ -147,8 +147,12 @@ get_header();
             . ( $ueb_numero_dossier ? ' (dossier ' . $ueb_numero_dossier . ').' : '.' )
         );
         ?>
+        <p id="reprise-auto" class="reprise-auto" role="status" hidden></p>
+
         <div class="aide-contact">
             <p class="aide-contact-intro">Besoin d'aide ou un problème pendant ta préinscription ? Contacte-nous au :</p>
+            <?php /* Intitulé court, affiché à la place du précédent dès l'étape 2. */ ?>
+            <p class="aide-contact-court">Un problème ? Appelle-nous :</p>
             <ul class="aide-contact-liste">
                 <?php foreach ( $ueb_contacts_aide as $ueb_contact ) : ?>
                 <li>
