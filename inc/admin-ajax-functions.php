@@ -54,6 +54,14 @@ function ueb_admin_ajax_extract_filters() {
         $filters[ $key ] = isset( $_REQUEST[ $key ] ) ? sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) ) : '';
     }
 
+    // Sans le privilège de filtrer, seuls l'établissement, le statut et les
+    // doublons restent pris en compte : le reste est ignoré, même envoyé à la main.
+    if ( ! ueb_access_peut_filtrer() ) {
+        foreach ( array_diff( $keys, array( 'faculte', 'statut', 'duplicates', 'duplicate_status' ) ) as $key ) {
+            $filters[ $key ] = '';
+        }
+    }
+
     // Une FK de filtre forgée ne doit pas révéler un libellé hors portée
     // dans l'en-tête d'un export, même lorsque le résultat est vide.
     global $wpdb;

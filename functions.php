@@ -280,11 +280,15 @@ function preinscriptions_references_assets() {
     if ( ! ueb_access_is_ref_page() ) return;
 
     wp_enqueue_style( 'preinscriptions-admin', get_template_directory_uri() . '/assets/css/admin-dashboard.css', array( 'preinscriptions-style' ), PREINSCRIPTIONS_VERSION );
-    wp_enqueue_style( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/css/admin-references.css', array( 'preinscriptions-admin' ), PREINSCRIPTIONS_VERSION );
+    // Versionnés sur leur date de modification : une retouche est servie
+    // tout de suite, sans attendre un changement de PREINSCRIPTIONS_VERSION.
+    $refs_css = get_template_directory() . '/assets/css/admin-references.css';
+    $refs_js  = get_template_directory() . '/assets/js/admin-references.js';
+    wp_enqueue_style( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/css/admin-references.css', array( 'preinscriptions-admin' ), file_exists( $refs_css ) ? filemtime( $refs_css ) : PREINSCRIPTIONS_VERSION );
 
     if ( ! is_user_logged_in() || ! ueb_access_has_refs() ) return;
 
-    wp_enqueue_script( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/js/admin-references.js', array(), PREINSCRIPTIONS_VERSION, true );
+    wp_enqueue_script( 'preinscriptions-admin-references', get_template_directory_uri() . '/assets/js/admin-references.js', array(), file_exists( $refs_js ) ? filemtime( $refs_js ) : PREINSCRIPTIONS_VERSION, true );
 
     wp_localize_script( 'preinscriptions-admin-references', 'uebAdminReferences', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),

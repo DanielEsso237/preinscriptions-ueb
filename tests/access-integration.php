@@ -64,6 +64,8 @@ $definitions = array(
     'director' => array( 'all', array(), array_keys( ueb_access_catalogue() ) ),
     'manager' => array( 'single', array( $a ), array_merge( $data_caps, array( 'ueb_manage_roles', 'ueb_manage_users', 'ueb_manage_establishments' ) ) ),
     'otherstats' => array( 'single', array( $b ), array( 'ueb_view_stats' ) ),
+    'reader' => array( 'single', array( $a ), array( 'ueb_view_students' ) ),
+    'filterer' => array( 'single', array( $a ), array( 'ueb_view_students', 'ueb_filter_students' ) ),
 );
 foreach ( $definitions as $kind => $definition ) {
     $result = ueb_access_save_role( array( 'name' => $prefix . ' ' . $kind, 'scope' => $definition[0], 'establishments' => $definition[1], 'permissions' => $definition[2] ) );
@@ -89,6 +91,14 @@ ensure( 2 === ueb_admin_get_dossiers_filtres( array() )['total'], 'Liste limité
 ensure( 0 === ueb_admin_get_dossiers_filtres( array( 'faculte' => $b ) )['total'], 'Filtre forgé sans fuite' );
 ensure( null === ueb_admin_get_dossier_detail( $fixtures['dossiers'][2] ), 'Détail IDOR refusé' );
 ensure( 2 === count( ueb_export_get_rows( array() ) ), 'Export limité au périmètre' );
+// Export d'un chef d'établissement : exactement ce que montre sa liste.
+$_REQUEST['action'] = 'ueb_admin_export';
+ensure( 2 === count( ueb_export_get_rows( array() ) ), 'Export (action réelle) limité à son établissement' );
+ensure( 0 === count( ueb_export_get_rows( array( 'faculte' => $b ) ) ), 'Export : établissement forgé sans fuite' );
+ensure( 1 === count( ueb_export_get_rows( array( 'statut' => 'soumis' ) ) ), 'Export : même filtre de statut que la liste' );
+ensure( 1 === count( ueb_export_get_rows( array(), $prefix . 'A1' ) ), 'Export : même recherche que la liste' );
+ensure( 'Établissement : ' . $prefix . 'A' === ueb_export_perimetre( array(), array() ), 'Export : en-tête nomme son établissement' );
+$_REQUEST = array();
 ensure( 2 === ueb_portal_stats( false, $a )['totals']['total'], 'Statistiques établissement' );
 ensure( is_wp_error( ueb_portal_stats( false, $b ) ), 'Statistiques IDOR refusées' );
 ensure( is_wp_error( ueb_portal_stats( true ) ), 'Vue globale interdite sans permission' );
@@ -101,11 +111,26 @@ ensure( null === ueb_admin_ref_get( 'filieres', $fixtures['filieres'][1] ), 'Ré
 $raw = array( 'code' => $prefix . 'X', 'libelle' => 'Test', 'faculte_id' => $b, 'type_formation' => 'classique', 'cycle' => 'tous', 'actif' => 1 );
 ensure( ! ueb_admin_ref_create( 'filieres', $raw )['success'], 'Création de filière hors portée refusée' );
 ensure( ! ueb_admin_ref_update( 'filieres', $fixtures['filieres'][0], $raw )['success'], 'Déplacement hors portée refusé' );
+// Privilège « Filtrer les dossiers » : sans lui, le serveur ignore les
+// filtres détaillés, même envoyés à la main ; avec lui, ils s'appliquent,
+// toujours dans la seule portée du compte.
+as_user( 'reader' );
+$_REQUEST = array( 'action' => 'ueb_admin_get_dossiers', 'sexe' => 'F', 'niveau_lmd' => '1', 'statut' => 'soumis' );
+$lus = ueb_admin_ajax_extract_filters();
+ensure( ! ueb_access_peut_filtrer() && '' === $lus['sexe'] && '' === $lus['niveau_lmd'], 'Filtres détaillés ignorés sans le privilège' );
+ensure( 'soumis' === $lus['statut'], 'Filtre de statut conservé sans le privilège' );
+as_user( 'filterer' );
+$_REQUEST = array( 'action' => 'ueb_admin_get_dossiers', 'sexe' => 'F', 'date_from' => '2000-01-01' );
+$lus = ueb_admin_ajax_extract_filters();
+ensure( ueb_access_peut_filtrer() && 'F' === $lus['sexe'], 'Filtres détaillés appliqués avec le privilège' );
+ensure( 2 === ueb_admin_get_dossiers_filtres( array( 'date_from' => '2000-01-01' ) )['total'], 'Filtre détaillé limité à son établissement' );
+$_REQUEST = array();
 as_user( 'multiple' );
 ensure( 4 === ueb_admin_get_dossiers_filtres( array() )['total'], 'Portée plusieurs établissements' );
 ensure( ! ueb_access_contains( 'ueb_view_students', $c ), 'Troisième établissement exclu' );
 as_user( 'all' );
 ensure( null === ueb_access_scope( 'ueb_view_students' ), 'Portée tous dynamique' );
+ensure( 'Tous les établissements' === ueb_export_perimetre( array(), array() ), 'Export global : en-tête sans établissement imposé' );
 ensure( count( ueb_portal_stats( true )['establishments'] ) >= 3, 'Vue globale des établissements autorisés' );
 as_user( 'limited' );
 ensure( ! current_user_can( 'ueb_view_students' ) && ! current_user_can( 'ueb_export_students' ), 'Permissions absentes' );

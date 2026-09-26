@@ -332,6 +332,120 @@ function ueb_admin_ref_registry() {
 }
 
 /**
+ * Habillage de la page Références, tenu à part du registre : le registre
+ * décrit les données (et sert au SQL), ce tableau-ci ne dit que la façon
+ * de les présenter. Aucune clé n'est obligatoire — une table absente d'ici
+ * s'affiche simplement sans description.
+ *
+ * Par table :
+ * - description : ce que la table pilote, du point de vue du gestionnaire
+ * - singulier   : avec son article, pour « Ajouter une filière »
+ * - colonnes    : par colonne, au besoin
+ *     - th     : intitulé court pour l'en-tête du tableau
+ *     - etats  : valeur => libellé d'état, affiché en pastille (Oui/Non)
+ *     - vide   : ce que signifie une valeur absente (« Toutes les facultés »)
+ *     - apercu : 'logo' pour montrer l'image plutôt que le nom du fichier
+ *     - sigle  : montrer le code de la table visée (FSEG) plutôt que son nom
+ *
+ * @return array<string, array>
+ */
+function ueb_admin_ref_presentation() {
+    $actif = array( '1' => 'Actif', '0' => 'Inactif' );
+
+    return array(
+        'facultes' => array(
+            'description' => 'Établissements dans lesquels les candidats déposent leur dossier. Un établissement se désactive plutôt qu’il ne se supprime, pour garder son historique.',
+            'singulier'   => 'un établissement',
+            'colonnes'    => array(
+                'logo'  => array( 'th' => 'Logo', 'apercu' => 'logo' ),
+                'actif' => array( 'th' => 'État', 'etats' => $actif ),
+            ),
+        ),
+        'diplomes_admission' => array(
+            'description' => 'Diplômes qui donnent accès à l’université. Sans faculté réservée, un diplôme est proposé dans toutes les facultés.',
+            'singulier'   => 'un diplôme',
+            'colonnes'    => array(
+                'faculte_id' => array( 'th' => 'Faculté', 'vide' => 'Toutes les facultés', 'sigle' => true ),
+            ),
+        ),
+        'specialites_diplome' => array(
+            'description' => 'Séries et spécialités proposées pour chaque diplôme d’admission, faculté par faculté.',
+            'singulier'   => 'une spécialité',
+            'colonnes'    => array(
+                'faculte_id' => array( 'sigle' => true ),
+            ),
+        ),
+        'filieres' => array(
+            'description' => 'Filières proposées au choix des candidats. Une filière fermée disparaît du formulaire, sans toucher aux dossiers déjà déposés.',
+            'singulier'   => 'une filière',
+            'colonnes'    => array(
+                'faculte_id'     => array( 'sigle' => true ),
+                'type_formation' => array( 'th' => 'Type' ),
+                'actif'          => array( 'th' => 'Candidatures', 'etats' => array( '1' => 'Ouvertes', '0' => 'Fermées' ) ),
+            ),
+        ),
+        'niveaux_lmd' => array(
+            'description' => 'Niveaux d’entrée proposés dans le formulaire, affichés dans l’ordre défini ici.',
+            'singulier'   => 'un niveau',
+            'colonnes'    => array( 'ordre' => array( 'th' => 'Ordre' ) ),
+        ),
+        'mentions' => array(
+            'description' => 'Mentions attribuées d’après la moyenne du diplôme. Le formulaire les retrouve par leur code : ne le modifiez pas.',
+            'singulier'   => 'une mention',
+            'colonnes'    => array( 'ordre' => array( 'th' => 'Ordre' ) ),
+        ),
+        'statuts_etudiants' => array(
+            'description' => 'Statuts que le candidat déclare dans son dossier.',
+            'singulier'   => 'un statut',
+        ),
+        'langues' => array(
+            'description' => 'Langues proposées comme première langue du candidat.',
+            'singulier'   => 'une langue',
+        ),
+        'situations_matrimoniales' => array(
+            'description' => 'Situations matrimoniales proposées dans le dossier du candidat.',
+            'singulier'   => 'une situation',
+        ),
+        'statuts_socio' => array(
+            'description' => 'Statuts socio-professionnels proposés dans le dossier du candidat.',
+            'singulier'   => 'un statut',
+        ),
+        'nationalites' => array(
+            'description' => 'Nationalités proposées dans le dossier du candidat.',
+            'singulier'   => 'une nationalité',
+        ),
+        'sports' => array(
+            'description' => 'Sports proposés pour la question du sport préféré.',
+            'singulier'   => 'un sport',
+        ),
+        'arts' => array(
+            'description' => 'Arts proposés pour la question de l’art pratiqué.',
+            'singulier'   => 'un art',
+        ),
+        'regions' => array(
+            'description' => 'Régions d’origine proposées au candidat. Chaque département s’y rattache.',
+            'singulier'   => 'une région',
+        ),
+        'departements' => array(
+            'description' => 'Départements d’origine, rattachés à leur région.',
+            'singulier'   => 'un département',
+        ),
+        'communes' => array(
+            'description' => 'Communes d’origine, rattachées à leur département.',
+            'singulier'   => 'une commune',
+        ),
+        'reseaux_sociaux' => array(
+            'description' => 'Liens affichés dans le pied de page du site public, dans l’ordre défini ici. Un lien masqué reste enregistré.',
+            'singulier'   => 'un réseau social',
+            'colonnes'    => array(
+                'ordre' => array( 'th' => 'Ordre' ),
+                'actif' => array( 'th' => 'État', 'etats' => array( '1' => 'Affiché', '0' => 'Masqué' ) ),
+            ),
+        ),
+    );
+}
+
+/**
  * Options id/libelle pour peupler un <select> qui référence la table $key
  * en clé étrangère. Utilise fk_options_sql si défini par l'entrée du
  * registre (désambiguïsation), sinon une requête simple id + label_col.
@@ -372,13 +486,18 @@ function ueb_admin_ref_fk_options( $key, $owner_key = '' ) {
  * @return array
  */
 function ueb_admin_ref_get_registry_for_js() {
-    $registry = ueb_admin_ref_registry();
-    $out      = array();
+    global $wpdb;
+
+    $registry     = ueb_admin_ref_registry();
+    $presentation = ueb_admin_ref_presentation();
+    $out          = array();
 
     foreach ( $registry as $key => $cfg ) {
         if ( ! ueb_access_ref_allowed( $key ) ) continue;
         $columns    = array();
         $filtrables = ueb_admin_ref_filtrable_columns( $cfg );
+        $pres       = isset( $presentation[ $key ] ) ? $presentation[ $key ] : array();
+        $pres_cols  = isset( $pres['colonnes'] ) ? $pres['colonnes'] : array();
 
         foreach ( $cfg['columns'] as $col => $colcfg ) {
             $entry = array(
@@ -395,7 +514,18 @@ function ueb_admin_ref_get_registry_for_js() {
                 $entry['maxlength'] = $colcfg['maxlength'];
             }
 
+            if ( isset( $pres_cols[ $col ] ) ) {
+                foreach ( array( 'th', 'etats', 'vide', 'apercu', 'sigle' ) as $opt ) {
+                    if ( isset( $pres_cols[ $col ][ $opt ] ) ) {
+                        $entry[ $opt ] = $pres_cols[ $col ][ $opt ];
+                    }
+                }
+            }
+
             if ( 'select' === $colcfg['type'] && ! empty( $colcfg['fk'] ) ) {
+                // La table visée sert aussi au JS pour tracer les liens
+                // « dépend de / utilisée par » entre les tables.
+                $entry['fk']      = $colcfg['fk'];
                 $entry['options'] = ueb_admin_ref_fk_options( $colcfg['fk'], $key );
             }
 
@@ -410,12 +540,20 @@ function ueb_admin_ref_get_registry_for_js() {
             $columns[ $col ] = $entry;
         }
 
+        // Nombre de lignes visibles dans la portée du compte : c'est ce que
+        // la navigation affiche en face de chaque table.
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$cfg['table']} t WHERE " . ueb_access_ref_where( $key, 't.' ) );
+
         $out[ $key ] = array(
-            'canDelete' => 'facultes' !== $key,
-            'canCreate' => 'facultes' !== $key || null === ueb_access_scope( 'ueb_manage_establishments' ),
-            'label'   => $cfg['label'],
-            'group'   => isset( $cfg['group'] ) ? $cfg['group'] : '',
-            'columns' => $columns,
+            'canDelete'   => 'facultes' !== $key,
+            'canCreate'   => 'facultes' !== $key || null === ueb_access_scope( 'ueb_manage_establishments' ),
+            'label'       => $cfg['label'],
+            'group'       => isset( $cfg['group'] ) ? $cfg['group'] : '',
+            'description' => isset( $pres['description'] ) ? $pres['description'] : '',
+            'singulier'   => isset( $pres['singulier'] ) ? $pres['singulier'] : '',
+            'labelCol'    => $cfg['label_col'],
+            'total'       => $total,
+            'columns'     => $columns,
         );
     }
 
@@ -487,6 +625,11 @@ function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20, $fil
             $joins[]       = "LEFT JOIN {$fk_cfg['table']} {$alias} ON {$alias}.id = t.{$col}";
             $select_cols[] = "t.{$col} AS {$col}";
             $select_cols[] = "{$alias}.{$fk_cfg['label_col']} AS {$col}__libelle";
+            // Sigle de la table visée (FS, FSEG…) : plus lisible qu'un nom
+            // complet dans une colonne étroite, cf. 'sigle' dans l'habillage.
+            if ( isset( $fk_cfg['columns']['code'] ) ) {
+                $select_cols[] = "{$alias}.code AS {$col}__code";
+            }
         } else {
             $select_cols[] = "t.{$col} AS {$col}";
         }
@@ -553,11 +696,26 @@ function ueb_admin_ref_list( $key, $search = '', $page = 1, $per_page = 20, $fil
     $sql  = $wpdb->prepare( $sql, $params_avec_limite );
     $rows = $wpdb->get_results( $sql, ARRAY_A );
 
+    // Colonnes montrées en image (logo d'établissement) : l'adresse est
+    // résolue ici, avec la même règle que le reste du site, plutôt que
+    // reconstruite en JS à partir du seul nom de fichier.
+    $pres = ueb_admin_ref_presentation();
+    if ( $rows && ! empty( $pres[ $key ]['colonnes'] ) && function_exists( 'preinscriptions_logo_etablissement' ) ) {
+        foreach ( $pres[ $key ]['colonnes'] as $col => $pcfg ) {
+            if ( empty( $pcfg['apercu'] ) || 'logo' !== $pcfg['apercu'] ) continue;
+            foreach ( $rows as &$row ) {
+                $row[ $col . '__url' ] = preinscriptions_logo_etablissement( isset( $row[ $col ] ) ? $row[ $col ] : '' );
+            }
+            unset( $row );
+        }
+    }
+
     return array(
         'rows'     => $rows,
         'total'    => $total,
         'page'     => $page,
         'nb_pages' => (int) ceil( $total / $per_page ),
+        'per_page' => $per_page,
     );
 }
 

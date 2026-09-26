@@ -123,14 +123,14 @@ ueb_icons_sprite();
                              aria-labelledby="admin-export" hidden>
                             <p class="admin-export-menu-title" id="admin-export-menu-title">
                                 Liste des préinscrits
-                                <span>Modèle officiel · sélection affichée</span>
+                                <span>Dossiers affichés à l’écran</span>
                             </p>
 
                             <button type="button" class="admin-export-item" role="menuitem" data-format="pdf">
                                 <svg class="admin-icon" aria-hidden="true"><use href="#ueb-i-file-pdf"/></svg>
                                 <span class="admin-export-item-text">
                                     Document PDF
-                                    <span>Prêt à imprimer et à signer</span>
+                                    <span>Prêt à imprimer</span>
                                 </span>
                                 <span class="admin-export-ext">PDF</span>
                             </button>

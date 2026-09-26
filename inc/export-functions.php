@@ -16,13 +16,18 @@ function ueb_export_csv_cell( $value ) {
  * en OOXML dans une archive ZIP — voir inc/export-office.php — pour ne
  * dépendre d'aucune librairie externe.
  *
+ * Le PDF et le Word suivent le modèle A ; le classeur Excel n'en garde que
+ * le tableau, un champ par colonne, pour pouvoir trier et filtrer.
+ *
  * Le modèle A reprend les codes d'un document de service :
  *   - en-tête administratif bilingue (français / armoiries / anglais),
  *   - N/Réf. à gauche, lieu et date à droite,
  *   - titre souligné + sous-titre anglais + année académique,
  *   - tableau à filets fins, police à empattements,
  *   - formule d'arrêt du nombre de candidats en toutes lettres,
- *   - bloc de signature et pied de page paginé.
+ *   - pied de page paginé.
+ *
+ * Pas de bloc de signature : l'utilisateur l'a fait retirer le 26/09/2026.
  *
  * @package Preinscriptions_UEB
  */
@@ -124,6 +129,9 @@ function ueb_export_get_rows( $filters, $recherche = '', $orderby = 'date_creati
             'faculte'        => (string) ( $row->faculte_code ?: $row->faculte_nom ),
             'filiere'        => (string) $row->filiere1_libelle,
             'date'           => $row->date_creation ? date_i18n( 'd/m/Y', strtotime( $row->date_creation ) ) : '',
+            // Même date au format AAAA-MM-JJ : le classeur Excel en fait une
+            // vraie date (triable, filtrable), pas un texte « 12/09/2026 ».
+            'date_iso'       => $row->date_creation ? substr( (string) $row->date_creation, 0, 10 ) : '',
         );
     }
 
@@ -164,6 +172,7 @@ function ueb_export_filtres_lisibles( $filters ) {
         'type_formation' => array( 'Type de formation', array( 'classique' => 'Classique', 'pro' => 'Licence Pro (LP)' ) ),
         'sexe'           => array( 'Sexe',              array( 'M' => 'Masculin', 'F' => 'Féminin' ) ),
         'handicap'       => array( 'Situation de handicap', array( 'oui' => 'Oui', 'non' => 'Non' ) ),
+        'statut'         => array( 'Statut',            array( 'soumis' => 'Soumis', 'brouillon' => 'Brouillon' ) ),
     );
 
     $actifs = array();
@@ -187,6 +196,20 @@ function ueb_export_filtres_lisibles( $filters ) {
         if ( isset( $map[ $filters[ $cle ] ] ) ) {
             $actifs[] = $label . ' : ' . $map[ $filters[ $cle ] ];
         }
+    }
+
+    // Période de dépôt (AAAA-MM-JJ, déjà validée par ueb_admin_build_where).
+    $jour = static function ( $iso ) {
+        return preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', (string) $iso, $m ) ? $m[3] . '/' . $m[2] . '/' . $m[1] : '';
+    };
+    $du = $jour( $filters['date_from'] ?? '' );
+    $au = $jour( $filters['date_to'] ?? '' );
+    if ( $du && $au ) {
+        $actifs[] = 'Déposés du ' . $du . ' au ' . $au;
+    } elseif ( $du ) {
+        $actifs[] = 'Déposés depuis le ' . $du;
+    } elseif ( $au ) {
+        $actifs[] = 'Déposés jusqu’au ' . $au;
     }
 
     return $actifs;
@@ -329,6 +352,34 @@ function ueb_export_nombre_chiffres( $n ) {
 }
 
 /**
+ * Ligne « périmètre » de l'en-tête : ce que couvre réellement la liste.
+ *
+ * Un compte limité à certains établissements (chef d'établissement…)
+ * n'exporte que ceux-là, même sans filtre : le document doit le dire, et non
+ * annoncer « tous les établissements ».
+ *
+ * @param array $filters Filtres de l'export.
+ * @param array $filtres Libellés déjà lisibles (ueb_export_filtres_lisibles + recherche).
+ * @return string
+ */
+function ueb_export_perimetre( $filters, $filtres ) {
+    $portee = '';
+    if ( empty( $filters['faculte'] ) && null !== ueb_access_scope( 'ueb_export_students' ) ) {
+        $etabs = ueb_access_establishments( 'ueb_export_students' );
+        $noms  = array();
+        foreach ( $etabs as $etab ) {
+            $noms[] = $etab['code'] ?: $etab['nom_fr'];
+        }
+        $portee = ( count( $noms ) > 1 ? 'Établissements : ' : 'Établissement : ' ) . implode( ', ', $noms );
+    }
+
+    if ( $filtres ) {
+        return ( $portee ? $portee . ' · ' : '' ) . 'Sélection : ' . implode( ' · ', $filtres );
+    }
+    return $portee ?: 'Tous les établissements';
+}
+
+/**
  * Tous les éléments d'en-tête et de pied communs aux trois formats.
  *
  * @param array  $filters
@@ -370,10 +421,8 @@ function ueb_export_meta( $filters, $recherche, $nb_lignes, $total_global ) {
         'titre_en'    => 'List of pre-registered applicants',
         'annee'       => 'Année académique ' . str_replace( '-', ' – ', ueb_get_annee_academique() ),
         'situation'   => 'Situation arrêtée au ' . date_i18n( 'j F Y' ) . ' à ' . date_i18n( 'H' ) . ' h ' . date_i18n( 'i' ),
-        'perimetre'   => $filtres ? 'Sélection : ' . implode( ' · ', $filtres ) : 'Statut : dossiers soumis — toutes facultés',
+        'perimetre'   => ueb_export_perimetre( $filters, $filtres ),
         'arrete'      => $arrete,
-        'signataire'  => 'Le Chef de Service de la Scolarité',
-        'signature'   => 'Nom, signature et cachet',
         'pied'        => "Université d'Ébolowa — B.P. 118, Ébolowa, Cameroun",
         'nb_lignes'   => (int) $nb_lignes,
     );
@@ -452,7 +501,7 @@ function ueb_export_pdf_geometrie() {
         'pied'      => 283,   // ligne du pied de page
         'h_ligne'   => 5.2,
         'h_entete'  => 5.8,
-        'reserve'   => 44,    // place du bloc « arrêté + signature »
+        'reserve'   => 16,    // place de la formule d'arrêt
     );
 }
 
@@ -571,7 +620,7 @@ function ueb_export_pdf_entete_tableau( $pdf, $g, $y ) {
 
 /**
  * Répartit les lignes sur les pages, en réservant sur la dernière la place
- * du bloc « formule d'arrêt + signature ». Calculé avant le rendu pour que
+ * de la formule d'arrêt. Calculé avant le rendu pour que
  * le pied de page puisse annoncer « Page X / Y » dès la première page.
  *
  * @return array<int,int> Nombre de lignes par page.
@@ -615,23 +664,12 @@ function ueb_export_pdf_pagination( $nb_lignes, $g, $y_debut_p1, $y_debut_pn ) {
     return $pages;
 }
 
-/** Bloc de clôture : formule d'arrêt puis emplacement de signature. */
+/** Bloc de clôture : la formule d'arrêt, sans bloc de signature. */
 function ueb_export_pdf_cloture( $pdf, $g, $meta, $y ) {
     $pdf->SetFont( 'dejavuserif', 'I', 8.5 );
     $pdf->SetTextColor( 26, 26, 26 );
     $pdf->SetXY( $g['marge_g'], $y + 4 );
     $pdf->MultiCell( $g['largeur'], 4.2, $meta['arrete'], 0, 'L' );
-
-    $y_sign = $pdf->GetY() + 6;
-    $x_sign = 210 - $g['marge_d'] - 68;
-
-    ueb_export_pdf_txt( $pdf, $x_sign, $y_sign, 68, $meta['signataire'], 9, 'B', 'C' );
-
-    $pdf->SetDrawColor( 26, 26, 26 );
-    $pdf->SetLineWidth( 0.14 );
-    $pdf->Line( $x_sign, $y_sign + 17, $x_sign + 68, $y_sign + 17 );
-
-    ueb_export_pdf_txt( $pdf, $x_sign, $y_sign + 18, 68, $meta['signature'], 7.5, '', 'C', array( 90, 100, 94 ) );
 }
 
 /**

@@ -9,6 +9,7 @@ function ueb_access_catalogue() {
         'ueb_view_trends' => array( 'Vues et statistiques', 'Voir les courbes d’évolution' ),
         'ueb_view_students' => array( 'Données', 'Consulter les dossiers' ),
         'ueb_export_students' => array( 'Données', 'Exporter les dossiers' ),
+        'ueb_filter_students' => array( 'Données', 'Filtrer les dossiers (filière, niveau…)' ),
         'ueb_view_duplicates' => array( 'Doublons', 'Voir les doublons' ),
         'ueb_manage_duplicates' => array( 'Doublons', 'Désactiver / réactiver les doublons' ),
         'ueb_configure_duplicates' => array( 'Doublons', 'Configurer la détection' ),
@@ -158,6 +159,20 @@ function ueb_access_ref_where( $key, $prefix = '' ) {
     return '1=1';
 }
 
+/**
+ * Filtres détaillés des dossiers (filière, niveau, sexe…) : accordés par le
+ * privilège « Filtrer les dossiers », ou d'office à qui ouvre une section de
+ * l'espace admin, dont le tiroir de filtres est l'outil normal. Ne donne
+ * accès à aucun dossier : la portée par établissement s'applique toujours.
+ */
+function ueb_access_peut_filtrer() {
+    if ( ueb_access_has( 'ueb_filter_students' ) ) return true;
+    foreach ( array( 'ueb_section_dossiers', 'ueb_section_stats', 'ueb_section_effectifs' ) as $cap ) {
+        if ( ueb_access_has( $cap ) ) return true;
+    }
+    return false;
+}
+
 function ueb_access_has_admin() {
     return ueb_access_has( array( 'ueb_section_stats', 'ueb_view_stats' ) ) || ueb_access_has( array( 'ueb_section_effectifs', 'ueb_view_stats' ) ) || ueb_access_has( array( 'ueb_section_dossiers', 'ueb_view_students' ) );
 }
@@ -205,10 +220,10 @@ add_action( 'init', 'ueb_access_migrate', 20 );
 /** Préréglages éditables : aucune création automatique de rôle. */
 function ueb_access_presets() {
     return array(
-        array( 'name' => 'Lecture seule', 'permissions' => array( 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students' ) ),
-        array( 'name' => 'Chef d’établissement', 'permissions' => array( 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students', 'ueb_export_students', 'ueb_section_effectifs', 'ueb_section_dossiers' ) ),
+        array( 'name' => 'Lecture seule', 'permissions' => array( 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students', 'ueb_filter_students' ) ),
+        array( 'name' => 'Chef d’établissement', 'permissions' => array( 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students', 'ueb_export_students', 'ueb_filter_students', 'ueb_section_effectifs', 'ueb_section_dossiers' ) ),
         array( 'name' => 'Supervision globale / Recteur', 'permissions' => array( 'ueb_view_overview', 'ueb_view_stats', 'ueb_view_trends' ) ),
-        array( 'name' => 'Suivi des admissions / DAAS', 'permissions' => array( 'ueb_view_overview', 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students', 'ueb_export_students', 'ueb_section_stats', 'ueb_section_effectifs', 'ueb_section_dossiers' ) ),
+        array( 'name' => 'Suivi des admissions / DAAS', 'permissions' => array( 'ueb_view_overview', 'ueb_view_stats', 'ueb_view_trends', 'ueb_view_students', 'ueb_export_students', 'ueb_filter_students', 'ueb_section_stats', 'ueb_section_effectifs', 'ueb_section_dossiers' ) ),
         array( 'name' => 'Direction / Super gestionnaire', 'permissions' => array_keys( ueb_access_catalogue() ) ),
     );
 }

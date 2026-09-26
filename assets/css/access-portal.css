@@ -591,10 +591,55 @@ a.portal-est-card:hover .portal-est-go { color: var(--ueb-primary); transform: t
     color: var(--ueb-text-soft);
 }
 .portal-field--grow { flex: 1 1 15rem; }
+
+/* Filtres détaillés : le bouton se range avec les autres champs, le panneau
+   s'ouvre sur toute la largeur en dessous, en grille de champs égaux. */
+.portal-more-toggle { min-height: 42px; }
+.portal-more-toggle .admin-filter-badge { margin-left: .1rem; }
+.portal-more-toggle[aria-expanded="true"] {
+    border-color: var(--ueb-primary);
+    background: var(--ueb-primary-wash);
+}
+/* Qualifié par .ueb-portal : le reset `.ueb-portal fieldset` (0,1,1), plus
+   bas dans ce fichier, écrasait sinon la marge et la bordure du panneau. */
+.ueb-portal .portal-more {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+    gap: .85rem .9rem;
+    min-width: 0;
+    margin: .15rem 0 0;
+    padding: 1rem 1.05rem 1.05rem;
+    background: var(--ueb-surface-2);
+    border: 1px solid var(--ueb-border);
+    border-radius: var(--ueb-radius);
+}
+.ueb-portal .portal-more[hidden] { display: none; }
+.ueb-portal .portal-more select,
+.ueb-portal .portal-more input { width: 100%; }
+.portal-more-actions { display: flex; align-items: flex-end; }
+.portal-more-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 42px;
+    padding: .4rem .7rem;
+    background: none;
+    border: none;
+    border-radius: var(--ueb-radius-sm);
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--ueb-text-soft);
+    cursor: pointer;
+    transition: color var(--ueb-fast) var(--ueb-ease), background var(--ueb-fast) var(--ueb-ease);
+}
+.portal-more-reset:hover { color: var(--ueb-primary); background: var(--ueb-surface-hover); }
+.portal-more-reset[hidden] { display: none; }
+
 .portal-search { position: relative; display: flex; align-items: center; }
 .portal-search .admin-icon {
     position: absolute;
-    left: .7rem;
+    left: .85rem;
     color: var(--ueb-text-muted);
     pointer-events: none;
 }
@@ -619,11 +664,12 @@ a.portal-est-card:hover .portal-est-go { color: var(--ueb-primary); transform: t
     border-color: var(--ueb-primary);
     box-shadow: 0 0 0 3px var(--ueb-primary-wash);
 }
-/* Après le reset ci-dessus, et plus spécifique que lui : son raccourci
-   `padding` écrasait sinon le retrait réservé à l'icône, qui se retrouvait
-   posée sur les premières lettres du texte. */
-.ueb-portal .portal-search input {
-    padding-left: 2.25rem;
+/* Le reset ci-dessus vaut (0,3,1) à cause de ses deux :not() : ce sélecteur
+   reprend les mêmes :not() pour le dépasser (0,4,1). Sans cela, le raccourci
+   `padding` du reset écrase le retrait réservé à l'icône, et la loupe se
+   pose sur les premières lettres du texte d'aide. */
+.ueb-portal .portal-search input:not([type="checkbox"]):not([type="radio"]) {
+    padding-left: 2.5rem;
     width: 100%;
 }
 

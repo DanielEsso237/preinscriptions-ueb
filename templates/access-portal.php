@@ -347,6 +347,31 @@ $contexte = 'overview' === $view
             $peut_exporter = ueb_access_has( 'ueb_export_students' )
                 && ( ! $establishment_id || ueb_access_contains( 'ueb_export_students', $establishment_id ) );
             $etabs_filtre = ueb_access_establishments( $peut_lister ? 'ueb_view_students' : 'ueb_export_students' );
+
+            // Filtres détaillés : même moteur que le tiroir de l'espace admin
+            // (ueb_admin_build_where), options limitées à la portée du compte.
+            $peut_filtrer = ( $peut_lister || $peut_exporter ) && ueb_access_peut_filtrer();
+            if ( $peut_filtrer ) {
+                global $wpdb;
+                $refs_filtre   = ueb_admin_get_reference_lists();
+                $cap_portee    = $peut_lister ? 'ueb_view_students' : 'ueb_export_students';
+                $sql_filieres  = 'SELECT f.id, f.libelle, fa.code FROM ueb_filieres f JOIN ueb_facultes fa ON fa.id = f.faculte_id WHERE '
+                    . ueb_access_sql( 'f.faculte_id', $cap_portee )
+                    . ( $establishment_id ? $wpdb->prepare( ' AND f.faculte_id = %d', $establishment_id ) : '' )
+                    . ' ORDER BY fa.code, f.libelle';
+                $filieres_par_etab = array();
+                foreach ( $wpdb->get_results( $sql_filieres, ARRAY_A ) as $row ) {
+                    $filieres_par_etab[ $row['code'] ][] = $row;
+                }
+                $filtres_detail = array(
+                    'niveau_lmd'        => array( 'Niveau LMD', $refs_filtre['niveaux_lmd'] ),
+                    'type_formation'    => array( 'Type de formation', $refs_filtre['types_formation'] ),
+                    'diplome_admission' => array( 'Diplôme d’admission', $refs_filtre['diplomes'] ),
+                    'mention'           => array( 'Mention', $refs_filtre['mentions'] ),
+                    'sexe'              => array( 'Sexe', $refs_filtre['sexes'] ),
+                    'region_origine'    => array( 'Région d’origine', $refs_filtre['regions'] ),
+                );
+            }
             ?>
             <section class="portal-students" id="portal-students"
                      data-establishment="<?php echo (int) $establishment_id; ?>"
@@ -366,10 +391,10 @@ $contexte = 'overview' === $view
                             <?php echo ueb_icon( 'chevron-down', 'admin-icon--sm admin-export-caret' ); ?>
                         </button>
                         <div id="portal-export-menu" class="admin-export-menu" role="menu" aria-labelledby="portal-export" hidden>
-                            <p class="admin-export-menu-title">Liste des préinscrits<span>Modèle officiel · sélection affichée</span></p>
+                            <p class="admin-export-menu-title">Liste des préinscrits<span>Dossiers affichés à l’écran</span></p>
                             <button type="button" class="admin-export-item" role="menuitem" data-format="pdf">
                                 <?php echo ueb_icon( 'file-pdf' ); ?>
-                                <span class="admin-export-item-text">Document PDF<span>Prêt à imprimer et à signer</span></span>
+                                <span class="admin-export-item-text">Document PDF<span>Prêt à imprimer</span></span>
                                 <span class="admin-export-ext">PDF</span>
                             </button>
                             <button type="button" class="admin-export-item" role="menuitem" data-format="excel">
@@ -423,6 +448,57 @@ $contexte = 'overview' === $view
                             <option value="brouillon">Brouillon</option>
                         </select>
                     </label>
+
+                    <?php if ( $peut_filtrer ) : ?>
+                    <button type="button" class="admin-tbtn portal-more-toggle" id="portal-more-toggle"
+                            aria-expanded="false" aria-controls="portal-more">
+                        <?php echo ueb_icon( 'filter', 'admin-icon--sm' ); ?>Plus de filtres
+                        <span class="admin-filter-badge" id="portal-more-count" hidden>0</span>
+                    </button>
+
+                    <!-- Panneau replié par défaut ; ses champs font partie du
+                         formulaire, donc de la liste ET de l'export. -->
+                    <fieldset class="portal-more" id="portal-more" hidden>
+                        <legend class="admin-sr-only">Filtres détaillés</legend>
+                        <label class="portal-field">
+                            <span>Filière (1er, 2e ou 3e choix)</span>
+                            <select name="filiere">
+                                <option value="">Toutes</option>
+                                <?php foreach ( $filieres_par_etab as $code => $liste_filieres ) : ?>
+                                    <?php if ( count( $filieres_par_etab ) > 1 ) : ?><optgroup label="<?php echo esc_attr( $code ); ?>"><?php endif; ?>
+                                    <?php foreach ( $liste_filieres as $fil ) : ?>
+                                    <option value="<?php echo (int) $fil['id']; ?>"><?php echo esc_html( $fil['libelle'] ); ?></option>
+                                    <?php endforeach; ?>
+                                    <?php if ( count( $filieres_par_etab ) > 1 ) : ?></optgroup><?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <?php foreach ( $filtres_detail as $cle => $filtre ) : ?>
+                        <label class="portal-field">
+                            <span><?php echo esc_html( $filtre[0] ); ?></span>
+                            <select name="<?php echo esc_attr( $cle ); ?>">
+                                <option value="">Tous</option>
+                                <?php foreach ( $filtre[1] as $opt ) : ?>
+                                <option value="<?php echo esc_attr( $opt->id ); ?>"><?php echo esc_html( $opt->libelle ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <?php endforeach; ?>
+                        <label class="portal-field">
+                            <span>Déposé à partir du</span>
+                            <input type="date" name="date_from">
+                        </label>
+                        <label class="portal-field">
+                            <span>Déposé jusqu’au</span>
+                            <input type="date" name="date_to">
+                        </label>
+                        <div class="portal-more-actions">
+                            <button type="button" class="portal-more-reset" id="portal-more-reset" hidden>
+                                <?php echo ueb_icon( 'close', 'admin-icon--sm' ); ?>Effacer ces filtres
+                            </button>
+                        </div>
+                    </fieldset>
+                    <?php endif; ?>
 
                     <!-- Le tri se fait en cliquant les en-têtes du tableau ;
                          ces champs le transportent jusqu'au serveur. -->
