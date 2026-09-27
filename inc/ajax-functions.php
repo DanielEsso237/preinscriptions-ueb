@@ -307,7 +307,6 @@ function ueb_ajax_save_progression() {
     ueb_ajax_check_nonce();
 
     $numero_dossier = isset( $_POST['numero_dossier'] ) ? sanitize_text_field( wp_unslash( $_POST['numero_dossier'] ) ) : '';
-    if ( ! ueb_dossier_is_owner( $numero_dossier ) ) wp_send_json_error( array( 'message' => 'Dossier inaccessible.' ), 403 );
     $etape          = isset( $_POST['etape'] ) ? absint( $_POST['etape'] ) : 0;
     $donnees_json   = isset( $_POST['donnees'] ) ? wp_unslash( $_POST['donnees'] ) : '';
 
@@ -340,9 +339,6 @@ function ueb_ajax_get_progression() {
     ueb_ajax_check_nonce();
 
     $numero_dossier = isset( $_POST['numero_dossier'] ) ? sanitize_text_field( wp_unslash( $_POST['numero_dossier'] ) ) : '';
-    $key = sanitize_text_field( wp_unslash( $_POST['cle_reprise'] ?? '' ) );
-    if ( ! ueb_dossier_is_owner( $numero_dossier, $key ) ) wp_send_json_error( array( 'message' => 'Dossier inaccessible. Vérifiez le numéro et la clé de reprise.' ), 403 );
-    ueb_dossier_remember_owner( $numero_dossier );
 
     if ( ! $numero_dossier ) {
         wp_send_json_error( array( 'message' => 'Numéro de dossier manquant.' ) );
@@ -370,7 +366,6 @@ function ueb_ajax_get_progression() {
     wp_send_json_success( array(
         'numero_dossier' => $numero_dossier,
         'etape_atteinte' => $progression['etape_atteinte'],
-        'cle_reprise'    => ueb_dossier_access_key( $numero_dossier ),
         'donnees'        => $progression['donnees'],
     ) );
 }

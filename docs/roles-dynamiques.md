@@ -89,11 +89,9 @@ Les grands compteurs incluent les brouillons et les dossiers soumis, conforméme
 
 La connexion limite les échecs par adresse réseau et identifiant (5 échecs, fenêtre de 15 minutes), avec messages génériques. L’oubli de mot de passe est limité à trois demandes par adresse sur 15 minutes. Derrière un proxy, l’adresse réseau doit être configurée correctement au niveau serveur ; le code ne fait pas confiance à un en-tête client arbitraire. L’acheminement effectif des e-mails dépend de `wp_mail` / du transport installé et reste à vérifier sur l’hébergement cible.
 
-### Correction de la reprise des brouillons publics
+### Reprise des brouillons publics
 
-L’audit a révélé que le seul numéro de dossier permettait auparavant de reprendre un brouillon : cela aurait contourné l’isolation de l’administration. La reprise exige maintenant une **clé confidentielle**, liée au dossier par HMAC, ou la session propriétaire déjà vérifiée. La clé est affichée à la création ; les cookies de possession sont HttpOnly / SameSite. Un dossier soumis ne peut plus être écrasé par cette voie.
-
-Les anciens brouillons sont conservés, mais leur reprise par numéro seul est volontairement refusée. Pour un ancien candidat sans clé, un opérateur technique doit vérifier son identité avant de lui transmettre sa clé via une procédure de support. Le helper PHP `ueb_dossier_access_key($numero)` permet cette récupération depuis un contexte technique de confiance ; aucune API publique ne la fournit à partir du numéro seul. Changer le salt WordPress invalide les clés existantes. Ce changement de comportement est nécessaire à la protection des données.
+La reprise d’un dossier se fait avec le seul numéro de dossier (la clé de reprise confidentielle a été retirée). Un dossier déjà soumis reste modifiable : la reprise ramène au récapitulatif et la nouvelle soumission met à jour le même dossier.
 
 ## Vérifications automatisées
 
@@ -308,6 +306,6 @@ Modifiés :
 - `page-administration.php`, `page-references.php`, `assets/js/admin-dashboard.js`, `assets/js/admin-references.js` : adaptation des espaces existants.
 - `inc/admin-functions.php`, `inc/admin-ajax-functions.php`, `inc/analytics-functions.php`, `inc/stats-effectifs-functions.php`, `inc/export-functions.php` : isolation des données et exports.
 - `inc/admin-references-functions.php`, `inc/admin-references-ajax.php` : permissions par rubrique et portée des référentiels.
-- `inc/dossier-functions.php`, `inc/db-functions.php`, `inc/ajax-functions.php`, `page-preinscription.php`, `assets/js/form-preinscription.js`, `assets/css/form-preinscription.css` : établissements actifs et correction de la reprise publique.
+- `inc/dossier-functions.php`, `inc/db-functions.php`, `inc/ajax-functions.php`, `page-preinscription.php`, `assets/js/form-preinscription.js`, `assets/css/form-preinscription.css` : établissements actifs.
 
 La modification préexistante de `inc/quitus-pdf-functions.php` a été conservée et ne fait pas partie de cette livraison. Aucun déploiement distant n’a été effectué.
