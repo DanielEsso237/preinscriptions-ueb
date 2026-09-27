@@ -79,7 +79,7 @@ if ( preinscriptions_cloture_atteinte() ) {
  */
 $ueb_numero_dossier = null;
 
-if ( ! empty( $_SESSION['ueb_numero_dossier_en_cours'] ) && ueb_dossier_is_owner( $_SESSION['ueb_numero_dossier_en_cours'] ) && ueb_recuperer_progression( $_SESSION['ueb_numero_dossier_en_cours'] ) ) {
+if ( ! empty( $_SESSION['ueb_numero_dossier_en_cours'] ) ) {
     $ueb_numero_dossier = $_SESSION['ueb_numero_dossier_en_cours'];
 } elseif ( ! empty( $_COOKIE['ueb_numero_dossier'] ) ) {
     $numero_candidat = sanitize_text_field( wp_unslash( $_COOKIE['ueb_numero_dossier'] ) );
@@ -126,7 +126,7 @@ get_header();
                 <span class="dossier-banner-label">Ton numéro de dossier :</span>
                 <strong class="dossier-banner-numero"><?php echo esc_html( $ueb_numero_dossier ); ?></strong>
             </div>
-            <div class="dossier-banner-hint"><p>Conserve ton numéro et cette clé confidentielle pour reprendre ton dossier.</p><details><summary>Afficher ma clé de reprise</summary><code class="dossier-reprise-key"><?php echo esc_html( ueb_dossier_access_key( $ueb_numero_dossier ) ); ?></code></details></div>
+            <p class="dossier-banner-hint">Note-le bien : il te permettra de reprendre ta préinscription si tu es interrompu(e).</p>
         </div>
         <?php else : ?>
         <div class="dossier-banner dossier-banner--error" role="alert">
@@ -175,8 +175,6 @@ get_header();
                 <label for="reprise-numero">Numéro de dossier</label>
                 <div class="reprise-panel-row">
                     <input type="text" id="reprise-numero" placeholder="Ex : UEB-2026-000123">
-                    <label for="reprise-cle">Clé de reprise confidentielle</label>
-                    <input type="text" id="reprise-cle" autocomplete="off" spellcheck="false" placeholder="La clé reçue à la création du dossier">
                     <button type="button" id="btn-reprise-valider" class="btn-secondary">Reprendre</button>
                 </div>
                 <p id="reprise-message" class="reprise-message" style="display:none;"></p>

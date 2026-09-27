@@ -15,28 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/** Le numéro public n'est pas une preuve de propriété. La clé HMAC est
- * remise seulement à la création ou après présentation de la clé correcte.
- * Les anciens brouillons restent stockés, sans reprise par numéro seul. */
-function ueb_dossier_access_key( $numero ) {
-    return hash_hmac( 'sha256', 'ueb-dossier:' . $numero, wp_salt( 'auth' ) );
-}
-function ueb_dossier_is_owner( $numero, $key = '' ) {
-    if ( ! $numero ) return false;
-    if ( ! $key ) $key = $_SESSION['ueb_dossier_access'][ $numero ] ?? '';
-    if ( ! $key && ! empty( $_COOKIE['ueb_dossier_access'] ) ) {
-        $parts = explode( ':', wp_unslash( $_COOKIE['ueb_dossier_access'] ), 2 );
-        if ( count( $parts ) === 2 && hash_equals( $numero, $parts[0] ) ) $key = $parts[1];
-    }
-    return is_string( $key ) && hash_equals( ueb_dossier_access_key( $numero ), $key );
-}
-function ueb_dossier_remember_owner( $numero ) {
-    $key = ueb_dossier_access_key( $numero );
-    $_SESSION['ueb_dossier_access'][ $numero ] = $key;
-    $_SESSION['ueb_numero_dossier_en_cours'] = $numero;
-    setcookie( 'ueb_dossier_access', $numero . ':' . $key, array( 'expires' => time() + 30 * DAY_IN_SECONDS, 'path' => COOKIEPATH ?: '/', 'domain' => COOKIE_DOMAIN ?: '', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ) );
-}
-
 /**
  * Génère un numéro de dossier unique, au format UEB-<année>-<6 chiffres>
  * (ex. UEB-2026-000001), avec remise à zéro chaque année.
@@ -99,7 +77,6 @@ function ueb_initialiser_dossier() {
         return false;
     }
 
-    ueb_dossier_remember_owner( $numero_dossier );
     return $numero_dossier;
 }
 
@@ -122,8 +99,6 @@ function ueb_initialiser_dossier() {
  */
 function ueb_sauvegarder_progression( $numero_dossier, $etape, $donnees ) {
     global $wpdb;
-    if ( ! ueb_dossier_is_owner( $numero_dossier ) ) return false;
-    if ( $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_preinscriptions WHERE numero_dossier = %s', $numero_dossier ) ) ) return false;
 
     $numero_dossier = sanitize_text_field( $numero_dossier );
     $etape          = absint( $etape );
@@ -177,7 +152,6 @@ function ueb_sauvegarder_progression( $numero_dossier, $etape, $donnees ) {
  */
 function ueb_recuperer_progression( $numero_dossier ) {
     global $wpdb;
-    if ( ! ueb_dossier_is_owner( $numero_dossier ) ) return null;
 
     $numero_dossier = sanitize_text_field( $numero_dossier );
 

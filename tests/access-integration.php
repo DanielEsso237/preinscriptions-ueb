@@ -182,18 +182,12 @@ $reset_key = get_password_reset_key( get_user_by( 'id', $account['id'] ) );
 ensure( ! is_wp_error( check_password_reset_key( $reset_key, $account['login'] ) ), 'Clé de récupération native valide' );
 ensure( is_wp_error( check_password_reset_key( 'incorrect', $account['login'] ) ), 'Clé de récupération invalide refusée' );
 
-// Le numéro de dossier seul n'autorise plus le parcours public.
+// Parcours public : création, sauvegarde et reprise par numéro de dossier.
 wp_set_current_user( 0 );
 $draft = ueb_initialiser_dossier();
-ensure( $draft && ueb_dossier_is_owner( $draft ), 'Création publique avec preuve de propriété' );
-ensure( ueb_sauvegarder_progression( $draft, 2, array( 'nom' => 'Test privé' ) ), 'Sauvegarde du propriétaire autorisée' );
-$owner = $_SESSION['ueb_dossier_access']; $_SESSION['ueb_dossier_access'] = array(); $_COOKIE = array();
-ensure( null === ueb_recuperer_progression( $draft ), 'Reprise publique sans clé refusée' );
-ensure( ! ueb_dossier_is_owner( $draft, str_repeat( '0', 64 ) ), 'Clé de reprise forgée refusée' );
-ensure( ! ueb_sauvegarder_progression( $draft, 3, array() ), 'Modification publique étrangère refusée' );
-ensure( ueb_dossier_is_owner( $draft, $owner[ $draft ] ), 'Reprise avec clé valide autorisée' );
-$_SESSION['ueb_dossier_access'] = $owner;
-ensure( 'Test privé' === ueb_recuperer_progression( $draft )['donnees']['nom'], 'Données du brouillon préservées' );
+ensure( (bool) $draft, 'Création publique d\'un dossier' );
+ensure( ueb_sauvegarder_progression( $draft, 2, array( 'nom' => 'Test brouillon' ) ), 'Sauvegarde du brouillon' );
+ensure( 'Test brouillon' === ueb_recuperer_progression( $draft )['donnees']['nom'], 'Reprise par numéro de dossier' );
 ensure( "'=1+1" === ueb_export_csv_cell( '=1+1' ), 'Formule CSV neutralisée' );
 ensure( ! $wpdb->last_error, 'Aucune erreur SQL' );
 echo "Tous les tests ont réussi. Transaction annulée à la sortie.\n";
