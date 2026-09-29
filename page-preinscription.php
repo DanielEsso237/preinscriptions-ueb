@@ -308,8 +308,10 @@ get_header();
                             </select>
                         </div>
 
-                        <!-- Moyenne obtenue — réels dans [10, 20] -->
-                        <div class="form-group align-top">
+                        <!-- Moyenne obtenue — réels dans [10, 20]. Masquée
+                             avec la mention pour le GCE A-Level, qui n'a pas
+                             de mention (cf. DIPLOMES_SANS_MOYENNE). -->
+                        <div class="form-group align-top" id="moyenne-group">
                             <label for="moyenne_diplome">Moyenne obtenue au diplôme <span class="required">*</span><span class="field-trans">Average obtained</span></label>
                             <input
                                 type="number"
@@ -326,7 +328,7 @@ get_header();
                         </div>
 
                         <!-- Mention — déduite de la moyenne, non modifiable -->
-                        <div class="form-group align-top">
+                        <div class="form-group align-top" id="mention-group">
                             <label for="mention_select">Mention <span class="required">*</span><span class="field-trans">Mention / Honors</span></label>
                             <select id="mention_select" class="field-locked" required disabled aria-describedby="mention-hint">
                                 <option value="">— Chargement... —</option>

@@ -188,7 +188,11 @@ function ueb_handle_pdf_generation() {
     $email           = sanitize_email( $posted['email'] ?? '' );
     $adresse         = sanitize_text_field( $posted['adresse'] ?? '' );
 
-    // Moyenne : champ réel, on garde 2 décimales pour l'affichage.
+    // Moyenne : champ réel, on garde 2 décimales pour l'affichage. Ignorée
+    // pour un diplôme sans mention (GCE A-Level), comme à l'enregistrement.
+    if ( function_exists( 'ueb_diplome_sans_moyenne' ) && ueb_diplome_sans_moyenne( absint( $posted['diplome_admission'] ?? 0 ) ) ) {
+        unset( $posted['moyenne_diplome'] );
+    }
     $moyenne_diplome = isset( $posted['moyenne_diplome'] ) && $posted['moyenne_diplome'] !== ''
         ? number_format( (float) $posted['moyenne_diplome'], 2 )
         : '';
