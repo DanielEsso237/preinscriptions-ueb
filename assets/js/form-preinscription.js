@@ -53,6 +53,11 @@
     // master), ce champ est masqué et non requis.
     const DIPLOMES_AVEC_SERIE = ['bac', 'gce_ad'];
 
+    // Diplômes sans mention (GCE Advanced-Level) : la moyenne, qui ne sert
+    // qu'à déduire la mention, n'a pas de sens non plus. Les deux champs
+    // sont masqués et non requis (cf. ueb_diplome_sans_moyenne() côté PHP).
+    const DIPLOMES_SANS_MOYENNE = ['gce_ad'];
+
     // Listes "brutes" des filières (avant filtrage croisé), mises à jour
     // à chaque changement de faculté/type de formation, et relues par
     // refreshFiliereCrossFilter() ci-dessous.
@@ -292,6 +297,38 @@
         moyenneInput.addEventListener('change', appliquerMention);
     }
 
+    const moyenneGroup = document.getElementById('moyenne-group');
+    const mentionGroup = document.getElementById('mention-group');
+
+    /** Le diplôme choisi est-il sans mention (donc sans moyenne) ? */
+    function diplomeSansMoyenne() {
+        return DIPLOMES_SANS_MOYENNE.indexOf(getDiplomeCode(selectDiplome.value)) !== -1;
+    }
+
+    /** Masque moyenne + mention pour les diplômes sans mention (GCE A-Level). */
+    function updateMoyenneMention() {
+        const masquer = diplomeSansMoyenne();
+
+        [moyenneGroup, mentionGroup].forEach(function (groupe) {
+            if (!groupe) return;
+            groupe.style.display = masquer ? 'none' : '';
+            groupe.querySelectorAll('.field-error').forEach(function (e) { e.remove(); });
+        });
+
+        if (moyenneInput) {
+            moyenneInput.required = !masquer;
+            moyenneInput.classList.remove('error');
+            // Rien ne doit partir au serveur pour un diplôme sans mention.
+            if (masquer) moyenneInput.value = '';
+        }
+        if (mentionSelect) {
+            mentionSelect.required = !masquer;
+            mentionSelect.classList.remove('error');
+        }
+
+        appliquerMention();
+    }
+
     /* ================================================================
        DIPLÔMES D'ADMISSION — certains sont propres à une faculté
        (Capacité en Droit => FSJP). La restriction vit en base, dans
@@ -517,12 +554,14 @@
         updateDiplomesDisponibles();
         updateNiveauxDisponibles();
         updateSeries();
+        updateMoyenneMention();
         updateTypeFormation();
     });
 
     selectDiplome.addEventListener('change', function () {
         updateSeries();
         updateNiveauxDisponibles();
+        updateMoyenneMention();
     });
 
     selectType.addEventListener('change', updateFilieres);
@@ -1191,6 +1230,9 @@
                 // afficher une ligne vide n'apprendrait rien au candidat.
                 if (!value && (fieldName === 'filiere_2' || fieldName === 'filiere_3')) return;
 
+                // Moyenne et mention n'existent pas pour un GCE A-Level.
+                if (diplomeSansMoyenne() && (fieldName === 'moyenne_diplome' || fieldName === 'mention')) return;
+
                 const labelFr  = LABELS[fieldName] || fieldName;
                 const labelEn  = LABELS_EN[fieldName] || '';
                 const item     = document.createElement('div');
@@ -1430,6 +1472,7 @@
         // dans le select qu'une fois cette faculte choisie.
         updateDiplomesDisponibles();
         if (donnees.diplome_admission) selectDiplome.value = donnees.diplome_admission;
+        updateMoyenneMention();
 
         updateNiveauxDisponibles();
         if (donnees.niveau_lmd) {

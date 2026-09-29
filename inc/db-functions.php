@@ -59,6 +59,25 @@ function ueb_valider_moyenne_diplome( $brut ) {
 }
 
 /**
+ * Le diplôme d'admission est-il sans mention (GCE Advanced-Level) ? La
+ * moyenne ne servant qu'à déduire la mention, elle n'est alors ni
+ * demandée ni enregistrée (cf. DIPLOMES_SANS_MOYENNE côté JS).
+ *
+ * @param int $diplome_id Id dans ueb_diplomes_admission.
+ * @return bool
+ */
+function ueb_diplome_sans_moyenne( $diplome_id ) {
+    if ( ! $diplome_id ) {
+        return false;
+    }
+
+    global $wpdb;
+    $code = $wpdb->get_var( $wpdb->prepare( "SELECT code FROM ueb_diplomes_admission WHERE id = %d", $diplome_id ) );
+
+    return in_array( $code, array( 'gce_ad' ), true );
+}
+
+/**
  * Id de la mention correspondant à une moyenne, en repassant par le
  * barème de ueb_mention_pour_moyenne(). La mention postée est ignorée :
  * elle est calculée, pas choisie, et rien ne garantit qu'un POST forgé
@@ -164,6 +183,11 @@ function ueb_handle_db_save() {
     }
     if ( ! $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_facultes WHERE id = %d AND actif = 1', $data['faculte'] ) ) ) {
         wp_die( 'Cet établissement n’accepte plus de candidatures. Choisissez un établissement actif.', '', array( 'response' => 400 ) );
+    }
+
+    // Pas de moyenne (donc pas de mention) pour un diplôme sans mention.
+    if ( ueb_diplome_sans_moyenne( $data['diplome_admission'] ) ) {
+        $data['moyenne_diplome'] = null;
     }
 
     // La mention découle de la moyenne (cf. ueb_mentions_bareme()) : on la
