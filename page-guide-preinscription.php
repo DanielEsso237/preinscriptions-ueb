@@ -237,6 +237,19 @@ get_header();
                     </p>
                 </aside>
 
+                <?php foreach ( ueb_guide_particularites_paiement() as $gp_particularite ) : ?>
+                    <aside class="gp-note gp-note-alerte" role="note">
+                        <svg class="gp-note-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path>
+                            <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+                        </svg>
+                        <p>
+                            <strong><?php echo esc_html( $gp_particularite['titre'] ); ?>&nbsp;:</strong>
+                            <?php echo esc_html( $gp_particularite['texte'] ); ?>
+                        </p>
+                    </aside>
+                <?php endforeach; ?>
+
                 <div class="gp-link-card">
                     <div>
                         <h3 class="gp-link-title">Frais médicaux et certificat médical</h3>

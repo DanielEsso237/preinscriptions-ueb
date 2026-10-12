@@ -268,6 +268,7 @@ function ueb_handle_pdf_generation() {
         'moyenne_diplome'        => $moyenne_diplome,
         'niveau_lmd'             => ueb_pdf_lookup( 'ueb_niveaux_lmd', $niveau_lmd_id, 'libelle' ),
         'montant_droits'         => ueb_montant_droits_saisi( $posted['montant_droits'] ?? '', $niveau_lmd_id ),
+        'compte_cca'             => ueb_compte_cca_etablissement( $faculte_id ),
         'mention'                => ueb_pdf_lookup( 'ueb_mentions', $mention_id, 'libelle' ),
         'statut_etudiant'        => ueb_pdf_lookup( 'ueb_statuts_etudiants', $statut_etudiant_id, 'libelle' ),
         'type_formation'         => ueb_translate_type_formation( $type_formation ),
@@ -777,7 +778,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . "Bq : CCABANK\n"
-        . 'Compte : 10039-10012-00272772201-07';
+        . 'Compte : ' . $d['compte_cca'];
     ueb_pdf_qr_stylise( $pdf, $qr_coupon, 187, $ct + 5, 14 );
     $pdf->RoundedRect( 9, $ct + 25, 192, 10, 1, '1111', 'D',
         array( 'width' => 0.3, 'dash' => 0, 'color' => $c['noir'] ) );
@@ -794,7 +795,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->SetFont( 'dejavusans', '', 6 );
     $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
     $pdf->SetXY( 126, $ct + 29.6 );
-    $pdf->MultiCell( 74, 2.9, '10039-10012-00272772201-07', 0, 'L' );
+    $pdf->MultiCell( 74, 2.9, $d['compte_cca'], 0, 'L' );
 
     /* --- Crédit groupe en bas de page --- */
     ueb_pdf_txt( $pdf, 0, 292, '@NexusCore: Nous developpons vos solutions informatiques (693899150/673414381)', 6.5, 'I', $c['gris'], 'C', 210 );

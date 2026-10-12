@@ -122,9 +122,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  *           - ueb_preinscriptions.montant_droits garde le montant que le
  *             candidat a laissé ou corrigé dans le formulaire, celui qui
  *             figure sur son quitus.
+ * - 2.10 : compte bancaire et frais médicaux propres à un établissement.
+ *         La FALSH encaisse sur son propre compte CCA Bank et facture le
+ *         certificat médical des nouveaux étudiants (communiqué du
+ *         21 septembre 2026) :
+ *           - ueb_facultes.compte_bancaire : NULL = compte de l'Université ;
+ *           - ueb_facultes.frais_medicaux : 0 = sans frais.
+ *         Les deux se modifient depuis « Gestion des références ».
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.9' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.10' );
  }
 
 /**
@@ -176,6 +183,8 @@ CREATE TABLE IF NOT EXISTS ueb_facultes (
     nom_fr VARCHAR(150) NOT NULL,
     nom_en VARCHAR(150) NOT NULL,
     logo VARCHAR(100) DEFAULT NULL,
+    compte_bancaire VARCHAR(40) DEFAULT NULL,
+    frais_medicaux INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uq_faculte_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -632,6 +641,16 @@ function ueb_run_schema_migrations() {
         $wpdb->query( "UPDATE ueb_niveaux_lmd SET droits_preinscription = 20000 WHERE code IN ('M1', 'M2', 'DOC')" );
     }
     ueb_add_column_if_missing( 'ueb_preinscriptions', 'montant_droits', 'INT UNSIGNED DEFAULT NULL' );
+
+    // 2.10 — compte bancaire et frais médicaux propres à un établissement.
+    // Même précaution qu'en 2.9 : les valeurs de la FALSH ne sont posées
+    // qu'à la création des colonnes.
+    $compte_deja_la = $wpdb->get_var( "SHOW COLUMNS FROM ueb_facultes LIKE 'compte_bancaire'" );
+    $ok_compte      = ueb_add_column_if_missing( 'ueb_facultes', 'compte_bancaire', 'VARCHAR(40) DEFAULT NULL' );
+    $ok_frais       = ueb_add_column_if_missing( 'ueb_facultes', 'frais_medicaux', 'INT UNSIGNED NOT NULL DEFAULT 0' );
+    if ( $ok_compte && $ok_frais && ! $compte_deja_la ) {
+        $wpdb->query( "UPDATE ueb_facultes SET compte_bancaire = '10039-10012-00272772501-77', frais_medicaux = 5000 WHERE code = 'FALSH'" );
+    }
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
