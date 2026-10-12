@@ -130,9 +130,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  *           - ueb_facultes.compte_bancaire : NULL = compte de l'Université ;
  *           - ueb_facultes.frais_medicaux : 0 = sans frais.
  *         Les deux se modifient depuis « Gestion des références ».
+ * - 2.11 : alignement automatique des colonnes. Les versions antérieures
+ *         à 2.6 changeaient la structure par un DROP TABLE manuel : une
+ *         base qui n'a pas été recréée à chaque fois (poste d'un
+ *         développeur, vieille sauvegarde) garde des tables incomplètes,
+ *         et l'enregistrement d'un dossier y échoue (« Champ
+ *         'niveau_lmd_id' inconnu »). ueb_sync_colonnes_manquantes()
+ *         ajoute désormais toute colonne déclarée dans
+ *         ueb_get_table_schemas() et absente de la base, sans rien
+ *         supprimer ni modifier d'existant.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.10' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.11' );
  }
 
 /**
@@ -184,6 +193,8 @@ CREATE TABLE IF NOT EXISTS ueb_facultes (
     nom_fr VARCHAR(150) NOT NULL,
     nom_en VARCHAR(150) NOT NULL,
     logo VARCHAR(100) DEFAULT NULL,
+    slug VARCHAR(180) NOT NULL DEFAULT '',
+    actif TINYINT(1) NOT NULL DEFAULT 1,
     compte_bancaire VARCHAR(40) DEFAULT NULL,
     frais_medicaux INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
@@ -501,6 +512,7 @@ function ueb_maybe_upgrade_db() {
     }
 
     ueb_create_tables();
+    ueb_sync_colonnes_manquantes();
     ueb_run_schema_migrations();
     update_option( 'ueb_db_version', UEB_DB_SCHEMA_VERSION );
 }
@@ -557,6 +569,65 @@ function ueb_add_column_if_missing( $table, $colonne, $definition ) {
     }
 
     return true;
+}
+
+/**
+ * Aligne les tables déjà installées sur ueb_get_table_schemas() : toute
+ * colonne déclarée dans un CREATE TABLE et absente de la base est ajoutée.
+ *
+ * Filet de sécurité pour les bases qui n'ont pas suivi les DROP TABLE
+ * manuels des premières versions. Volontairement prudent :
+ *   - n'ajoute que des colonnes — ni index, ni clés étrangères (une
+ *     contrainte posée sur des données anciennes pourrait échouer) ;
+ *   - ne supprime et ne retype jamais une colonne existante ;
+ *   - une ancienne colonne restée en base mais disparue du schéma, si elle
+ *     est NOT NULL sans valeur par défaut, est rendue facultative : sinon
+ *     chaque INSERT du code actuel, qui ne la renseigne plus, échouerait.
+ *
+ * Idempotente : sur une base à jour, elle ne fait que lire.
+ */
+function ueb_sync_colonnes_manquantes() {
+    global $wpdb;
+
+    foreach ( ueb_get_table_schemas() as $table => $sql ) {
+        $reelles = $wpdb->get_results( "SHOW COLUMNS FROM $table" );
+        if ( ! $reelles ) {
+            continue; // table absente : ueb_create_tables() a échoué, déjà journalisé.
+        }
+        $reelles = array_column( $reelles, null, 'Field' );
+
+        if ( ! preg_match( '/\((.*)\)\s*ENGINE/s', $sql, $corps ) ) {
+            continue;
+        }
+
+        $declarees = array();
+        foreach ( explode( "\n", $corps[1] ) as $ligne ) {
+            $ligne = rtrim( trim( $ligne ), ',' );
+            // Une ligne de colonne commence par son nom en minuscules ; les
+            // clés et contraintes (PRIMARY KEY, CONSTRAINT...) et les
+            // commentaires SQL sont ignorés.
+            if ( preg_match( '/^([a-z][a-z0-9_]*)\s+(\S.*)$/', $ligne, $m ) ) {
+                $declarees[ $m[1] ] = $m[2];
+            }
+        }
+
+        foreach ( $declarees as $colonne => $definition ) {
+            if ( ! isset( $reelles[ $colonne ] ) ) {
+                ueb_add_column_if_missing( $table, $colonne, $definition );
+            }
+        }
+
+        foreach ( $reelles as $colonne => $info ) {
+            if ( isset( $declarees[ $colonne ] ) || 'NO' !== $info->Null || null !== $info->Default || false !== stripos( $info->Extra, 'auto_increment' ) ) {
+                continue;
+            }
+            // $table et $colonne viennent de la base elle-même, $info->Type
+            // de SHOW COLUMNS : aucune entrée utilisateur.
+            if ( false === $wpdb->query( "ALTER TABLE $table MODIFY COLUMN `$colonne` {$info->Type} NULL" ) ) {
+                error_log( sprintf( '[UEB DB] Colonne obsolète "%s.%s" non assouplie : %s', $table, $colonne, $wpdb->last_error ) );
+            }
+        }
+    }
 }
 
 /**
