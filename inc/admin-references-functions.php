@@ -150,6 +150,9 @@ function ueb_admin_ref_registry() {
                 'code'    => array( 'label' => 'Code',    'type' => 'text',   'required' => true, 'maxlength' => 20 ),
                 'libelle' => array( 'label' => 'Libellé', 'type' => 'text',   'required' => true, 'maxlength' => 50 ),
                 'ordre'   => array( 'label' => "Ordre d'affichage", 'type' => 'number', 'required' => false ),
+                // Tarif proposé par défaut au candidat de ce niveau, qu'il
+                // peut corriger dans le formulaire (cf. ueb_droits_par_niveau()).
+                'droits_preinscription' => array( 'label' => 'Droits de préinscription (FCFA)', 'type' => 'number', 'required' => true ),
             ),
             'label_col' => 'libelle',
         ),
@@ -385,9 +388,12 @@ function ueb_admin_ref_presentation() {
             ),
         ),
         'niveaux_lmd' => array(
-            'description' => 'Niveaux d’entrée proposés dans le formulaire, affichés dans l’ordre défini ici.',
+            'description' => 'Niveaux d’entrée proposés dans le formulaire, affichés dans l’ordre défini ici. Les droits de préinscription de chaque niveau sont proposés par défaut au candidat et repris dans le guide.',
             'singulier'   => 'un niveau',
-            'colonnes'    => array( 'ordre' => array( 'th' => 'Ordre' ) ),
+            'colonnes'    => array(
+                'ordre'                 => array( 'th' => 'Ordre' ),
+                'droits_preinscription' => array( 'th' => 'Droits (FCFA)' ),
+            ),
         ),
         'mentions' => array(
             'description' => 'Mentions attribuées d’après la moyenne du diplôme. Le formulaire les retrouve par leur code : ne le modifiez pas.',
@@ -764,8 +770,9 @@ function ueb_admin_ref_sanitize( $key, $raw ) {
 
             case 'number':
                 // Toutes les colonnes numériques du registre (les "ordre"
-                // d'affichage) sont NOT NULL DEFAULT 0 en base : un champ
-                // laissé vide devient 0, jamais NULL (sinon l'INSERT échoue).
+                // d'affichage, les droits de préinscription) sont NOT NULL
+                // en base : un champ laissé vide devient 0, jamais NULL
+                // (sinon l'INSERT échoue).
                 $val = ( '' === trim( (string) $val ) ) ? 0 : absint( $val );
                 break;
 

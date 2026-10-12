@@ -730,7 +730,8 @@
                 ]) +
                 groupe('Formation demandée', [
                     ['Faculté', d.faculte], ['Diplôme', d.diplome], ['Série', d.serie],
-                    ['1er choix', d.filiere1], ['2e choix', d.filiere2]
+                    ['1er choix', d.filiere1], ['2e choix', d.filiere2],
+                    ['Droits de préinscription', d.droits]
                 ]) +
                 groupe('Contact', [
                     ['Email', d.email],

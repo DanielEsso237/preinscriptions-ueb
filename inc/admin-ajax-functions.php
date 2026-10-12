@@ -204,6 +204,9 @@ function ueb_admin_ajax_get_dossier_detail() {
         'serie'          => $d->serie_libelle,
         'filiere1'       => $d->filiere1_libelle,
         'filiere2'       => $d->filiere2_libelle,
+        // Montant porté sur le quitus du candidat ; absent des dossiers
+        // déposés avant l'ajout du champ.
+        'droits'         => null !== $d->montant_droits ? ueb_guide_montant( $d->montant_droits, false ) : '',
         'sexe'           => $d->sexe === 'M' ? 'Masculin' : ( $d->sexe === 'F' ? 'Féminin' : '' ),
         'nationalite'    => $d->nationalite_nom,
         'email'          => $d->email,

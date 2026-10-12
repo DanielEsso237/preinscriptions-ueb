@@ -407,9 +407,17 @@ function ueb_guide_pdf_couverture( $pdf, array $dates ) {
     );
 
     /* Trois repères essentiels, sur une ligne. */
+    /* Un tarif par ligne (« Licence : 11 000 FCFA ») : la phrase complète
+       ne tiendrait pas dans la colonne. */
+    $tarifs = ueb_guide_tarifs();
+    $droits = array();
+    foreach ( $tarifs as $tarif ) {
+        $droits[] = ( count( $tarifs ) > 1 ? $tarif['libelle'] . ' : ' : '' ) . ueb_guide_montant( $tarif['montant'], false );
+    }
+
     $repere = array(
         array( 'Période',       ucfirst( $dates['periode'] ) ),
-        array( 'Droits',        ueb_guide_frais( false ) ),
+        array( 'Droits',        implode( "\n", $droits ) ),
         array( 'Dépôt', "Sur place, à l'établissement choisi" ),
     );
 
@@ -435,7 +443,7 @@ function ueb_guide_pdf_couverture( $pdf, array $dates ) {
         $pdf->SetFont( 'dejavusans', 'B', 8.4 );
         $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
         $pdf->SetXY( $cx, $y_faits + 6 );
-        $pdf->MultiCell( $col, 0, $fait[1], 0, 'L', false, 0, null, null, true, 0, false, true, 9.5, 'T' );
+        $pdf->MultiCell( $col, 0, $fait[1], 0, 'L', false, 0, null, null, true, 0, false, true, 9.5, 'T', true );
     }
 
     $pdf->SetY( $y_faits + $h_fait + 6 );
@@ -530,15 +538,27 @@ function ueb_guide_pdf_section_paiement( $pdf ) {
     ueb_guide_pdf_reserver( $pdf, 20 );
     $y = $pdf->GetY() + 1;
 
-    $pdf->SetFont( 'dejavusans', 'B', 7.4 );
-    $pdf->SetTextColor( $c['gris_clair'][0], $c['gris_clair'][1], $c['gris_clair'][2] );
-    $pdf->SetXY( UEB_GUIDE_PDF_MARGE, $y );
-    $pdf->Cell( $largeur, 3.5, 'DROITS DE PRÉINSCRIPTION', 0, 0, 'L' );
+    /* Un tarif par cycle, côte à côte sur la même ligne. */
+    $tarifs = ueb_guide_tarifs();
+    $col    = $largeur / count( $tarifs );
 
-    $pdf->SetFont( 'dejavusans', 'B', 17 );
-    $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
-    $pdf->SetXY( UEB_GUIDE_PDF_MARGE, $y + 4 );
-    $pdf->Cell( $largeur, 8, ueb_guide_frais( false ), 0, 0, 'L' );
+    foreach ( $tarifs as $i => $tarif ) {
+        $cx      = UEB_GUIDE_PDF_MARGE + $i * $col;
+        $libelle = 'DROITS DE PRÉINSCRIPTION';
+        if ( count( $tarifs ) > 1 ) {
+            $libelle .= ' — ' . ueb_guide_pdf_capitales( $tarif['libelle'] );
+        }
+
+        $pdf->SetFont( 'dejavusans', 'B', 7.4 );
+        $pdf->SetTextColor( $c['gris_clair'][0], $c['gris_clair'][1], $c['gris_clair'][2] );
+        $pdf->SetXY( $cx, $y );
+        $pdf->Cell( $col, 3.5, $libelle, 0, 0, 'L', false, '', 1 );
+
+        $pdf->SetFont( 'dejavusans', 'B', 17 );
+        $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
+        $pdf->SetXY( $cx, $y + 4 );
+        $pdf->Cell( $col, 8, ueb_guide_montant( $tarif['montant'], false ), 0, 0, 'L', false, '', 1 );
+    }
 
     $pdf->SetLineStyle( array( 'width' => 0.25, 'color' => $c['ligne'] ) );
     $pdf->Line( UEB_GUIDE_PDF_MARGE, $y + 14, UEB_GUIDE_PDF_MARGE + $largeur, $y + 14 );

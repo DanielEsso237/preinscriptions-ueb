@@ -21,9 +21,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Montant des droits de préinscription, en francs CFA.
- * Défini ici parce qu'il apparaît à trois endroits du guide (procédure,
- * paiement, dépôt physique) et dans le PDF.
+ * Montant des droits de préinscription par défaut, en francs CFA.
+ *
+ * Les tarifs réels sont portés par ueb_niveaux_lmd.droits_preinscription
+ * et administrés depuis « Gestion des références » (cf.
+ * ueb_droits_par_niveau()). Cette constante n'est plus que le repli :
+ * niveau inconnu, ou base pas encore migrée.
  */
 if ( ! defined( 'UEB_FRAIS_PREINSCRIPTION' ) ) {
     define( 'UEB_FRAIS_PREINSCRIPTION', 11000 );
@@ -121,15 +124,186 @@ function ueb_guide_dates() {
 }
 
 /**
- * Montant des droits, formaté avec une espace insécable fine avant l'unité
- * (« 11 000 FCFA ») pour éviter que le montant ne se coupe en fin de ligne.
+ * Droits de préinscription de chaque niveau LMD, dans l'ordre d'affichage.
+ *
+ * Source unique des tarifs : le formulaire (montant proposé par défaut),
+ * le quitus, le guide et la page d'accueil la lisent tous.
+ *
+ * @return array[] { id, code, libelle, droits }
+ */
+function ueb_droits_par_niveau() {
+    static $niveaux = null;
+
+    if ( null !== $niveaux ) {
+        return $niveaux;
+    }
+
+    global $wpdb;
+
+    // Erreurs masquées : sur une base pas encore migrée (colonne absente),
+    // la requête échoue et les pages publiques retombent sur la constante.
+    $masque = $wpdb->suppress_errors( true );
+    $lignes = $wpdb->get_results( 'SELECT id, code, libelle, droits_preinscription FROM ueb_niveaux_lmd ORDER BY ordre ASC' );
+    $wpdb->suppress_errors( $masque );
+
+    $niveaux = array();
+    foreach ( (array) $lignes as $ligne ) {
+        $niveaux[] = array(
+            'id'      => (int) $ligne->id,
+            'code'    => (string) $ligne->code,
+            'libelle' => (string) $ligne->libelle,
+            'droits'  => (int) $ligne->droits_preinscription,
+        );
+    }
+
+    return $niveaux;
+}
+
+/**
+ * Droits de préinscription proposés par défaut pour un niveau LMD.
+ *
+ * @param int $niveau_id Identifiant de ueb_niveaux_lmd.
+ * @return int Montant en francs CFA.
+ */
+function ueb_droits_du_niveau( $niveau_id ) {
+    foreach ( ueb_droits_par_niveau() as $niveau ) {
+        if ( $niveau['id'] === (int) $niveau_id ) {
+            return $niveau['droits'];
+        }
+    }
+
+    return (int) UEB_FRAIS_PREINSCRIPTION;
+}
+
+/**
+ * Montant des droits retenu pour un dossier : celui que le candidat a
+ * laissé ou corrigé dans le formulaire, à défaut le tarif de son niveau.
+ *
+ * Le champ est volontairement libre (aucun plancher) ; seule une valeur
+ * absente ou non numérique renvoie au tarif du niveau.
+ *
+ * @param mixed $saisie    Valeur postée du champ « montant_droits ».
+ * @param int   $niveau_id Identifiant de ueb_niveaux_lmd.
+ * @return int Montant en francs CFA.
+ */
+function ueb_montant_droits_saisi( $saisie, $niveau_id ) {
+    $saisie = is_scalar( $saisie ) ? trim( (string) $saisie ) : '';
+
+    if ( '' === $saisie || ! ctype_digit( $saisie ) ) {
+        return ueb_droits_du_niveau( $niveau_id );
+    }
+
+    return (int) $saisie;
+}
+
+/**
+ * Tarifs à annoncer au public, regroupés pour ne pas répéter six lignes :
+ * les niveaux d'un même cycle au même tarif n'en font qu'une (« Licence »),
+ * puis les cycles voisins au même tarif fusionnent (« Master et doctorat »).
+ * Un cycle dont les niveaux n'ont pas tous le même tarif est détaillé
+ * niveau par niveau.
+ *
+ * @return array[] { libelle, montant }
+ */
+function ueb_guide_tarifs() {
+    $cycles = array();
+    foreach ( ueb_droits_par_niveau() as $niveau ) {
+        if ( 'DOC' === $niveau['code'] ) {
+            $cycle = 'Doctorat';
+        } elseif ( preg_match( '/^L\d/', $niveau['code'] ) ) {
+            $cycle = 'Licence';
+        } elseif ( preg_match( '/^M\d/', $niveau['code'] ) ) {
+            $cycle = 'Master';
+        } else {
+            $cycle = $niveau['libelle'];
+        }
+        $cycles[ $cycle ][] = $niveau;
+    }
+
+    $lignes = array();
+    foreach ( $cycles as $cycle => $niveaux ) {
+        if ( 1 === count( array_unique( wp_list_pluck( $niveaux, 'droits' ) ) ) ) {
+            $lignes[] = array( 'libelle' => $cycle, 'montant' => $niveaux[0]['droits'] );
+            continue;
+        }
+        foreach ( $niveaux as $niveau ) {
+            $lignes[] = array( 'libelle' => $niveau['libelle'], 'montant' => $niveau['droits'] );
+        }
+    }
+
+    $tarifs = array();
+    foreach ( $lignes as $ligne ) {
+        $dernier = count( $tarifs ) - 1;
+        if ( $dernier >= 0 && $tarifs[ $dernier ]['montant'] === $ligne['montant'] ) {
+            $tarifs[ $dernier ]['libelles'][] = $ligne['libelle'];
+        } else {
+            $tarifs[] = array( 'libelles' => array( $ligne['libelle'] ), 'montant' => $ligne['montant'] );
+        }
+    }
+
+    foreach ( $tarifs as $i => $tarif ) {
+        $libelles = $tarif['libelles'];
+        // « Master et doctorat », mais « Licence 1 et Licence 2 ».
+        foreach ( $libelles as $j => $libelle ) {
+            if ( $j > 0 && ! preg_match( '/\d/', $libelle ) ) {
+                $libelles[ $j ] = mb_strtolower( $libelle );
+            }
+        }
+        $dernier_libelle = array_pop( $libelles );
+        $tarifs[ $i ]    = array(
+            'libelle' => $libelles ? implode( ', ', $libelles ) . ' et ' . $dernier_libelle : $dernier_libelle,
+            'montant' => $tarif['montant'],
+        );
+    }
+
+    if ( ! $tarifs ) {
+        $tarifs[] = array( 'libelle' => '', 'montant' => (int) UEB_FRAIS_PREINSCRIPTION );
+    }
+
+    return $tarifs;
+}
+
+/**
+ * Un montant formaté avec une espace insécable avant l'unité
+ * (« 11 000 FCFA ») pour éviter qu'il ne se coupe en fin de ligne.
+ *
+ * @param int  $montant Montant en francs CFA.
+ * @param bool $html    Vrai pour l'entité HTML, faux pour le PDF (texte brut).
+ * @return string
+ */
+function ueb_guide_montant( $montant, $html = true ) {
+    $espace = $html ? '&nbsp;' : ' ';
+    return number_format( (int) $montant, 0, ',', $espace ) . $espace . 'FCFA';
+}
+
+/**
+ * Les droits en une proposition, à glisser dans une phrase :
+ * « 11 000 FCFA en licence et 20 000 FCFA en master et doctorat ».
+ * Un tarif unique pour tous les niveaux donne simplement « 11 000 FCFA ».
  *
  * @param bool $html Vrai pour l'entité HTML, faux pour le PDF (texte brut).
  * @return string
  */
 function ueb_guide_frais( $html = true ) {
-    $espace = $html ? '&nbsp;' : ' ';
-    return number_format( UEB_FRAIS_PREINSCRIPTION, 0, ',', $espace ) . $espace . 'FCFA';
+    $tarifs = ueb_guide_tarifs();
+
+    if ( 1 === count( $tarifs ) ) {
+        return ueb_guide_montant( $tarifs[0]['montant'], $html );
+    }
+
+    $parts = array();
+    foreach ( $tarifs as $tarif ) {
+        $libelle = $tarif['libelle'];
+        // Un cycle se lit en minuscules dans une phrase, un niveau garde
+        // sa majuscule (« en Licence 1 »).
+        if ( ! preg_match( '/\d/', $libelle ) ) {
+            $libelle = mb_strtolower( $libelle );
+        }
+        $parts[] = ueb_guide_montant( $tarif['montant'], $html ) . ' en ' . $libelle;
+    }
+
+    $dernier = array_pop( $parts );
+    return implode( ', ', $parts ) . ' et ' . $dernier;
 }
 
 /**
@@ -168,7 +342,7 @@ function ueb_guide_etapes() {
         array(
             'titre' => 'Régler vos droits',
             'desc'  => sprintf(
-                "Réglez les %s de droits de préinscription ou de réinscription, ainsi que les frais médicaux le cas échéant, à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money.",
+                "Réglez vos droits de préinscription ou de réinscription (%s), ainsi que les frais médicaux le cas échéant, à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money.",
                 ueb_guide_frais( false )
             ),
             'aide'  => 'Précisez clairement l\'objet du paiement et conservez le reçu : il est exigé au dépôt du dossier physique.',

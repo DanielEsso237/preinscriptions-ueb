@@ -114,9 +114,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         choisi (cf. ueb_cycle_pour_niveau() dans inc/ajax-functions.php).
  *         La valeur par défaut 'tous' laisse inchangées les filières des
  *         autres facultés, proposées à tous les niveaux comme avant.
+ * - 2.9 : droits de préinscription par niveau. Ils ne sont plus un montant
+ *         unique en dur dans le code (11 000 FCFA pour tous) :
+ *           - ueb_niveaux_lmd.droits_preinscription porte le tarif de
+ *             chaque niveau (11 000 en licence, 20 000 en master et en
+ *             doctorat), modifiable depuis « Gestion des références » ;
+ *           - ueb_preinscriptions.montant_droits garde le montant que le
+ *             candidat a laissé ou corrigé dans le formulaire, celui qui
+ *             figure sur son quitus.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.8' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.9' );
  }
 
 /**
@@ -260,6 +268,7 @@ CREATE TABLE IF NOT EXISTS ueb_niveaux_lmd (
     code VARCHAR(20) NOT NULL,
     libelle VARCHAR(50) NOT NULL,
     ordre TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    droits_preinscription INT UNSIGNED NOT NULL DEFAULT 11000,
     PRIMARY KEY (id),
     UNIQUE KEY uq_niveau_lmd_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -390,6 +399,7 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions (
     lieu_obtention_certificat VARCHAR(150) DEFAULT NULL,
 
     -- Métadonnées --
+    montant_droits INT UNSIGNED DEFAULT NULL,
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -611,6 +621,17 @@ function ueb_run_schema_migrations() {
             'FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL'
         );
     }
+
+    // 2.9 — droits de préinscription par niveau, et montant retenu par
+    // dossier. Le tarif master n'est posé qu'à la création de la colonne :
+    // rejouée plus tard, la migration ne doit pas écraser un tarif que
+    // l'administration aurait modifié entre-temps.
+    global $wpdb;
+    $tarifs_deja_la = $wpdb->get_var( "SHOW COLUMNS FROM ueb_niveaux_lmd LIKE 'droits_preinscription'" );
+    if ( ueb_add_column_if_missing( 'ueb_niveaux_lmd', 'droits_preinscription', 'INT UNSIGNED NOT NULL DEFAULT 11000' ) && ! $tarifs_deja_la ) {
+        $wpdb->query( "UPDATE ueb_niveaux_lmd SET droits_preinscription = 20000 WHERE code IN ('M1', 'M2', 'DOC')" );
+    }
+    ueb_add_column_if_missing( 'ueb_preinscriptions', 'montant_droits', 'INT UNSIGNED DEFAULT NULL' );
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
