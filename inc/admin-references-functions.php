@@ -57,6 +57,11 @@ function ueb_admin_ref_registry() {
                 'logo'   => array( 'label' => 'Logo (fichier)', 'type' => 'text', 'required' => false, 'maxlength' => 100 ),
                 'slug'   => array( 'label' => 'Slug', 'type' => 'text', 'required' => true, 'maxlength' => 180 ),
                 'actif'  => array( 'label' => 'Actif', 'type' => 'enum', 'required' => true, 'options' => array( '1' => 'Oui', '0' => 'Non' ) ),
+                // Vide = compte de l'Université (UEB_COMPTE_CCA). Imprimé sur
+                // le quitus et le récépissé des candidats de l'établissement.
+                'compte_bancaire' => array( 'label' => "Compte CCA Bank (si différent de celui de l'Université)", 'type' => 'text', 'required' => false, 'maxlength' => 40 ),
+                // 0 = visite médicale sans frais pour les nouveaux étudiants.
+                'frais_medicaux'  => array( 'label' => 'Frais médicaux des nouveaux étudiants (FCFA)', 'type' => 'number', 'required' => false ),
             ),
             'label_col' => 'nom_fr',
         ),
@@ -362,6 +367,8 @@ function ueb_admin_ref_presentation() {
             'colonnes'    => array(
                 'logo'  => array( 'th' => 'Logo', 'apercu' => 'logo' ),
                 'actif' => array( 'th' => 'État', 'etats' => $actif ),
+                'compte_bancaire' => array( 'th' => 'Compte CCA', 'vide' => 'Université' ),
+                'frais_medicaux'  => array( 'th' => 'Frais médicaux' ),
             ),
         ),
         'diplomes_admission' => array(

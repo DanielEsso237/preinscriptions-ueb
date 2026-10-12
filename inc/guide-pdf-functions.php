@@ -617,6 +617,10 @@ function ueb_guide_pdf_section_paiement( $pdf ) {
         'alerte'
     );
 
+    foreach ( ueb_guide_particularites_paiement() as $particularite ) {
+        ueb_guide_pdf_encart( $pdf, $particularite['titre'], $particularite['texte'], 'alerte' );
+    }
+
     ueb_guide_pdf_encart(
         $pdf,
         'Frais médicaux et certificat médical',

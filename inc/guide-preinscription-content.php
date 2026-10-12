@@ -124,6 +124,146 @@ function ueb_guide_dates() {
 }
 
 /**
+ * Établissements, avec ce qui leur est propre côté paiement.
+ *
+ * Par défaut tout se verse sur le compte de l'Université et la visite
+ * médicale des nouveaux étudiants est sans frais ; un établissement peut
+ * avoir son propre compte et ses propres frais médicaux (la FALSH), réglés
+ * depuis « Gestion des références ».
+ *
+ * @return array[] { id, code, nom, compte, frais_medicaux } — compte vide =
+ *                 compte de l'Université.
+ */
+function ueb_etablissements_paiement() {
+    static $etablissements = null;
+
+    if ( null !== $etablissements ) {
+        return $etablissements;
+    }
+
+    global $wpdb;
+
+    // Erreurs masquées, comme dans ueb_droits_par_niveau() : sur une base
+    // pas encore migrée, les pages publiques s'en tiennent au compte de
+    // l'Université.
+    $masque = $wpdb->suppress_errors( true );
+    $lignes = $wpdb->get_results( 'SELECT id, code, nom_fr, compte_bancaire, frais_medicaux FROM ueb_facultes ORDER BY code ASC' );
+    $wpdb->suppress_errors( $masque );
+
+    $etablissements = array();
+    foreach ( (array) $lignes as $ligne ) {
+        $etablissements[] = array(
+            'id'             => (int) $ligne->id,
+            'code'           => (string) $ligne->code,
+            'nom'            => (string) $ligne->nom_fr,
+            'compte'         => trim( (string) $ligne->compte_bancaire ),
+            'frais_medicaux' => (int) $ligne->frais_medicaux,
+        );
+    }
+
+    return $etablissements;
+}
+
+/**
+ * Compte CCA Bank sur lequel versent les candidats d'un établissement :
+ * le sien s'il en a un, sinon celui de l'Université.
+ *
+ * @param int $faculte_id Identifiant de ueb_facultes.
+ * @return string
+ */
+function ueb_compte_cca_etablissement( $faculte_id ) {
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        if ( $etablissement['id'] === (int) $faculte_id && '' !== $etablissement['compte'] ) {
+            return $etablissement['compte'];
+        }
+    }
+
+    return UEB_COMPTE_CCA;
+}
+
+/**
+ * Frais de visite médicale à régler avec ce dossier, ou 0 s'il n'y en a pas.
+ *
+ * Seuls les candidats en master d'un établissement qui facture la visite
+ * (la FALSH) reçoivent un quitus de frais médicaux avec leur fiche.
+ *
+ * @param int $faculte_id Identifiant de ueb_facultes.
+ * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
+ * @return int Montant en francs CFA.
+ */
+function ueb_frais_medicaux_dossier( $faculte_id, $niveau_id ) {
+    $en_master = false;
+    foreach ( ueb_droits_par_niveau() as $niveau ) {
+        if ( $niveau['id'] === (int) $niveau_id ) {
+            $en_master = (bool) preg_match( '/^M\d/', $niveau['code'] );
+        }
+    }
+
+    if ( ! $en_master ) {
+        return 0;
+    }
+
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        if ( $etablissement['id'] === (int) $faculte_id ) {
+            return $etablissement['frais_medicaux'];
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Ce que le guide doit signaler pour les établissements qui s'écartent de
+ * la règle commune (compte propre, visite médicale payante). Vide si tous
+ * suivent la règle commune.
+ *
+ * @return array[] { titre, texte }
+ */
+function ueb_guide_particularites_paiement() {
+    $notes = array();
+
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        $phrases = array();
+
+        if ( '' !== $etablissement['compte'] ) {
+            $phrases[] = 'Les droits de préinscription se versent sur le compte CCA Bank de l\'établissement, n° ' . $etablissement['compte'] . ', et non sur celui de l\'Université.';
+        }
+        if ( $etablissement['frais_medicaux'] > 0 ) {
+            $phrases[] = 'Le certificat médical des nouveaux étudiants y est payant : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false )
+                . ( '' !== $etablissement['compte'] ? ', à verser sur ce même compte.' : '.' );
+        }
+
+        if ( $phrases ) {
+            $notes[] = array(
+                'titre' => $etablissement['code'] . ' — ' . $etablissement['nom'],
+                'texte' => implode( ' ', $phrases ),
+            );
+        }
+    }
+
+    return $notes;
+}
+
+/**
+ * Établissements où la visite médicale des nouveaux étudiants est payante,
+ * en incise : « FALSH : 5 000 FCFA ». Chaîne vide si elle est partout
+ * sans frais.
+ *
+ * @return string
+ */
+function ueb_guide_frais_medicaux_payants() {
+    $payants = array();
+
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        if ( $etablissement['frais_medicaux'] > 0 ) {
+            $payants[] = $etablissement['code'] . ' : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false );
+        }
+    }
+
+    return implode( ', ', $payants );
+}
+
+/**
  * Droits de préinscription de chaque niveau LMD, dans l'ordre d'affichage.
  *
  * Source unique des tarifs : le formulaire (montant proposé par défaut),
@@ -368,7 +508,8 @@ function ueb_guide_paiements() {
     return array(
         array(
             'nom'    => 'CCA Bank',
-            'detail' => 'Versement en agence sur le compte de l\'Université',
+            'detail' => 'Versement en agence sur le compte de l\'Université'
+                . ( ueb_guide_particularites_paiement() ? ' (sauf établissement signalé ci-dessous)' : '' ),
             'ref'    => UEB_COMPTE_CCA,
         ),
         array(
@@ -479,7 +620,7 @@ function ueb_guide_bon_a_savoir() {
         ),
         array(
             'titre' => 'Visites médicales — nouveaux étudiants',
-            'texte' => "Sans frais supplémentaires, les visites médicales des nouveaux étudiants s'effectuent " . $dates['visites_nouveaux'] . ", selon le programme établi dans chaque établissement. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
+            'texte' => ( ueb_guide_frais_medicaux_payants() ? "Sans frais supplémentaires (sauf " . ueb_guide_frais_medicaux_payants() . "), les" : "Sans frais supplémentaires, les" ) . " visites médicales des nouveaux étudiants s'effectuent " . $dates['visites_nouveaux'] . ", selon le programme établi dans chaque établissement. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
             'ton'   => 'alerte',
         ),
         array(

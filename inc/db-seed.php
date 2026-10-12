@@ -495,11 +495,11 @@ INSERT IGNORE INTO ueb_communes (code, nom, departement_id) VALUES
     ('190609', 'TOKO', (SELECT id FROM ueb_departements WHERE code = '1906'));
 SQL,
         'ueb_facultes' => <<<SQL
-INSERT IGNORE INTO ueb_facultes (code, nom_fr, nom_en, logo) VALUES
-    ('FS', 'Faculté des Sciences', 'Faculty of Science', 'logo-fs.jpg'),
-    ('FALSH', 'Faculté des Arts, Lettres et Sciences Humaines', 'Faculty of Arts, Letters and Human Sciences', 'logo-falsh.jpg'),
-    ('FSEG', 'Faculté des Sciences Économiques et de Gestion', 'Faculty of Economics and Management', 'logo-fseg.jpg'),
-    ('FSJP', 'Faculté des Sciences Juridiques et Politiques', 'Faculty of Law and Political Sciences', 'logo-fsjp.jpg');
+INSERT IGNORE INTO ueb_facultes (code, nom_fr, nom_en, logo, compte_bancaire, frais_medicaux) VALUES
+    ('FS', 'Faculté des Sciences', 'Faculty of Science', 'logo-fs.jpg', NULL, 0),
+    ('FALSH', 'Faculté des Arts, Lettres et Sciences Humaines', 'Faculty of Arts, Letters and Human Sciences', 'logo-falsh.jpg', '10039-10012-00272772501-77', 5000),
+    ('FSEG', 'Faculté des Sciences Économiques et de Gestion', 'Faculty of Economics and Management', 'logo-fseg.jpg', NULL, 0),
+    ('FSJP', 'Faculté des Sciences Juridiques et Politiques', 'Faculty of Law and Political Sciences', 'logo-fsjp.jpg', NULL, 0);
 SQL,
         'ueb_diplomes_admission' => <<<SQL
 INSERT IGNORE INTO ueb_diplomes_admission (code, libelle, faculte_id) VALUES

@@ -15,11 +15,17 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * Écarts avec le modèle, imposés par la préinscription :
  *   - montant du dossier ($d['montant_droits'] : le tarif du niveau, que
  *     le candidat a pu corriger dans le formulaire), payé en une fois sur
- *     le compte de l'Université (UEB_COMPTE_CCA) : pas de cases de tranche ;
+ *     le compte de l'établissement ou, à défaut, de l'Université
+ *     ($d['compte_cca']) : pas de cases de tranche ;
  *   - le QR contient le texte du quitus et non une URL de vérification
  *     (la préinscription n'a pas de page de vérification, et le scan doit
  *     afficher directement le texte, comme les autres QR du document) ;
  *   - pas de numéro de quitus en base : le numéro de dossier en tient lieu.
+ *
+ * Un second quitus, celui des frais de visite médicale, suit le premier
+ * pour les dossiers qui en doivent ($d['frais_medicaux'] > 0). Comme sur le
+ * site d'inscription, il porte l'identité de l'Université seule : un logo
+ * centré, pas de ligne d'établissement, la couleur de l'Université.
  *
  * Unités : millimètres. Polices : Source Serif 4 et Source Sans 3,
  * converties pour TCPDF dans assets/pdf/fonts (et non dans lib/tcpdf/fonts,
@@ -123,9 +129,24 @@ function ueb_quitus_logo( $sigle ) {
     return null;
 }
 
-/** RIB du compte de l'Université, groupé comme sur le relevé : « CM21 10039 10012 00272772201 07 ». */
-function ueb_quitus_rib() {
-    return 'CM21 ' . str_replace( '-', ' ', UEB_COMPTE_CCA );
+/**
+ * RIB du compte sur lequel verse le candidat (celui de son établissement
+ * s'il en a un, sinon celui de l'Université), groupé comme sur le relevé :
+ * « CM21 10039 10012 00272772201 07 ».
+ */
+function ueb_quitus_rib( array $d ) {
+    $compte = (string) ( $d['compte_cca'] ?? UEB_COMPTE_CCA );
+
+    /* Clé IBAN (les deux chiffres après « CM ») : 98 − (compte suivi de
+       « CM00 » en chiffres, soit 122200) mod 97. Calculée plutôt qu'écrite
+       en dur, puisque le compte dépend désormais de l'établissement. Le
+       reste se calcule chiffre à chiffre : le nombre dépasse un entier. */
+    $reste = 0;
+    foreach ( str_split( preg_replace( '/\D/', '', $compte ) . '122200' ) as $chiffre ) {
+        $reste = ( $reste * 10 + (int) $chiffre ) % 97;
+    }
+
+    return sprintf( 'CM%02d ', 98 - $reste ) . str_replace( '-', ' ', $compte );
 }
 
 /** 11000 → « Onze mille francs CFA ». */
@@ -144,11 +165,11 @@ function ueb_quitus_montant_en_lettres( $montant ) {
  * difficile à scanner (en M, le texte actuel y était déjà).
  */
 function ueb_quitus_qr_texte( array $d, array $etab ) {
-    return 'Quitus preinscription ' . $d['annee_academique'] . "\n"
+    return $d['quitus']['qr'] . ' ' . $d['annee_academique'] . "\n"
         . 'Dossier : ' . $d['numero_dossier'] . "\n"
         . 'Nom : ' . ueb_pdf_sans_accents( mb_strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
         . ( $etab['sigle'] !== '' ? 'Etab : ' . $etab['sigle'] . "\n" : '' )
-        . 'Montant : ' . (int) $d['montant_droits'] . ' FCFA';
+        . 'Montant : ' . (int) $d['quitus']['montant'] . ' FCFA';
 }
 
 
@@ -156,7 +177,11 @@ function ueb_quitus_qr_texte( array $d, array $etab ) {
    PAGE
    ============================================================ */
 
-function ueb_pdf_page_quitus( TCPDF $pdf, array $d ) {
+/**
+ * @param string $type 'droits' (droits de préinscription) ou 'medicaux'
+ *                     (frais de visite médicale).
+ */
+function ueb_pdf_page_quitus( TCPDF $pdf, array $d, $type = 'droits' ) {
     // Polices embarquées ENTIÈRES (dernier argument false) : le sous-ensemble
     // de TCPDF produit des fichiers que les lecteurs PDF refusent pour ces
     // polices (« unknown file format »), et le texte retombe sur une police
@@ -176,8 +201,24 @@ function ueb_pdf_page_quitus( TCPDF $pdf, array $d ) {
 
     $pdf->AddPage();
 
-    $etab = ueb_quitus_etablissement( $d );
-    $c    = ueb_quitus_couleurs( $etab['couleur'] );
+    if ( 'medicaux' === $type ) {
+        $d['quitus'] = array(
+            'titre'   => 'Quitus de paiement des frais de visite médicale',
+            'qr'      => 'Quitus frais medicaux',
+            'montant' => (int) $d['frais_medicaux'],
+        );
+        // Identité de l'Université seule : sans sigle ni nom d'établissement,
+        // le coupon n'affiche que son logo, centré.
+        $etab = array( 'sigle' => '', 'fr' => '', 'en' => '' ) + UEB_QUITUS_UNIVERSITE;
+    } else {
+        $d['quitus'] = array(
+            'titre'   => 'Quitus de paiement des droits de préinscription',
+            'qr'      => 'Quitus preinscription',
+            'montant' => (int) $d['montant_droits'],
+        );
+        $etab = ueb_quitus_etablissement( $d );
+    }
+    $c = ueb_quitus_couleurs( $etab['couleur'] );
     for ( $i = 0; $i < 4; $i++ ) {
         $y = UEB_QUITUS_MARGE_Y + $i * ( UEB_QUITUS_HAUTEUR + UEB_QUITUS_INTERVALLE );
         ueb_quitus_coupon( $pdf, $d, $etab, $c, UEB_QUITUS_COUPONS[ $i ], UEB_QUITUS_MARGE_X, $y );
@@ -384,7 +425,7 @@ function ueb_quitus_coupon( TCPDF $pdf, array $d, array $etab, array $c, $libell
     $pdf->setFontSpacing( 0 );
 
     $pdf->SetFont( 'uebserif', '', 9 );
-    ueb_quitus_texte( $pdf, $xi + $wTag + 3, $yT, $hTitre - 0.6, 'Quitus de paiement des droits de préinscription', $c['encre'] );
+    ueb_quitus_texte( $pdf, $xi + $wTag + 3, $yT, $hTitre - 0.6, $d['quitus']['titre'], $c['encre'] );
 
     $annee = str_replace( '-', ' – ', $d['annee_academique'] );
     $pdf->SetFont( 'uebsansb', '', 9 );
@@ -434,7 +475,7 @@ function ueb_quitus_coupon( TCPDF $pdf, array $d, array $etab, array $c, $libell
     $xb += ueb_quitus_texte( $pdf, $xb, $yBanque, $hBanque, 'N° de compte', $c['encre'] ) + 2.5;
     $pdf->SetFont( 'uebsansb', '', 9.8 );
     $pdf->setFontSpacing( 0.25 );
-    ueb_quitus_texte( $pdf, $xb, $yBanque, $hBanque, ueb_quitus_rib(), $c['encre'] );
+    ueb_quitus_texte( $pdf, $xb, $yBanque, $hBanque, ueb_quitus_rib( $d ), $c['encre'] );
     $pdf->setFontSpacing( 0 );
 
     $pdf->SetFont( 'uebsans', '', 8 );
@@ -486,8 +527,8 @@ function ueb_quitus_registre( TCPDF $pdf, array $d, array $c, $x, $y, $w, $h ) {
         /* valeurs */
         $xv = $x + $wLib1 + $pad;
         if ( 'montant' === $l[1] ) {
-            $chiffres = number_format( (int) $d['montant_droits'], 0, ',', ' ' ) . ' FCFA';
-            $lettres  = ueb_quitus_montant_en_lettres( $d['montant_droits'] );
+            $chiffres = number_format( $d['quitus']['montant'], 0, ',', ' ' ) . ' FCFA';
+            $lettres  = ueb_quitus_montant_en_lettres( $d['quitus']['montant'] );
             $place    = $wVal1 + $wLib2 - 2 * $pad;
             $taille   = 8.8;
             do {
