@@ -13,8 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * dans la couleur d'identité de l'établissement.
  *
  * Écarts avec le modèle, imposés par la préinscription :
- *   - montant fixe (UEB_FRAIS_PREINSCRIPTION), payé en une fois sur le
- *     compte de l'Université (UEB_COMPTE_CCA) : pas de cases de tranche ;
+ *   - montant du dossier ($d['montant_droits'] : le tarif du niveau, que
+ *     le candidat a pu corriger dans le formulaire), payé en une fois sur
+ *     le compte de l'Université (UEB_COMPTE_CCA) : pas de cases de tranche ;
  *   - le QR contient le texte du quitus et non une URL de vérification
  *     (la préinscription n'a pas de page de vérification, et le scan doit
  *     afficher directement le texte, comme les autres QR du document) ;
@@ -147,7 +148,7 @@ function ueb_quitus_qr_texte( array $d, array $etab ) {
         . 'Dossier : ' . $d['numero_dossier'] . "\n"
         . 'Nom : ' . ueb_pdf_sans_accents( mb_strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
         . ( $etab['sigle'] !== '' ? 'Etab : ' . $etab['sigle'] . "\n" : '' )
-        . 'Montant : ' . (int) UEB_FRAIS_PREINSCRIPTION . ' FCFA';
+        . 'Montant : ' . (int) $d['montant_droits'] . ' FCFA';
 }
 
 
@@ -485,8 +486,8 @@ function ueb_quitus_registre( TCPDF $pdf, array $d, array $c, $x, $y, $w, $h ) {
         /* valeurs */
         $xv = $x + $wLib1 + $pad;
         if ( 'montant' === $l[1] ) {
-            $chiffres = number_format( (int) UEB_FRAIS_PREINSCRIPTION, 0, ',', ' ' ) . ' FCFA';
-            $lettres  = ueb_quitus_montant_en_lettres( UEB_FRAIS_PREINSCRIPTION );
+            $chiffres = number_format( (int) $d['montant_droits'], 0, ',', ' ' ) . ' FCFA';
+            $lettres  = ueb_quitus_montant_en_lettres( $d['montant_droits'] );
             $place    = $wVal1 + $wLib2 - 2 * $pad;
             $taille   = 8.8;
             do {

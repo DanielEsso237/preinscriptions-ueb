@@ -101,6 +101,7 @@
     const serieHidden     = document.getElementById('serie_diplome');
     const niveauSelect    = document.getElementById('niveau_lmd_select');
     const niveauHidden    = document.getElementById('niveau_lmd');
+    const montantDroits   = document.getElementById('montant_droits');
 
     const selectRegion       = document.getElementById('region_origine');
     const selectDepartement  = document.getElementById('departement_origine');
@@ -398,6 +399,22 @@
 
     function syncNiveauHidden() {
         if (niveauHidden) niveauHidden.value = niveauSelect.value;
+        syncMontantDroits();
+    }
+
+    /* Droits de préinscription : chaque niveau arrive avec son tarif
+       (champ "droits", cf. ueb_ajax_get_niveaux_lmd()). On le propose dans
+       le champ « Montant » à chaque changement de niveau ; le candidat reste
+       libre de le corriger ensuite, et tant que le niveau ne bouge pas sa
+       saisie n'est plus touchée. */
+    let niveauDuMontant = '';
+
+    function syncMontantDroits() {
+        if (!montantDroits || niveauSelect.value === niveauDuMontant) return;
+        niveauDuMontant = niveauSelect.value;
+
+        const niveau = niveauxCache.find(function (n) { return String(n.id) === niveauDuMontant; });
+        montantDroits.value = niveau ? niveau.droits : '';
     }
 
     niveauSelect.addEventListener('change', function () {
@@ -997,6 +1014,7 @@
         serie_diplome         : 'Série / Spécialité',
         diplome_admission     : "Diplôme d'admission",
         niveau_lmd            : 'Niveau LMD',
+        montant_droits        : 'Droits de préinscription',
         type_formation        : 'Type de formation',
         filiere_1             : '1er choix de filière',
         filiere_2             : '2e choix de filière',
@@ -1048,6 +1066,7 @@
         serie_diplome         : 'Diploma series / specialty',
         diplome_admission     : 'Admission diploma',
         niveau_lmd            : 'LMD level',
+        montant_droits        : 'Pre-registration fee',
         type_formation        : 'Training type',
         filiere_1             : '1st choice of program',
         filiere_2             : '2nd choice of program',
@@ -1090,7 +1109,7 @@
     };
 
     const SECTIONS = {
-        formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant'],
+        formation : ['faculte','diplome_admission','type_formation','serie_diplome','filiere_1','moyenne_diplome','filiere_2','mention','filiere_3','annee_obtention','niveau_lmd','statut_etudiant','montant_droits'],
         etatCivil : ['nom','nationalite','prenom','premiere_langue','lieu_naissance','situation_matrimoniale','date_naissance','statut_socio_professionnel','sexe','handicap'],
         contact   : ['telephone','nom_pere','email','numero_pere','adresse','profession_pere','departement_origine','nom_mere','commune_origine','numero_mere','region_origine','profession_mere','nom_tuteur','numero_tuteur','nom_urgence','numero_urgence','adresse_urgence'],
         divers    : ['sport_prefere','numero_certificat_medical','art_pratique','lieu_obtention_certificat'],
@@ -1130,6 +1149,10 @@
             if (!sel) return '';
             const opt = sel.options[sel.selectedIndex];
             return opt ? opt.text : '';
+        }
+        if (fieldName === 'montant_droits') {
+            const montant = montantDroits ? montantDroits.value.trim() : '';
+            return montant === '' ? '' : Number(montant).toLocaleString('fr-FR') + ' FCFA';
         }
         if (fieldName === 'mention') {
             if (!mentionSelect) return '';
@@ -1478,6 +1501,12 @@
         if (donnees.niveau_lmd) {
             niveauSelect.value = donnees.niveau_lmd;
             syncNiveauHidden();
+        }
+        // Le niveau vient de reposer son tarif par défaut : le montant que
+        // le candidat avait saisi reprend la main. Un brouillon antérieur à
+        // ce champ n'en a pas, et garde donc le tarif du niveau.
+        if (montantDroits && donnees.montant_droits !== undefined && donnees.montant_droits !== '') {
+            montantDroits.value = donnees.montant_droits;
         }
 
         const type = donnees.type_formation || 'classique';

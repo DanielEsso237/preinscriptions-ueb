@@ -648,9 +648,9 @@ INSERT IGNORE INTO ueb_reseaux_sociaux (plateforme, url, icone, ordre, actif) VA
     ('site_web', 'https://unv-ebolowa.cm', 'globe', 3, 1);
 SQL,
         'ueb_niveaux_lmd' => <<<SQL
-INSERT IGNORE INTO ueb_niveaux_lmd (code, libelle, ordre) VALUES
-    ('L1', 'Licence 1', 1), ('L2', 'Licence 2', 2), ('L3', 'Licence 3', 3),
-    ('M1', 'Master 1', 4), ('M2', 'Master 2', 5), ('DOC', 'Doctorat', 6);
+INSERT IGNORE INTO ueb_niveaux_lmd (code, libelle, ordre, droits_preinscription) VALUES
+    ('L1', 'Licence 1', 1, 11000), ('L2', 'Licence 2', 2, 11000), ('L3', 'Licence 3', 3, 11000),
+    ('M1', 'Master 1', 4, 20000), ('M2', 'Master 2', 5, 20000), ('DOC', 'Doctorat', 6, 20000);
 SQL,
         'ueb_mentions' => <<<SQL
 INSERT IGNORE INTO ueb_mentions (code, libelle, ordre) VALUES

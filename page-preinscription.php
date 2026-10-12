@@ -266,6 +266,25 @@ get_header();
                             <span class="field-hint">Ton diplôme d'admission détermine les niveaux auxquels tu peux postuler, et ton niveau détermine les filières proposées.</span>
                         </div>
 
+                        <!-- Droits de préinscription — pré-remplis d'après le
+                             niveau (ueb_niveaux_lmd.droits_preinscription), mais
+                             laissés modifiables : c'est ce montant que porte le
+                             quitus de paiement. -->
+                        <div class="form-group full">
+                            <label for="montant_droits">Montant des droits de préinscription (FCFA) <span class="required">*</span><span class="field-trans">Pre-registration fee amount (CFA francs)</span></label>
+                            <input
+                                type="number"
+                                id="montant_droits"
+                                name="montant_droits"
+                                step="1"
+                                min="0"
+                                inputmode="numeric"
+                                placeholder="Choisis d'abord ton niveau"
+                                required
+                            >
+                            <span class="field-hint">Rempli automatiquement selon ton niveau. Tu peux le corriger si le montant que tu dois payer est différent : c'est ce montant qui sera imprimé sur ton quitus de paiement.</span>
+                        </div>
+
                         <!-- Type de formation -->
                         <div class="form-group full" id="type-formation-group" style="display:none;">
                             <label for="type_formation">Type de formation <span class="required">*</span><span class="field-trans">Training type</span></label>

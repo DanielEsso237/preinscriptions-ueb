@@ -419,6 +419,9 @@ function ueb_ajax_get_niveaux_lmd() {
     // côté JavaScript. Une seule source de vérité, ueb_cycle_pour_niveau().
     foreach ( $rows as $row ) {
         $row->cycle = ueb_cycle_pour_niveau( $row->code );
+        // Droits du niveau : proposés par défaut dans le champ « Montant »
+        // du formulaire, que le candidat peut corriger.
+        $row->droits = ueb_droits_du_niveau( $row->id );
     }
 
     wp_send_json_success( $rows );
