@@ -182,15 +182,15 @@ get_header();
                     reçu du versement&nbsp;: il est exigé au dépôt du dossier.
                 </p>
 
-                <?php
-                $gp_tarifs = ueb_guide_tarifs();
-                foreach ( $gp_tarifs as $gp_tarif ) :
-                    ?>
-                    <p class="gp-amount">
-                        <span class="gp-amount-label">Droits de préinscription<?php echo count( $gp_tarifs ) > 1 ? ' — ' . esc_html( $gp_tarif['libelle'] ) : ''; ?></span>
-                        <strong class="gp-amount-value"><?php echo wp_kses_post( ueb_guide_montant( $gp_tarif['montant'] ) ); ?></strong>
-                    </p>
-                <?php endforeach; ?>
+                <?php $gp_tarifs = ueb_guide_tarifs(); ?>
+                <div class="gp-amounts<?php echo count( $gp_tarifs ) > 1 ? ' gp-amounts--plusieurs' : ''; ?>">
+                    <?php foreach ( $gp_tarifs as $gp_tarif ) : ?>
+                        <p class="gp-amount">
+                            <span class="gp-amount-label"><?php echo count( $gp_tarifs ) > 1 ? 'Droits — ' . esc_html( $gp_tarif['libelle'] ) : 'Droits de préinscription'; ?></span>
+                            <strong class="gp-amount-value"><?php echo wp_kses_post( ueb_guide_montant( $gp_tarif['montant'] ) ); ?></strong>
+                        </p>
+                    <?php endforeach; ?>
+                </div>
 
                 <ul class="gp-pays">
                     <?php foreach ( $gp_paiements as $gp_pay ) : ?>

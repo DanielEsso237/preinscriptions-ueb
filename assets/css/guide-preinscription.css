@@ -459,8 +459,18 @@
     padding-bottom: 1.25rem;
     border-bottom: 1px solid var(--gp-line);
 }
-/* Un tarif par cycle : les lignes suivantes se resserrent sous la première. */
-.gp-amount + .gp-amount { margin-top: 1.25rem !important; }
+/* Un tarif par cycle : côte à côte, le libellé au-dessus du montant pour
+   que les deux se lisent de la même façon quelle que soit sa longueur. */
+.gp-amounts--plusieurs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0 2rem;
+}
+.gp-amounts--plusieurs .gp-amount {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .6rem;
+}
 .gp-amount-label {
     font-size: .72rem;
     font-weight: 600;

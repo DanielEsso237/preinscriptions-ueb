@@ -142,7 +142,7 @@ function ueb_admin_ref_registry() {
 
         'niveaux_lmd' => array(
             'table'          => 'ueb_niveaux_lmd',
-            'label'          => 'Niveaux LMD',
+            'label'          => 'Niveaux LMD et droits',
             'group'          => 'Formation',
             'order_by'       => 't.ordre ASC',
             'search_columns' => array( 'code', 'libelle' ),
