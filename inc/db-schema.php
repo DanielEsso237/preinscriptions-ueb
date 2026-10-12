@@ -123,9 +123,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *             candidat a laissé ou corrigé dans le formulaire, celui qui
  *             figure sur son quitus.
  * - 2.10 : compte bancaire et frais médicaux propres à un établissement.
- *         La FALSH encaisse sur son propre compte CCA Bank et facture le
- *         certificat médical des nouveaux étudiants (communiqué du
- *         21 septembre 2026) :
+ *         En master, la FALSH encaisse sur son propre compte CCA Bank et
+ *         facture le certificat médical des nouveaux étudiants (communiqué
+ *         du 21 septembre 2026). Les deux colonnes ne valent que pour les
+ *         masters de l'établissement :
  *           - ueb_facultes.compte_bancaire : NULL = compte de l'Université ;
  *           - ueb_facultes.frais_medicaux : 0 = sans frais.
  *         Les deux se modifient depuis « Gestion des références ».

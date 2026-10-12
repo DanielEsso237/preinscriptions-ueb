@@ -128,8 +128,8 @@ function ueb_guide_dates() {
  *
  * Par défaut tout se verse sur le compte de l'Université et la visite
  * médicale des nouveaux étudiants est sans frais ; un établissement peut
- * avoir son propre compte et ses propres frais médicaux (la FALSH), réglés
- * depuis « Gestion des références ».
+ * avoir, pour ses masters, son propre compte et ses propres frais médicaux
+ * (la FALSH), réglés depuis « Gestion des références ».
  *
  * @return array[] { id, code, nom, compte, frais_medicaux } — compte vide =
  *                 compte de l'Université.
@@ -165,16 +165,40 @@ function ueb_etablissements_paiement() {
 }
 
 /**
- * Compte CCA Bank sur lequel versent les candidats d'un établissement :
- * le sien s'il en a un, sinon celui de l'Université.
+ * Le niveau LMD est-il un niveau de master (M1, M2) ?
+ *
+ * Le compte et les frais médicaux propres à un établissement ne concernent
+ * que ses masters : c'est le périmètre du communiqué de la FALSH. Licences
+ * et doctorat restent sur la règle commune.
+ *
+ * @param int $niveau_id Identifiant de ueb_niveaux_lmd.
+ * @return bool
+ */
+function ueb_niveau_est_master( $niveau_id ) {
+    foreach ( ueb_droits_par_niveau() as $niveau ) {
+        if ( $niveau['id'] === (int) $niveau_id ) {
+            return (bool) preg_match( '/^M\d/', $niveau['code'] );
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Compte CCA Bank sur lequel verse un candidat : celui de son
+ * établissement s'il est en master et que l'établissement en a un, sinon
+ * celui de l'Université.
  *
  * @param int $faculte_id Identifiant de ueb_facultes.
+ * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
  * @return string
  */
-function ueb_compte_cca_etablissement( $faculte_id ) {
-    foreach ( ueb_etablissements_paiement() as $etablissement ) {
-        if ( $etablissement['id'] === (int) $faculte_id && '' !== $etablissement['compte'] ) {
-            return $etablissement['compte'];
+function ueb_compte_cca_etablissement( $faculte_id, $niveau_id ) {
+    if ( ueb_niveau_est_master( $niveau_id ) ) {
+        foreach ( ueb_etablissements_paiement() as $etablissement ) {
+            if ( $etablissement['id'] === (int) $faculte_id && '' !== $etablissement['compte'] ) {
+                return $etablissement['compte'];
+            }
         }
     }
 
@@ -184,22 +208,15 @@ function ueb_compte_cca_etablissement( $faculte_id ) {
 /**
  * Frais de visite médicale à régler avec ce dossier, ou 0 s'il n'y en a pas.
  *
- * Seuls les candidats en master d'un établissement qui facture la visite
- * (la FALSH) reçoivent un quitus de frais médicaux avec leur fiche.
+ * Seuls les candidats en master (M1, M2) d'un établissement qui facture la
+ * visite (la FALSH) reçoivent un quitus de frais médicaux avec leur fiche.
  *
  * @param int $faculte_id Identifiant de ueb_facultes.
  * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
  * @return int Montant en francs CFA.
  */
 function ueb_frais_medicaux_dossier( $faculte_id, $niveau_id ) {
-    $en_master = false;
-    foreach ( ueb_droits_par_niveau() as $niveau ) {
-        if ( $niveau['id'] === (int) $niveau_id ) {
-            $en_master = (bool) preg_match( '/^M\d/', $niveau['code'] );
-        }
-    }
-
-    if ( ! $en_master ) {
+    if ( ! ueb_niveau_est_master( $niveau_id ) ) {
         return 0;
     }
 
@@ -226,16 +243,16 @@ function ueb_guide_particularites_paiement() {
         $phrases = array();
 
         if ( '' !== $etablissement['compte'] ) {
-            $phrases[] = 'Les droits de préinscription se versent sur le compte CCA Bank de l\'établissement, n° ' . $etablissement['compte'] . ', et non sur celui de l\'Université.';
+            $phrases[] = 'En master, les droits de préinscription se versent sur le compte CCA Bank de l\'établissement, n° ' . $etablissement['compte'] . ', et non sur celui de l\'Université.';
         }
         if ( $etablissement['frais_medicaux'] > 0 ) {
-            $phrases[] = 'Le certificat médical des nouveaux étudiants y est payant : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false )
+            $phrases[] = 'Le certificat médical des nouveaux étudiants de master y est payant : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false )
                 . ( '' !== $etablissement['compte'] ? ', à verser sur ce même compte.' : '.' );
         }
 
         if ( $phrases ) {
             $notes[] = array(
-                'titre' => $etablissement['code'] . ' — ' . $etablissement['nom'],
+                'titre' => 'Master à la ' . $etablissement['code'] . ' — ' . $etablissement['nom'],
                 'texte' => implode( ' ', $phrases ),
             );
         }
@@ -246,7 +263,7 @@ function ueb_guide_particularites_paiement() {
 
 /**
  * Établissements où la visite médicale des nouveaux étudiants est payante,
- * en incise : « FALSH : 5 000 FCFA ». Chaîne vide si elle est partout
+ * en incise : « en master à la FALSH : 5 000 FCFA ». Chaîne vide si elle est partout
  * sans frais.
  *
  * @return string
@@ -256,7 +273,7 @@ function ueb_guide_frais_medicaux_payants() {
 
     foreach ( ueb_etablissements_paiement() as $etablissement ) {
         if ( $etablissement['frais_medicaux'] > 0 ) {
-            $payants[] = $etablissement['code'] . ' : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false );
+            $payants[] = 'en master à la ' . $etablissement['code'] . ' : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false );
         }
     }
 
