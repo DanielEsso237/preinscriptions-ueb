@@ -642,6 +642,13 @@ function ueb_run_schema_migrations() {
     }
     ueb_add_column_if_missing( 'ueb_preinscriptions', 'montant_droits', 'INT UNSIGNED DEFAULT NULL' );
 
+    // 2.10 — contact d'urgence. Ces colonnes datent d'avant les migrations
+    // (ajoutées par un DROP TABLE manuel) : une base qui n'a pas été
+    // recréée à l'époque ne les a pas, et tout enregistrement y échoue.
+    ueb_add_column_if_missing( 'ueb_preinscriptions', 'nom_urgence', 'VARCHAR(150) DEFAULT NULL' );
+    ueb_add_column_if_missing( 'ueb_preinscriptions', 'numero_urgence', 'VARCHAR(20) DEFAULT NULL' );
+    ueb_add_column_if_missing( 'ueb_preinscriptions', 'adresse_urgence', 'VARCHAR(255) DEFAULT NULL' );
+
     // 2.10 — compte bancaire et frais médicaux propres à un établissement.
     // Même précaution qu'en 2.9 : les valeurs de la FALSH ne sont posées
     // qu'à la création des colonnes.
