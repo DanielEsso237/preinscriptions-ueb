@@ -269,6 +269,7 @@ function ueb_handle_pdf_generation() {
         'niveau_lmd'             => ueb_pdf_lookup( 'ueb_niveaux_lmd', $niveau_lmd_id, 'libelle' ),
         'montant_droits'         => ueb_montant_droits_saisi( $posted['montant_droits'] ?? '', $niveau_lmd_id ),
         'compte_cca'             => ueb_compte_cca_etablissement( $faculte_id ),
+        'frais_medicaux'         => ueb_frais_medicaux_dossier( $faculte_id, $niveau_lmd_id ),
         'mention'                => ueb_pdf_lookup( 'ueb_mentions', $mention_id, 'libelle' ),
         'statut_etudiant'        => ueb_pdf_lookup( 'ueb_statuts_etudiants', $statut_etudiant_id, 'libelle' ),
         'type_formation'         => ueb_translate_type_formation( $type_formation ),
@@ -336,6 +337,9 @@ function ueb_pdf_build_document( array $d ) {
     ueb_pdf_page_medicale( $pdf, $d );
     ueb_pdf_page_examen( $pdf );
     ueb_pdf_page_quitus( $pdf, $d ); // inc/quitus-pdf-functions.php
+    if ( $d['frais_medicaux'] > 0 ) {
+        ueb_pdf_page_quitus( $pdf, $d, 'medicaux' );
+    }
 
     return $pdf;
 }

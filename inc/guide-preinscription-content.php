@@ -182,6 +182,37 @@ function ueb_compte_cca_etablissement( $faculte_id ) {
 }
 
 /**
+ * Frais de visite médicale à régler avec ce dossier, ou 0 s'il n'y en a pas.
+ *
+ * Seuls les candidats en master d'un établissement qui facture la visite
+ * (la FALSH) reçoivent un quitus de frais médicaux avec leur fiche.
+ *
+ * @param int $faculte_id Identifiant de ueb_facultes.
+ * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
+ * @return int Montant en francs CFA.
+ */
+function ueb_frais_medicaux_dossier( $faculte_id, $niveau_id ) {
+    $en_master = false;
+    foreach ( ueb_droits_par_niveau() as $niveau ) {
+        if ( $niveau['id'] === (int) $niveau_id ) {
+            $en_master = (bool) preg_match( '/^M\d/', $niveau['code'] );
+        }
+    }
+
+    if ( ! $en_master ) {
+        return 0;
+    }
+
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        if ( $etablissement['id'] === (int) $faculte_id ) {
+            return $etablissement['frais_medicaux'];
+        }
+    }
+
+    return 0;
+}
+
+/**
  * Ce que le guide doit signaler pour les établissements qui s'écartent de
  * la règle commune (compte propre, visite médicale payante). Vide si tous
  * suivent la règle commune.
