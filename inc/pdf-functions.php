@@ -268,7 +268,7 @@ function ueb_handle_pdf_generation() {
         'moyenne_diplome'        => $moyenne_diplome,
         'niveau_lmd'             => ueb_pdf_lookup( 'ueb_niveaux_lmd', $niveau_lmd_id, 'libelle' ),
         'montant_droits'         => ueb_montant_droits_saisi( $posted['montant_droits'] ?? '', $niveau_lmd_id ),
-        'compte_cca'             => ueb_compte_cca_etablissement( $faculte_id ),
+        'compte_cca'             => ueb_compte_cca_etablissement( $faculte_id, $niveau_lmd_id ),
         'frais_medicaux'         => ueb_frais_medicaux_dossier( $faculte_id, $niveau_lmd_id ),
         'mention'                => ueb_pdf_lookup( 'ueb_mentions', $mention_id, 'libelle' ),
         'statut_etudiant'        => ueb_pdf_lookup( 'ueb_statuts_etudiants', $statut_etudiant_id, 'libelle' ),
