@@ -139,9 +139,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         ajoute désormais toute colonne déclarée dans
  *         ueb_get_table_schemas() et absente de la base, sans rien
  *         supprimer ni modifier d'existant.
+ * - 2.12 : correctif de 2.11. L'alignement automatique créait les colonnes
+ *         de 2.9 et 2.10 avant leur migration, qui ne posait alors plus
+ *         leurs valeurs de départ. Elles sont désormais posées une fois
+ *         par base, cf. ueb_poser_valeurs_initiales().
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.11' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.12' );
  }
 
 /**
@@ -677,6 +681,42 @@ function ueb_add_foreign_key_if_missing( $table, $nom, $definition ) {
 }
 
 /**
+ * Valeurs de départ des colonnes ajoutées en 2.9 et 2.10 : tarif des
+ * masters et du doctorat, compte et frais médicaux de la FALSH.
+ *
+ * Chaque valeur est posée UNE fois par base, ce que mémorise une option :
+ * la migration est rejouée à chaque changement de version, et ne doit pas
+ * écraser ce que l'administration a modifié depuis « Gestion des
+ * références ». Jusqu'en 2.11 ces valeurs étaient liées à la création de
+ * la colonne ; or ueb_sync_colonnes_manquantes() crée la colonne avant, et
+ * elles n'étaient donc plus jamais posées (masters restés à 11 000 FCFA,
+ * FALSH sans compte ni quitus médical).
+ *
+ * Par prudence pour les bases où la colonne existe déjà, seules les lignes
+ * encore à leur valeur par défaut sont touchées.
+ */
+function ueb_poser_valeurs_initiales() {
+    global $wpdb;
+
+    if ( ! get_option( 'ueb_init_droits_niveaux' ) ) {
+        $ok = $wpdb->query( "UPDATE ueb_niveaux_lmd SET droits_preinscription = 20000 WHERE code IN ('M1', 'M2', 'DOC') AND droits_preinscription = 11000" );
+        if ( false !== $ok ) {
+            update_option( 'ueb_init_droits_niveaux', 1, false );
+        }
+    }
+
+    if ( ! get_option( 'ueb_init_paiement_falsh' ) ) {
+        $ok = $wpdb->query(
+            "UPDATE ueb_facultes SET compte_bancaire = '10039-10012-00272772501-77', frais_medicaux = 5000
+             WHERE code = 'FALSH' AND ( compte_bancaire IS NULL OR compte_bancaire = '' ) AND frais_medicaux = 0"
+        );
+        if ( false !== $ok ) {
+            update_option( 'ueb_init_paiement_falsh', 1, false );
+        }
+    }
+}
+
+/**
  * Applique les changements de structure sur les tables déjà installées.
  *
  * Chaque migration doit être idempotente : la fonction est rejouée à
@@ -704,14 +744,9 @@ function ueb_run_schema_migrations() {
     }
 
     // 2.9 — droits de préinscription par niveau, et montant retenu par
-    // dossier. Le tarif master n'est posé qu'à la création de la colonne :
-    // rejouée plus tard, la migration ne doit pas écraser un tarif que
-    // l'administration aurait modifié entre-temps.
+    // dossier.
     global $wpdb;
-    $tarifs_deja_la = $wpdb->get_var( "SHOW COLUMNS FROM ueb_niveaux_lmd LIKE 'droits_preinscription'" );
-    if ( ueb_add_column_if_missing( 'ueb_niveaux_lmd', 'droits_preinscription', 'INT UNSIGNED NOT NULL DEFAULT 11000' ) && ! $tarifs_deja_la ) {
-        $wpdb->query( "UPDATE ueb_niveaux_lmd SET droits_preinscription = 20000 WHERE code IN ('M1', 'M2', 'DOC')" );
-    }
+    ueb_add_column_if_missing( 'ueb_niveaux_lmd', 'droits_preinscription', 'INT UNSIGNED NOT NULL DEFAULT 11000' );
     ueb_add_column_if_missing( 'ueb_preinscriptions', 'montant_droits', 'INT UNSIGNED DEFAULT NULL' );
 
     // 2.10 — contact d'urgence. Ces colonnes datent d'avant les migrations
@@ -722,14 +757,10 @@ function ueb_run_schema_migrations() {
     ueb_add_column_if_missing( 'ueb_preinscriptions', 'adresse_urgence', 'VARCHAR(255) DEFAULT NULL' );
 
     // 2.10 — compte bancaire et frais médicaux propres à un établissement.
-    // Même précaution qu'en 2.9 : les valeurs de la FALSH ne sont posées
-    // qu'à la création des colonnes.
-    $compte_deja_la = $wpdb->get_var( "SHOW COLUMNS FROM ueb_facultes LIKE 'compte_bancaire'" );
-    $ok_compte      = ueb_add_column_if_missing( 'ueb_facultes', 'compte_bancaire', 'VARCHAR(40) DEFAULT NULL' );
-    $ok_frais       = ueb_add_column_if_missing( 'ueb_facultes', 'frais_medicaux', 'INT UNSIGNED NOT NULL DEFAULT 0' );
-    if ( $ok_compte && $ok_frais && ! $compte_deja_la ) {
-        $wpdb->query( "UPDATE ueb_facultes SET compte_bancaire = '10039-10012-00272772501-77', frais_medicaux = 5000 WHERE code = 'FALSH'" );
-    }
+    ueb_add_column_if_missing( 'ueb_facultes', 'compte_bancaire', 'VARCHAR(40) DEFAULT NULL' );
+    ueb_add_column_if_missing( 'ueb_facultes', 'frais_medicaux', 'INT UNSIGNED NOT NULL DEFAULT 0' );
+
+    ueb_poser_valeurs_initiales();
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
