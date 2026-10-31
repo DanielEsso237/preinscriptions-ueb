@@ -143,9 +143,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         de 2.9 et 2.10 avant leur migration, qui ne posait alors plus
  *         leurs valeurs de départ. Elles sont désormais posées une fois
  *         par base, cf. ueb_poser_valeurs_initiales().
+ * - 2.13 : tarifs par établissement et par cycle. La table ueb_tarifs porte
+ *         les droits de préinscription et les frais de visite médicale ;
+ *         elle remplace, sans les supprimer, les colonnes
+ *         ueb_niveaux_lmd.droits_preinscription et
+ *         ueb_facultes.frais_medicaux, qui ne sont plus lues.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.12' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.13' );
  }
 
 /**
@@ -203,6 +208,18 @@ CREATE TABLE IF NOT EXISTS ueb_facultes (
     frais_medicaux INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uq_faculte_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SQL,
+        'ueb_tarifs' => <<<SQL
+CREATE TABLE IF NOT EXISTS ueb_tarifs (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    faculte_id INT UNSIGNED NOT NULL,
+    cycle ENUM('licence','master','doctorat') NOT NULL,
+    droits_preinscription INT UNSIGNED NOT NULL DEFAULT 11000,
+    frais_medicaux INT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_tarif_faculte_cycle (faculte_id, cycle),
+    CONSTRAINT fk_tarif_faculte FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
         'ueb_diplomes_admission' => <<<SQL
@@ -698,6 +715,8 @@ function ueb_add_foreign_key_if_missing( $table, $nom, $definition ) {
 function ueb_poser_valeurs_initiales() {
     global $wpdb;
 
+    ueb_poser_tarifs_initiaux();
+
     if ( ! get_option( 'ueb_init_droits_niveaux' ) ) {
         $ok = $wpdb->query( "UPDATE ueb_niveaux_lmd SET droits_preinscription = 20000 WHERE code IN ('M1', 'M2', 'DOC') AND droits_preinscription = 11000" );
         if ( false !== $ok ) {
@@ -713,6 +732,32 @@ function ueb_poser_valeurs_initiales() {
         if ( false !== $ok ) {
             update_option( 'ueb_init_paiement_falsh', 1, false );
         }
+    }
+}
+
+/**
+ * Tarifs de départ de ueb_tarifs, posés une fois par base, y compris sur une
+ * installation neuve (où ueb_seed_reference_data() la rappelle : à la
+ * migration, ueb_facultes y est encore vide). Sans cela, la FALSH resterait
+ * au tarif par défaut.
+ */
+function ueb_poser_tarifs_initiaux() {
+    global $wpdb;
+
+    if ( get_option( 'ueb_init_tarifs' ) || ! $wpdb->get_var( 'SELECT COUNT(*) FROM ueb_facultes' ) ) {
+        return;
+    }
+
+    $ok = $wpdb->query(
+        "INSERT IGNORE INTO ueb_tarifs (faculte_id, cycle, droits_preinscription, frais_medicaux)
+         SELECT id, 'licence', 11000, 3000 FROM ueb_facultes
+         UNION ALL
+         SELECT id, 'master', IF( code = 'FALSH', 20000, 11000 ), IF( code = 'FALSH', 5000, 3000 ) FROM ueb_facultes
+         UNION ALL
+         SELECT id, 'doctorat', 20000, 0 FROM ueb_facultes"
+    );
+    if ( false !== $ok ) {
+        update_option( 'ueb_init_tarifs', 1, false );
     }
 }
 

@@ -440,6 +440,8 @@
 .ref-filtres-reset:hover { color: var(--ueb-primary); background: var(--ueb-surface-hover); }
 
 .ref-add { margin-left: auto; }
+.ref-search[hidden] { display: none; }
+.ref-toolbar .ref-add { margin-left: auto; }
 .ref-toolbar.has-filtres-ligne .ref-add { order: 2; }
 .ref-toolbar.has-filtres-ligne .ref-filtres { order: 3; flex: 1 1 100%; }
 .ref-add[hidden] { display: none; }
@@ -646,6 +648,9 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.1rem .9rem;
+    /* Deux champs côte à côte gardent leurs cases alignées, même quand un
+       libellé passe sur deux lignes. */
+    align-items: end;
 }
 .ref-field {
     grid-column: 1 / -1;
@@ -709,6 +714,74 @@ legend.ref-field-label { margin-bottom: .45rem; }
     transform: translateY(-50%);
     color: var(--ueb-text-muted);
     pointer-events: none;
+}
+
+/* Listes ouvertes : Chrome et Edge récents laissent dessiner le menu. Il
+   s'aligne alors sur le champ et suit le thème ; les autres navigateurs
+   gardent leur menu système. */
+@supports (appearance: base-select) {
+    .ref-page .ref-select .ref-input,
+    .ref-page .ref-filtre-select,
+    .ref-page .ref-select .ref-input::picker(select),
+    .ref-page .ref-filtre-select::picker(select) {
+        appearance: base-select;
+    }
+    .ref-page .ref-select .ref-input { display: flex; align-items: center; }
+    .ref-page .ref-select .ref-input::picker-icon,
+    .ref-page .ref-filtre-select::picker-icon { display: none; }
+
+    /* opacity: 0 masquerait aussi le menu, qui est un enfant de la liste. */
+    .ref-page .ref-filtre-select {
+        opacity: 1;
+        padding: 0;
+        min-height: 0;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: transparent;
+    }
+
+    .ref-page .ref-select .ref-input::picker(select),
+    .ref-page .ref-filtre-select::picker(select) {
+        margin-block: .35rem;
+        padding: .3rem;
+        max-height: min(300px, 50vh);
+        overflow-y: auto;
+        background: var(--ueb-surface);
+        border: 1px solid var(--ueb-border-strong);
+        border-radius: var(--ueb-radius-sm);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
+        color: var(--ueb-text);
+        font-size: .88rem;
+    }
+    .ref-page .ref-filtre-select::picker(select) { min-width: 240px; width: max-content; max-width: 340px; }
+
+    .ref-page .ref-select option,
+    .ref-page .ref-filtre-select option {
+        display: flex;
+        align-items: center;
+        min-height: 36px;
+        padding: .4rem .65rem;
+        border-radius: 6px;
+        color: var(--ueb-text);
+        font-weight: 400;
+        cursor: pointer;
+    }
+    .ref-page .ref-select option::checkmark,
+    .ref-page .ref-filtre-select option::checkmark { display: none; }
+    .ref-page .ref-select option:hover,
+    .ref-page .ref-select option:focus-visible,
+    .ref-page .ref-filtre-select option:hover,
+    .ref-page .ref-filtre-select option:focus-visible {
+        outline: none;
+        background: var(--ueb-surface-2);
+    }
+    .ref-page .ref-select option:checked,
+    .ref-page .ref-filtre-select option:checked {
+        background: var(--ueb-primary-wash);
+        color: var(--ueb-primary);
+        font-weight: 600;
+    }
 }
 
 .ref-field-help {

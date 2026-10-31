@@ -698,6 +698,7 @@ function ueb_seed_reference_data() {
     }
 
     ueb_purge_diplomes_obsoletes();
+    ueb_poser_tarifs_initiaux();
 }
 
 /**

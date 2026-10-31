@@ -62,8 +62,6 @@ function ueb_admin_ref_registry() {
                 // l'établissement ; licences et doctorat gardent le compte
                 // de l'Université.
                 'compte_bancaire' => array( 'label' => "Compte CCA Bank des masters (si différent de celui de l'Université)", 'type' => 'text', 'required' => false, 'maxlength' => 40 ),
-                // 0 = visite médicale sans frais. Ne concerne que les masters.
-                'frais_medicaux'  => array( 'label' => 'Frais médicaux des masters (FCFA)', 'type' => 'number', 'required' => false ),
             ),
             'label_col' => 'nom_fr',
         ),
@@ -149,7 +147,7 @@ function ueb_admin_ref_registry() {
 
         'niveaux_lmd' => array(
             'table'          => 'ueb_niveaux_lmd',
-            'label'          => 'Niveaux LMD et droits',
+            'label'          => 'Niveaux LMD',
             'group'          => 'Formation',
             'order_by'       => 't.ordre ASC',
             'search_columns' => array( 'code', 'libelle' ),
@@ -157,11 +155,26 @@ function ueb_admin_ref_registry() {
                 'code'    => array( 'label' => 'Code',    'type' => 'text',   'required' => true, 'maxlength' => 20 ),
                 'libelle' => array( 'label' => 'Libellé', 'type' => 'text',   'required' => true, 'maxlength' => 50 ),
                 'ordre'   => array( 'label' => "Ordre d'affichage", 'type' => 'number', 'required' => false ),
-                // Tarif proposé par défaut au candidat de ce niveau, qu'il
-                // peut corriger dans le formulaire (cf. ueb_droits_par_niveau()).
-                'droits_preinscription' => array( 'label' => 'Droits de préinscription (FCFA)', 'type' => 'number', 'required' => true ),
             ),
             'label_col' => 'libelle',
+        ),
+
+        // Une ligne par établissement et par cycle (cf. ueb_tarif()). Les
+        // droits sont proposés au candidat, qui peut les corriger dans le
+        // formulaire ; les frais médicaux ajoutent un quitus à sa fiche.
+        'tarifs' => array(
+            'table'          => 'ueb_tarifs',
+            'label'          => 'Tarifs',
+            'group'          => 'Formation',
+            'order_by'       => 't.faculte_id ASC, t.cycle ASC',
+            'search_columns' => array(),
+            'columns'        => array(
+                'faculte_id'            => array( 'label' => 'Faculté', 'type' => 'select', 'required' => true, 'fk' => 'facultes' ),
+                'cycle'                 => array( 'label' => 'Cycle', 'type' => 'enum', 'required' => true, 'options' => array( 'licence' => 'Licence (L1–L3)', 'master' => 'Master (M1–M2)', 'doctorat' => 'Doctorat' ) ),
+                'droits_preinscription' => array( 'label' => 'Droits de préinscription (FCFA)', 'type' => 'number', 'required' => true ),
+                'frais_medicaux'        => array( 'label' => 'Frais médicaux (FCFA)', 'type' => 'number', 'required' => true ),
+            ),
+            'label_col' => 'cycle',
         ),
 
         'mentions' => array(
@@ -356,6 +369,10 @@ function ueb_admin_ref_registry() {
  *     - vide   : ce que signifie une valeur absente (« Toutes les facultés »)
  *     - apercu : 'logo' pour montrer l'image plutôt que le nom du fichier
  *     - sigle  : montrer le code de la table visée (FSEG) plutôt que son nom
+ *     - montant : montrer le nombre avec ses milliers (« 11 000 »)
+ *     - zero   : ce que signifie la valeur 0 (« Sans frais »)
+ * - nom_ligne   : colonnes qui nomment une ligne dans les titres, quand la
+ *                 colonne de libellé n'y suffit pas (« FS · Licence »)
  *
  * @return array<string, array>
  */
@@ -370,7 +387,6 @@ function ueb_admin_ref_presentation() {
                 'logo'  => array( 'th' => 'Logo', 'apercu' => 'logo' ),
                 'actif' => array( 'th' => 'État', 'etats' => $actif ),
                 'compte_bancaire' => array( 'th' => 'Compte master', 'vide' => 'Université' ),
-                'frais_medicaux'  => array( 'th' => 'Frais méd. master' ),
             ),
         ),
         'diplomes_admission' => array(
@@ -397,11 +413,18 @@ function ueb_admin_ref_presentation() {
             ),
         ),
         'niveaux_lmd' => array(
-            'description' => 'Niveaux d’entrée proposés dans le formulaire, affichés dans l’ordre défini ici. Les droits de préinscription de chaque niveau sont proposés par défaut au candidat et repris dans le guide.',
+            'description' => 'Niveaux d’entrée proposés dans le formulaire, affichés dans l’ordre défini ici.',
             'singulier'   => 'un niveau',
+            'colonnes'    => array( 'ordre' => array( 'th' => 'Ordre' ) ),
+        ),
+        'tarifs' => array(
+            'description' => 'Droits de préinscription et frais médicaux, par faculté et par cycle. Sans frais médicaux, la fiche ne comporte pas de quitus médical.',
+            'singulier'   => 'un tarif',
+            'nom_ligne'   => array( 'faculte_id', 'cycle' ),
             'colonnes'    => array(
-                'ordre'                 => array( 'th' => 'Ordre' ),
-                'droits_preinscription' => array( 'th' => 'Droits (FCFA)' ),
+                'faculte_id'            => array( 'sigle' => true ),
+                'droits_preinscription' => array( 'th' => 'Droits (FCFA)', 'montant' => true ),
+                'frais_medicaux'        => array( 'th' => 'Frais médicaux (FCFA)', 'montant' => true, 'zero' => 'Sans frais' ),
             ),
         ),
         'mentions' => array(
@@ -530,7 +553,7 @@ function ueb_admin_ref_get_registry_for_js() {
             }
 
             if ( isset( $pres_cols[ $col ] ) ) {
-                foreach ( array( 'th', 'etats', 'vide', 'apercu', 'sigle' ) as $opt ) {
+                foreach ( array( 'th', 'etats', 'vide', 'apercu', 'sigle', 'montant', 'zero' ) as $opt ) {
                     if ( isset( $pres_cols[ $col ][ $opt ] ) ) {
                         $entry[ $opt ] = $pres_cols[ $col ][ $opt ];
                     }
@@ -567,6 +590,8 @@ function ueb_admin_ref_get_registry_for_js() {
             'description' => isset( $pres['description'] ) ? $pres['description'] : '',
             'singulier'   => isset( $pres['singulier'] ) ? $pres['singulier'] : '',
             'labelCol'    => $cfg['label_col'],
+            'nomLigne'    => isset( $pres['nom_ligne'] ) ? $pres['nom_ligne'] : array(),
+            'cherchable'  => ! empty( $cfg['search_columns'] ),
             'total'       => $total,
             'columns'     => $columns,
         );
@@ -839,6 +864,9 @@ function ueb_admin_ref_sanitize( $key, $raw ) {
 function ueb_admin_ref_friendly_db_error( $error ) {
     if ( false !== stripos( $error, 'foreign key constraint' ) ) {
         return 'Impossible : cet élément est déjà utilisé ailleurs (dans un dossier de préinscription ou une autre table de référence). Il faut d’abord retirer ces usages.';
+    }
+    if ( false !== stripos( $error, 'uq_tarif' ) ) {
+        return 'Un tarif existe déjà pour cette faculté et ce cycle : modifiez-le.';
     }
     if ( false !== stripos( $error, 'Duplicate entry' ) ) {
         return 'Cette valeur existe déjà (code ou libellé en double).';

@@ -402,19 +402,21 @@
         syncMontantDroits();
     }
 
-    /* Droits de préinscription : chaque niveau arrive avec son tarif
-       (champ "droits", cf. ueb_ajax_get_niveaux_lmd()). On le propose dans
-       le champ « Montant » à chaque changement de niveau ; le candidat reste
-       libre de le corriger ensuite, et tant que le niveau ne bouge pas sa
-       saisie n'est plus touchée. */
-    let niveauDuMontant = '';
+    /* Droits de préinscription : chaque niveau arrive avec ses tarifs par
+       faculté (champ "droits_par_faculte", cf. ueb_ajax_get_niveaux_lmd()).
+       On propose le bon dans le champ « Montant » à chaque changement de
+       faculté ou de niveau ; le candidat reste libre de le corriger ensuite,
+       et tant que ni l'une ni l'autre ne bouge sa saisie n'est plus touchée. */
+    let choixDuMontant = '';
 
     function syncMontantDroits() {
-        if (!montantDroits || niveauSelect.value === niveauDuMontant) return;
-        niveauDuMontant = niveauSelect.value;
+        const choix = selectFaculte.value + '|' + niveauSelect.value;
+        if (!montantDroits || choix === choixDuMontant) return;
+        choixDuMontant = choix;
 
-        const niveau = niveauxCache.find(function (n) { return String(n.id) === niveauDuMontant; });
-        montantDroits.value = niveau ? niveau.droits : '';
+        const niveau = niveauxCache.find(function (n) { return String(n.id) === niveauSelect.value; });
+        const droits = niveau ? niveau.droits_par_faculte[selectFaculte.value] : undefined;
+        montantDroits.value = droits !== undefined ? droits : '';
     }
 
     niveauSelect.addEventListener('change', function () {
@@ -1502,9 +1504,9 @@
             niveauSelect.value = donnees.niveau_lmd;
             syncNiveauHidden();
         }
-        // Le niveau vient de reposer son tarif par défaut : le montant que
+        // Le niveau vient de reposer le tarif par défaut : le montant que
         // le candidat avait saisi reprend la main. Un brouillon antérieur à
-        // ce champ n'en a pas, et garde donc le tarif du niveau.
+        // ce champ n'en a pas, et garde donc le tarif par défaut.
         if (montantDroits && donnees.montant_droits !== undefined && donnees.montant_droits !== '') {
             montantDroits.value = donnees.montant_droits;
         }
