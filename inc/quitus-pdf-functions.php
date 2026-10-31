@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  * dans la couleur d'identité de l'établissement.
  *
  * Écarts avec le modèle, imposés par la préinscription :
- *   - montant du dossier ($d['montant_droits'] : le tarif du niveau, que
+ *   - montant du dossier ($d['montant_droits'] : le tarif de la faculté et du cycle, que
  *     le candidat a pu corriger dans le formulaire), payé en une fois sur
  *     le compte de l'établissement ou, à défaut, de l'Université
  *     ($d['compte_cca']) : pas de cases de tranche ;

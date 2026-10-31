@@ -397,7 +397,11 @@
 
         var colonnes = colonnesFiltrables(cfg);
         // Plusieurs filtres : ils prennent leur propre ligne sous la recherche.
-        if (barre) barre.classList.toggle('has-filtres-ligne', colonnes.length > 1);
+        if (barre) barre.classList.toggle('has-filtres-ligne', colonnes.length > 1 && false !== cfg.cherchable);
+
+        // Une table sans colonne de texte n'a rien à rechercher.
+        var recherche = document.querySelector('.ref-search');
+        if (recherche) recherche.hidden = false === cfg.cherchable;
         if (!colonnes.length) {
             zone.innerHTML = '';
             zone.hidden = true;
@@ -475,6 +479,20 @@
        ================================================================ */
     var TIRET = '<span class="ref-vide">—</span>';
 
+    /* Nom d'une ligne dans les titres. Certaines tables la nomment par
+       plusieurs colonnes (« FS · Licence (L1–L3) ») : la colonne de libellé
+       seule y serait ambiguë, ou brute pour une valeur d'énumération. */
+    function nomLigne(cfg, row) {
+        if (!row) return '';
+        if (!cfg.nomLigne || !cfg.nomLigne.length) return row[cfg.labelCol] || '';
+        var complete = lignesParId[row.id] || row;
+        return cfg.nomLigne.map(function (cle) {
+            if (complete[cle + '__code']) return complete[cle + '__code'];
+            var opt = (cfg.columns[cle].options || []).filter(function (o) { return String(o.id) === String(complete[cle]); })[0];
+            return opt ? opt.libelle : complete[cle];
+        }).join(' · ');
+    }
+
     function cellule(cle, colcfg, row, cfg, terme) {
         var val = row[cle];
         var vide = val === null || val === undefined || val === '';
@@ -505,6 +523,9 @@
         }
 
         if (vide) return { html: TIRET };
+
+        if (colcfg.zero && 0 === Number(val)) return { html: '<span class="ref-muted">' + esc(colcfg.zero) + '</span>', classe: 'ref-td-court' };
+        if (colcfg.montant) return { html: esc(nombre(val)), classe: 'ref-td-num ref-td-court' };
 
         if ('code' === cle) return { html: '<span class="ref-code">' + surligner(val, terme) + '</span>' };
         if ('slug' === cle) return { html: surligner(val, terme), classe: 'ref-td-court ref-muted' };
@@ -572,7 +593,7 @@
 
         var tbody = data.rows.map(function (row, index) {
             lignesParId[row.id] = row;
-            var nom = row[cfg.labelCol] || ('n° ' + row.id);
+            var nom = nomLigne(cfg, row) || ('n° ' + row.id);
 
             var tds = Object.keys(cols).map(function (cle) {
                 var c = cellule(cle, cols[cle], row, cfg, terme);
@@ -794,7 +815,7 @@
         if ('/' === e.key && !e.ctrlKey && !e.metaKey && !e.altKey) {
             var t = e.target;
             var saisie = t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName));
-            if (!saisie && champRecherche) {
+            if (!saisie && champRecherche && champRecherche.offsetParent) {
                 e.preventDefault();
                 champRecherche.focus();
                 champRecherche.select();
@@ -860,7 +881,7 @@
         idEnEdition = row ? row.id : 0;
 
         $('admin-ref-modal-title').textContent = row
-            ? 'Modifier ' + guillemets(row[cfg.labelCol] || ('n° ' + row.id))
+            ? 'Modifier ' + guillemets(nomLigne(cfg, row) || ('n° ' + row.id))
             : 'Ajouter ' + (cfg.singulier || 'une ligne');
         $('admin-ref-modal-sub').textContent = cfg.label;
 
@@ -973,8 +994,8 @@
         if (!confirmation || !cfg) return;
 
         idASupprimer = id;
-        var nom = row && row[cfg.labelCol] ? row[cfg.labelCol] : 'cette ligne';
-        $('ref-confirm-title').textContent = 'Supprimer ' + (row && row[cfg.labelCol] ? guillemets(nom) : nom) + ' ?';
+        var nom = nomLigne(cfg, row);
+        $('ref-confirm-title').textContent = 'Supprimer ' + (nom ? guillemets(nom) : 'cette ligne') + ' ?';
         var err = $('ref-confirm-error');
         err.hidden = true;
         err.textContent = '';

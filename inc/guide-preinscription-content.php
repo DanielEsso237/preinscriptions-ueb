@@ -23,10 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Montant des droits de préinscription par défaut, en francs CFA.
  *
- * Les tarifs réels sont portés par ueb_niveaux_lmd.droits_preinscription
- * et administrés depuis « Gestion des références » (cf.
- * ueb_droits_par_niveau()). Cette constante n'est plus que le repli :
- * niveau inconnu, ou base pas encore migrée.
+ * Les tarifs réels sont portés par ueb_tarifs, par établissement et par
+ * cycle, et administrés depuis « Gestion des références » (cf. ueb_tarif()).
+ * Cette constante n'est plus que le repli d'un niveau hors cycle connu.
  */
 if ( ! defined( 'UEB_FRAIS_PREINSCRIPTION' ) ) {
     define( 'UEB_FRAIS_PREINSCRIPTION', 11000 );
@@ -126,13 +125,12 @@ function ueb_guide_dates() {
 /**
  * Établissements, avec ce qui leur est propre côté paiement.
  *
- * Par défaut tout se verse sur le compte de l'Université et la visite
- * médicale des nouveaux étudiants est sans frais ; un établissement peut
- * avoir, pour ses masters, son propre compte et ses propres frais médicaux
- * (la FALSH), réglés depuis « Gestion des références ».
+ * Par défaut tout se verse sur le compte de l'Université ; un établissement
+ * peut avoir, pour ses masters, son propre compte (la FALSH), réglé depuis
+ * « Gestion des références ».
  *
- * @return array[] { id, code, nom, compte, frais_medicaux } — compte vide =
- *                 compte de l'Université.
+ * @return array[] { id, code, nom, compte, actif } — compte vide = compte de
+ *                 l'Université.
  */
 function ueb_etablissements_paiement() {
     static $etablissements = null;
@@ -143,21 +141,21 @@ function ueb_etablissements_paiement() {
 
     global $wpdb;
 
-    // Erreurs masquées, comme dans ueb_droits_par_niveau() : sur une base
+    // Erreurs masquées, comme dans ueb_tarif() : sur une base
     // pas encore migrée, les pages publiques s'en tiennent au compte de
     // l'Université.
     $masque = $wpdb->suppress_errors( true );
-    $lignes = $wpdb->get_results( 'SELECT id, code, nom_fr, compte_bancaire, frais_medicaux FROM ueb_facultes ORDER BY code ASC' );
+    $lignes = $wpdb->get_results( 'SELECT id, code, nom_fr, compte_bancaire, actif FROM ueb_facultes ORDER BY code ASC' );
     $wpdb->suppress_errors( $masque );
 
     $etablissements = array();
     foreach ( (array) $lignes as $ligne ) {
         $etablissements[] = array(
-            'id'             => (int) $ligne->id,
-            'code'           => (string) $ligne->code,
-            'nom'            => (string) $ligne->nom_fr,
-            'compte'         => trim( (string) $ligne->compte_bancaire ),
-            'frais_medicaux' => (int) $ligne->frais_medicaux,
+            'id'     => (int) $ligne->id,
+            'code'   => (string) $ligne->code,
+            'nom'    => (string) $ligne->nom_fr,
+            'compte' => trim( (string) $ligne->compte_bancaire ),
+            'actif'  => (bool) $ligne->actif,
         );
     }
 
@@ -167,21 +165,15 @@ function ueb_etablissements_paiement() {
 /**
  * Le niveau LMD est-il un niveau de master (M1, M2) ?
  *
- * Le compte et les frais médicaux propres à un établissement ne concernent
- * que ses masters : c'est le périmètre du communiqué de la FALSH. Licences
- * et doctorat restent sur la règle commune.
+ * Le compte propre à un établissement ne concerne que ses masters : c'est
+ * le périmètre du communiqué de la FALSH. Licences et doctorat restent sur
+ * le compte de l'Université.
  *
  * @param int $niveau_id Identifiant de ueb_niveaux_lmd.
  * @return bool
  */
 function ueb_niveau_est_master( $niveau_id ) {
-    foreach ( ueb_droits_par_niveau() as $niveau ) {
-        if ( $niveau['id'] === (int) $niveau_id ) {
-            return (bool) preg_match( '/^M\d/', $niveau['code'] );
-        }
-    }
-
-    return false;
+    return 'master' === ueb_cycle_tarif( $niveau_id );
 }
 
 /**
@@ -206,33 +198,122 @@ function ueb_compte_cca_etablissement( $faculte_id, $niveau_id ) {
 }
 
 /**
- * Frais de visite médicale à régler avec ce dossier, ou 0 s'il n'y en a pas.
+ * Tarif appliqué à défaut de ligne dans ueb_tarifs : établissement créé
+ * après coup, ligne supprimée, ou base pas encore migrée.
  *
- * Seuls les candidats en master (M1, M2) d'un établissement qui facture la
- * visite (la FALSH) reçoivent un quitus de frais médicaux avec leur fiche.
+ * @return array[] cycle => { droits, frais_medicaux }
+ */
+function ueb_tarifs_defaut() {
+    return array(
+        'licence'  => array( 'droits' => 11000, 'frais_medicaux' => 3000 ),
+        'master'   => array( 'droits' => 11000, 'frais_medicaux' => 3000 ),
+        'doctorat' => array( 'droits' => 20000, 'frais_medicaux' => 0 ),
+    );
+}
+
+/**
+ * Cycles tarifaires, dans l'ordre d'affichage.
+ *
+ * @return string[] cycle => libellé
+ */
+function ueb_tarifs_cycles() {
+    return array( 'licence' => 'Licence', 'master' => 'Master', 'doctorat' => 'Doctorat' );
+}
+
+/**
+ * Cycle tarifaire d'un niveau LMD (L1 → licence, M2 → master, DOC →
+ * doctorat). Ne pas confondre avec ueb_cycle_pour_niveau(), qui répartit
+ * les filières et distingue le tronc commun de la L3.
+ *
+ * @param int $niveau_id Identifiant de ueb_niveaux_lmd.
+ * @return string Cycle, '' pour un niveau inconnu.
+ */
+function ueb_cycle_tarif( $niveau_id ) {
+    foreach ( ueb_niveaux_lmd_liste() as $niveau ) {
+        if ( $niveau['id'] === (int) $niveau_id ) {
+            if ( preg_match( '/^L\d/', $niveau['code'] ) ) {
+                return 'licence';
+            }
+            if ( preg_match( '/^M\d/', $niveau['code'] ) ) {
+                return 'master';
+            }
+            return 'DOC' === $niveau['code'] ? 'doctorat' : '';
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Tarif d'un cycle dans un établissement.
+ *
+ * Source unique des montants : le formulaire (montant proposé par défaut),
+ * les quitus, le guide et la page d'accueil la lisent tous.
+ *
+ * @param int    $faculte_id Identifiant de ueb_facultes.
+ * @param string $cycle      Valeur de ueb_tarifs.cycle.
+ * @return array { droits, frais_medicaux } en francs CFA.
+ */
+function ueb_tarif( $faculte_id, $cycle ) {
+    static $tarifs = null;
+
+    if ( null === $tarifs ) {
+        global $wpdb;
+
+        // Erreurs masquées : sur une base pas encore migrée, la table
+        // n'existe pas et les pages publiques s'en tiennent aux défauts.
+        $masque = $wpdb->suppress_errors( true );
+        $lignes = $wpdb->get_results( 'SELECT faculte_id, cycle, droits_preinscription, frais_medicaux FROM ueb_tarifs' );
+        $wpdb->suppress_errors( $masque );
+
+        $tarifs = array();
+        foreach ( (array) $lignes as $ligne ) {
+            $tarifs[ (int) $ligne->faculte_id ][ $ligne->cycle ] = array(
+                'droits'         => (int) $ligne->droits_preinscription,
+                'frais_medicaux' => (int) $ligne->frais_medicaux,
+            );
+        }
+    }
+
+    if ( isset( $tarifs[ (int) $faculte_id ][ $cycle ] ) ) {
+        return $tarifs[ (int) $faculte_id ][ $cycle ];
+    }
+
+    $defauts = ueb_tarifs_defaut();
+
+    return isset( $defauts[ $cycle ] )
+        ? $defauts[ $cycle ]
+        : array( 'droits' => (int) UEB_FRAIS_PREINSCRIPTION, 'frais_medicaux' => 0 );
+}
+
+/**
+ * Tarif d'un dossier, d'après son établissement et son niveau.
+ *
+ * @param int $faculte_id Identifiant de ueb_facultes.
+ * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
+ * @return array { droits, frais_medicaux } en francs CFA.
+ */
+function ueb_tarif_dossier( $faculte_id, $niveau_id ) {
+    return ueb_tarif( $faculte_id, ueb_cycle_tarif( $niveau_id ) );
+}
+
+/**
+ * Frais de visite médicale à régler avec ce dossier, ou 0 s'il n'y en a
+ * pas. Un montant positif ajoute le quitus de frais médicaux à la fiche.
  *
  * @param int $faculte_id Identifiant de ueb_facultes.
  * @param int $niveau_id  Identifiant de ueb_niveaux_lmd.
  * @return int Montant en francs CFA.
  */
 function ueb_frais_medicaux_dossier( $faculte_id, $niveau_id ) {
-    if ( ! ueb_niveau_est_master( $niveau_id ) ) {
-        return 0;
-    }
+    $tarif = ueb_tarif_dossier( $faculte_id, $niveau_id );
 
-    foreach ( ueb_etablissements_paiement() as $etablissement ) {
-        if ( $etablissement['id'] === (int) $faculte_id ) {
-            return $etablissement['frais_medicaux'];
-        }
-    }
-
-    return 0;
+    return $tarif['frais_medicaux'];
 }
 
 /**
- * Ce que le guide doit signaler pour les établissements qui s'écartent de
- * la règle commune (compte propre, visite médicale payante). Vide si tous
- * suivent la règle commune.
+ * Ce que le guide doit signaler pour les établissements qui encaissent sur
+ * leur propre compte. Vide si tous versent sur celui de l'Université.
  *
  * @return array[] { titre, texte }
  */
@@ -240,55 +321,50 @@ function ueb_guide_particularites_paiement() {
     $notes = array();
 
     foreach ( ueb_etablissements_paiement() as $etablissement ) {
-        $phrases = array();
-
-        if ( '' !== $etablissement['compte'] ) {
-            $phrases[] = 'En master, les droits de préinscription se versent sur le compte CCA Bank de l\'établissement, n° ' . $etablissement['compte'] . ', et non sur celui de l\'Université.';
-        }
-        if ( $etablissement['frais_medicaux'] > 0 ) {
-            $phrases[] = 'Le certificat médical des nouveaux étudiants de master y est payant : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false )
-                . ( '' !== $etablissement['compte'] ? ', à verser sur ce même compte.' : '.' );
+        if ( '' === $etablissement['compte'] ) {
+            continue;
         }
 
-        if ( $phrases ) {
-            $notes[] = array(
-                'titre' => 'Master à la ' . $etablissement['code'] . ' — ' . $etablissement['nom'],
-                'texte' => implode( ' ', $phrases ),
-            );
+        $tarif = ueb_tarif( $etablissement['id'], 'master' );
+        $texte = 'En master, les droits de préinscription se versent sur le compte CCA Bank de l\'établissement, n° ' . $etablissement['compte'] . ', et non sur celui de l\'Université.';
+        if ( $tarif['frais_medicaux'] > 0 ) {
+            $texte .= ' Les frais médicaux (' . ueb_guide_montant( $tarif['frais_medicaux'], false ) . ') se versent sur ce même compte.';
         }
+
+        $notes[] = array(
+            'titre' => 'Master à la ' . $etablissement['code'] . ' — ' . $etablissement['nom'],
+            'texte' => $texte,
+        );
     }
 
     return $notes;
 }
 
 /**
- * Établissements où la visite médicale des nouveaux étudiants est payante,
- * en incise : « en master à la FALSH : 5 000 FCFA ». Chaîne vide si elle est partout
- * sans frais.
+ * Frais médicaux à annoncer au public, en incise : « 3 000 FCFA en licence
+ * et master et 5 000 FCFA en master à la FALSH ». Chaîne vide s'ils sont
+ * partout à 0.
  *
  * @return string
  */
 function ueb_guide_frais_medicaux_payants() {
     $payants = array();
 
-    foreach ( ueb_etablissements_paiement() as $etablissement ) {
-        if ( $etablissement['frais_medicaux'] > 0 ) {
-            $payants[] = 'en master à la ' . $etablissement['code'] . ' : ' . ueb_guide_montant( $etablissement['frais_medicaux'], false );
+    foreach ( ueb_guide_grille( 'frais_medicaux' ) as $ligne ) {
+        if ( $ligne['montant'] > 0 ) {
+            $payants[] = $ligne;
         }
     }
 
-    return implode( ', ', $payants );
+    return ueb_guide_phrase_tarifs( $payants, false );
 }
 
 /**
- * Droits de préinscription de chaque niveau LMD, dans l'ordre d'affichage.
+ * Niveaux LMD, dans l'ordre d'affichage.
  *
- * Source unique des tarifs : le formulaire (montant proposé par défaut),
- * le quitus, le guide et la page d'accueil la lisent tous.
- *
- * @return array[] { id, code, libelle, droits }
+ * @return array[] { id, code, libelle }
  */
-function ueb_droits_par_niveau() {
+function ueb_niveaux_lmd_liste() {
     static $niveaux = null;
 
     if ( null !== $niveaux ) {
@@ -297,11 +373,7 @@ function ueb_droits_par_niveau() {
 
     global $wpdb;
 
-    // Erreurs masquées : sur une base pas encore migrée (colonne absente),
-    // la requête échoue et les pages publiques retombent sur la constante.
-    $masque = $wpdb->suppress_errors( true );
-    $lignes = $wpdb->get_results( 'SELECT id, code, libelle, droits_preinscription FROM ueb_niveaux_lmd ORDER BY ordre ASC' );
-    $wpdb->suppress_errors( $masque );
+    $lignes = $wpdb->get_results( 'SELECT id, code, libelle FROM ueb_niveaux_lmd ORDER BY ordre ASC' );
 
     $niveaux = array();
     foreach ( (array) $lignes as $ligne ) {
@@ -309,7 +381,6 @@ function ueb_droits_par_niveau() {
             'id'      => (int) $ligne->id,
             'code'    => (string) $ligne->code,
             'libelle' => (string) $ligne->libelle,
-            'droits'  => (int) $ligne->droits_preinscription,
         );
     }
 
@@ -317,107 +388,139 @@ function ueb_droits_par_niveau() {
 }
 
 /**
- * Droits de préinscription proposés par défaut pour un niveau LMD.
+ * Droits de préinscription par établissement pour un niveau LMD : le
+ * formulaire y pioche le montant à proposer quand la faculté ou le niveau
+ * change.
  *
  * @param int $niveau_id Identifiant de ueb_niveaux_lmd.
- * @return int Montant en francs CFA.
+ * @return object faculte_id => montant en francs CFA.
  */
-function ueb_droits_du_niveau( $niveau_id ) {
-    foreach ( ueb_droits_par_niveau() as $niveau ) {
-        if ( $niveau['id'] === (int) $niveau_id ) {
-            return $niveau['droits'];
-        }
+function ueb_droits_par_faculte( $niveau_id ) {
+    $droits = array();
+
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        $tarif = ueb_tarif_dossier( $etablissement['id'], $niveau_id );
+        $droits[ $etablissement['id'] ] = $tarif['droits'];
     }
 
-    return (int) UEB_FRAIS_PREINSCRIPTION;
+    return (object) $droits;
 }
 
 /**
  * Montant des droits retenu pour un dossier : celui que le candidat a
- * laissé ou corrigé dans le formulaire, à défaut le tarif de son niveau.
+ * laissé ou corrigé dans le formulaire, à défaut le tarif de sa faculté et
+ * de son cycle.
  *
  * Le champ est volontairement libre (aucun plancher) ; seule une valeur
- * absente ou non numérique renvoie au tarif du niveau.
+ * absente ou non numérique renvoie au tarif.
  *
- * @param mixed $saisie    Valeur postée du champ « montant_droits ».
- * @param int   $niveau_id Identifiant de ueb_niveaux_lmd.
+ * @param mixed $saisie     Valeur postée du champ « montant_droits ».
+ * @param int   $faculte_id Identifiant de ueb_facultes.
+ * @param int   $niveau_id  Identifiant de ueb_niveaux_lmd.
  * @return int Montant en francs CFA.
  */
-function ueb_montant_droits_saisi( $saisie, $niveau_id ) {
+function ueb_montant_droits_saisi( $saisie, $faculte_id, $niveau_id ) {
     $saisie = is_scalar( $saisie ) ? trim( (string) $saisie ) : '';
 
     if ( '' === $saisie || ! ctype_digit( $saisie ) ) {
-        return ueb_droits_du_niveau( $niveau_id );
+        $tarif = ueb_tarif_dossier( $faculte_id, $niveau_id );
+        return $tarif['droits'];
     }
 
     return (int) $saisie;
 }
 
 /**
- * Tarifs à annoncer au public, regroupés pour ne pas répéter six lignes :
- * les niveaux d'un même cycle au même tarif n'en font qu'une (« Licence »),
- * puis les cycles voisins au même tarif fusionnent (« Master et doctorat »).
- * Un cycle dont les niveaux n'ont pas tous le même tarif est détaillé
- * niveau par niveau.
+ * Grille publique d'un montant, regroupée pour ne pas répéter une ligne par
+ * établissement. Dans chaque cycle, le montant le plus répandu fait la
+ * règle (« Master ») et les établissements qui s'en écartent sont nommés
+ * (« Master à la FALSH »). Les lignes voisines de même montant fusionnent
+ * (« Licence et master »).
  *
- * @return array[] { libelle, montant }
+ * @param string $champ 'droits' ou 'frais_medicaux'.
+ * @return array[] { libelle, minuscule, montant } — minuscule : le libellé
+ *                 à glisser dans une phrase, le sigle restant en capitales.
  */
-function ueb_guide_tarifs() {
-    $cycles = array();
-    foreach ( ueb_droits_par_niveau() as $niveau ) {
-        if ( 'DOC' === $niveau['code'] ) {
-            $cycle = 'Doctorat';
-        } elseif ( preg_match( '/^L\d/', $niveau['code'] ) ) {
-            $cycle = 'Licence';
-        } elseif ( preg_match( '/^M\d/', $niveau['code'] ) ) {
-            $cycle = 'Master';
-        } else {
-            $cycle = $niveau['libelle'];
+function ueb_guide_grille( $champ ) {
+    $actifs = array();
+    foreach ( ueb_etablissements_paiement() as $etablissement ) {
+        if ( $etablissement['actif'] ) {
+            $actifs[] = $etablissement;
         }
-        $cycles[ $cycle ][] = $niveau;
     }
 
     $lignes = array();
-    foreach ( $cycles as $cycle => $niveaux ) {
-        if ( 1 === count( array_unique( wp_list_pluck( $niveaux, 'droits' ) ) ) ) {
-            $lignes[] = array( 'libelle' => $cycle, 'montant' => $niveaux[0]['droits'] );
-            continue;
+    foreach ( ueb_tarifs_cycles() as $cycle => $nom ) {
+        $par_montant = array();
+        foreach ( $actifs as $etablissement ) {
+            $tarif = ueb_tarif( $etablissement['id'], $cycle );
+            $par_montant[ $tarif[ $champ ] ][] = $etablissement['code'];
         }
-        foreach ( $niveaux as $niveau ) {
-            $lignes[] = array( 'libelle' => $niveau['libelle'], 'montant' => $niveau['droits'] );
-        }
-    }
 
-    $tarifs = array();
-    foreach ( $lignes as $ligne ) {
-        $dernier = count( $tarifs ) - 1;
-        if ( $dernier >= 0 && $tarifs[ $dernier ]['montant'] === $ligne['montant'] ) {
-            $tarifs[ $dernier ]['libelles'][] = $ligne['libelle'];
-        } else {
-            $tarifs[] = array( 'libelles' => array( $ligne['libelle'] ), 'montant' => $ligne['montant'] );
+        if ( ! $par_montant ) {
+            $defauts = ueb_tarifs_defaut();
+            $par_montant[ $defauts[ $cycle ][ $champ ] ] = array();
         }
-    }
 
-    foreach ( $tarifs as $i => $tarif ) {
-        $libelles = $tarif['libelles'];
-        // « Master et doctorat », mais « Licence 1 et Licence 2 ».
-        foreach ( $libelles as $j => $libelle ) {
-            if ( $j > 0 && ! preg_match( '/\d/', $libelle ) ) {
-                $libelles[ $j ] = mb_strtolower( $libelle );
+        // Tri stable : à égalité, le premier montant rencontré fait la règle.
+        uasort(
+            $par_montant,
+            function ( $a, $b ) {
+                return count( $b ) - count( $a );
             }
+        );
+
+        $regle = true;
+        foreach ( $par_montant as $montant => $codes ) {
+            $suffixe = $regle ? '' : ' à la ' . implode( ', ', $codes );
+            $regle   = false;
+
+            $lignes[] = array(
+                'libelle'   => $nom . $suffixe,
+                'minuscule' => mb_strtolower( $nom ) . $suffixe,
+                'montant'   => (int) $montant,
+            );
         }
-        $dernier_libelle = array_pop( $libelles );
-        $tarifs[ $i ]    = array(
-            'libelle' => $libelles ? implode( ', ', $libelles ) . ' et ' . $dernier_libelle : $dernier_libelle,
-            'montant' => $tarif['montant'],
+    }
+
+    $groupes = array();
+    foreach ( $lignes as $ligne ) {
+        $dernier = count( $groupes ) - 1;
+        if ( $dernier >= 0 && $groupes[ $dernier ]['montant'] === $ligne['montant'] ) {
+            $groupes[ $dernier ]['minuscules'][] = $ligne['minuscule'];
+        } else {
+            $groupes[] = array(
+                'premier'    => $ligne['libelle'],
+                'minuscules' => array( $ligne['minuscule'] ),
+                'montant'    => $ligne['montant'],
+            );
+        }
+    }
+
+    $grille = array();
+    foreach ( $groupes as $groupe ) {
+        $suite     = array_slice( $groupe['minuscules'], 1 );
+        $dernier   = array_pop( $suite );
+        $liste     = $suite ? ', ' . implode( ', ', $suite ) : '';
+        $fin       = null !== $dernier ? $liste . ' et ' . $dernier : '';
+
+        $grille[] = array(
+            'libelle'   => $groupe['premier'] . $fin,
+            'minuscule' => $groupe['minuscules'][0] . $fin,
+            'montant'   => $groupe['montant'],
         );
     }
 
-    if ( ! $tarifs ) {
-        $tarifs[] = array( 'libelle' => '', 'montant' => (int) UEB_FRAIS_PREINSCRIPTION );
-    }
+    return $grille;
+}
 
-    return $tarifs;
+/**
+ * Droits de préinscription à annoncer au public.
+ *
+ * @return array[] { libelle, minuscule, montant }
+ */
+function ueb_guide_tarifs() {
+    return ueb_guide_grille( 'droits' );
 }
 
 /**
@@ -434,9 +537,27 @@ function ueb_guide_montant( $montant, $html = true ) {
 }
 
 /**
- * Les droits en une proposition, à glisser dans une phrase :
- * « 11 000 FCFA en licence et 20 000 FCFA en master et doctorat ».
- * Un tarif unique pour tous les niveaux donne simplement « 11 000 FCFA ».
+ * Des lignes de grille en une proposition, à glisser dans une phrase :
+ * « 11 000 FCFA en licence et 20 000 FCFA en master ».
+ *
+ * @param array[] $lignes Lignes de ueb_guide_grille().
+ * @param bool    $html   Vrai pour l'entité HTML, faux pour le PDF (texte brut).
+ * @return string
+ */
+function ueb_guide_phrase_tarifs( $lignes, $html = true ) {
+    $parts = array();
+    foreach ( $lignes as $ligne ) {
+        $parts[] = ueb_guide_montant( $ligne['montant'], $html ) . ' en ' . $ligne['minuscule'];
+    }
+
+    $dernier = array_pop( $parts );
+
+    return $parts ? implode( ', ', $parts ) . ' et ' . $dernier : (string) $dernier;
+}
+
+/**
+ * Les droits en une proposition. Un tarif unique pour tous donne
+ * simplement « 11 000 FCFA ».
  *
  * @param bool $html Vrai pour l'entité HTML, faux pour le PDF (texte brut).
  * @return string
@@ -448,19 +569,7 @@ function ueb_guide_frais( $html = true ) {
         return ueb_guide_montant( $tarifs[0]['montant'], $html );
     }
 
-    $parts = array();
-    foreach ( $tarifs as $tarif ) {
-        $libelle = $tarif['libelle'];
-        // Un cycle se lit en minuscules dans une phrase, un niveau garde
-        // sa majuscule (« en Licence 1 »).
-        if ( ! preg_match( '/\d/', $libelle ) ) {
-            $libelle = mb_strtolower( $libelle );
-        }
-        $parts[] = ueb_guide_montant( $tarif['montant'], $html ) . ' en ' . $libelle;
-    }
-
-    $dernier = array_pop( $parts );
-    return implode( ', ', $parts ) . ' et ' . $dernier;
+    return ueb_guide_phrase_tarifs( $tarifs, $html );
 }
 
 /**
@@ -637,7 +746,7 @@ function ueb_guide_bon_a_savoir() {
         ),
         array(
             'titre' => 'Visites médicales — nouveaux étudiants',
-            'texte' => ( ueb_guide_frais_medicaux_payants() ? "Sans frais supplémentaires (sauf " . ueb_guide_frais_medicaux_payants() . "), les" : "Sans frais supplémentaires, les" ) . " visites médicales des nouveaux étudiants s'effectuent " . $dates['visites_nouveaux'] . ", selon le programme établi dans chaque établissement. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
+            'texte' => ( ueb_guide_frais_medicaux_payants() ? "Payantes (" . ueb_guide_frais_medicaux_payants() . "), les" : "Sans frais supplémentaires, les" ) . " visites médicales des nouveaux étudiants s'effectuent " . $dates['visites_nouveaux'] . ", selon le programme établi dans chaque établissement. Les étudiants qui n'auront pas fait leur visite médicale seront suspendus.",
             'ton'   => 'alerte',
         ),
         array(

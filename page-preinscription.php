@@ -267,7 +267,7 @@ get_header();
                         </div>
 
                         <!-- Droits de préinscription — pré-remplis d'après le
-                             niveau (ueb_niveaux_lmd.droits_preinscription), mais
+                             niveau et de la faculté (ueb_tarifs), mais
                              laissés modifiables : c'est ce montant que porte le
                              quitus de paiement. -->
                         <div class="form-group full">
@@ -282,7 +282,7 @@ get_header();
                                 placeholder="Choisis d'abord ton niveau"
                                 required
                             >
-                            <span class="field-hint">Rempli automatiquement selon ton niveau. Tu peux le corriger si le montant que tu dois payer est différent : c'est ce montant qui sera imprimé sur ton quitus de paiement.</span>
+                            <span class="field-hint">Rempli automatiquement selon ta faculté et ton niveau. Tu peux le corriger si le montant que tu dois payer est différent : c'est ce montant qui sera imprimé sur ton quitus de paiement.</span>
                         </div>
 
                         <!-- Type de formation -->

@@ -190,7 +190,7 @@ function preinscriptions_etapes() {
         ),
         array(
             'title' => 'Règle tes droits',
-            /* Tarifs repris des niveaux LMD (cf. ueb_guide_frais()) : ils se
+            /* Tarifs repris de ueb_tarifs (cf. ueb_guide_frais()) : ils se
                corrigent depuis « Gestion des références », pas ici. */
             'desc'  => sprintf(
                 "%s, à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money. Conserve le reçu : il est exigé au dépôt du dossier.",

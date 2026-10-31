@@ -246,7 +246,7 @@ function ueb_handle_db_save() {
       'art_pratique_id'                => $data['art_pratique'],
       'numero_certificat_medical'      => $data['numero_certificat_medical'],
       'lieu_obtention_certificat'      => $data['lieu_obtention_certificat'],
-      'montant_droits'                 => ueb_montant_droits_saisi( $posted['montant_droits'] ?? '', $data['niveau_lmd'] ),
+      'montant_droits'                 => ueb_montant_droits_saisi( $posted['montant_droits'] ?? '', $data['faculte'], $data['niveau_lmd'] ),
     );
 
     $formats = array(
