@@ -246,7 +246,7 @@ if ( ! defined( 'PREINSCRIPTIONS_DATE_OUVERTURE' ) ) {
  * Un seul endroit à modifier si la date change.
  */
 if ( ! defined( 'PREINSCRIPTIONS_DATE_CLOTURE' ) ) {
-    define( 'PREINSCRIPTIONS_DATE_CLOTURE', '2026-10-31 23:59:59' );
+    define( 'PREINSCRIPTIONS_DATE_CLOTURE', '2026-11-30 23:59:59' );
 }
 
 

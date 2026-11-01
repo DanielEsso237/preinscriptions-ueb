@@ -47,7 +47,7 @@ if ( preinscriptions_cloture_atteinte() ) {
                 </p>
                 <h1 class="cd-title">Les préinscriptions sont <span class="cd-title-accent">closes</span>.</h1>
                 <p class="cd-lead">
-                    La période de préinscription (1er septembre – 31 octobre 2026) est terminée.
+                    La période de préinscription (<?php echo esc_html( ueb_guide_dates()['periode'] ); ?>) est terminée.
                     Aucune nouvelle demande n'est acceptée au-delà de cette date.
                 </p>
                 <div class="cd-actions">

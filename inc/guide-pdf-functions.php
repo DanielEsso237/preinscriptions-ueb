@@ -423,7 +423,7 @@ function ueb_guide_pdf_couverture( $pdf, array $dates ) {
 
     /* Ligne de données : trois colonnes sous un filet commun, pas trois
        cartes. 15 mm suffisent pour deux lignes de valeur — « Du 1er
-       septembre au 31 octobre 2026 » ne tient pas sur une seule. */
+       septembre au 30 novembre 2026 » ne tient pas sur une seule. */
     $y_faits = $pdf->GetY() + 1;
     $col     = ( $largeur - 2 * 4 ) / 3; // 4 mm de gouttière
     $h_fait  = 15;
