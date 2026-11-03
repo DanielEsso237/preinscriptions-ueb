@@ -30,6 +30,13 @@ function ueb_ajax_get_facultes() {
         "SELECT id, code, nom_fr AS libelle FROM ueb_facultes WHERE actif = 1 ORDER BY nom_fr ASC"
     );
 
+    // L'École doctorale change le formulaire (Master seul, une Unité de
+    // Formation Doctorale au lieu de trois filières) : le drapeau évite au
+    // JavaScript de connaître son code.
+    foreach ( $rows as $row ) {
+        $row->ecole_doctorale = ueb_est_ecole_doctorale( $row->code );
+    }
+
     wp_send_json_success( $rows );
 }
 add_action( 'wp_ajax_ueb_get_facultes', 'ueb_ajax_get_facultes' );

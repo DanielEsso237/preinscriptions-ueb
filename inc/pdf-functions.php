@@ -452,6 +452,24 @@ function ueb_pdf_txt( $pdf, $x, $y, $txt, $size, $style = '', $color = null, $al
 }
 
 /**
+ * Comme ueb_pdf_txt(), mais sans jamais dépasser $w mm : la police réduit
+ * jusqu'à $min points, puis le texte se resserre horizontalement. Sert aux
+ * intitulés longs (Unités de Formation Doctorale) qui chevaucheraient la
+ * colonne voisine.
+ */
+function ueb_pdf_txt_borne( $pdf, $x, $y, $txt, $size, $style, $color, $w, $min = 6.5 ) {
+    $c = $color ?: ueb_pdf_couleurs()['noir'];
+    $pdf->SetFont( 'dejavusans', $style, $size );
+    while ( $size > $min && $pdf->GetStringWidth( $txt ) > $w ) {
+        $size -= 0.25;
+        $pdf->SetFont( 'dejavusans', $style, $size );
+    }
+    $pdf->SetTextColor( $c[0], $c[1], $c[2] );
+    $pdf->SetXY( $x, $y );
+    $pdf->Cell( $w, 5, $txt, 0, 0, 'L', false, '', 1 );
+}
+
+/**
  * Écrit un libellé français puis, juste en dessous, sa traduction
  * anglaise en petit texte gris semi-transparent (SetAlpha). Utilisé pour
  * tous les libellés de champ de la fiche — cf. maquette Excel du prof.
@@ -648,6 +666,9 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
 function ueb_pdf_page_fiche( $pdf, $d ) {
     $c = ueb_pdf_couleurs();
     $nr = '(non renseigné)';
+    // École doctorale : une seule Unité de Formation Doctorale (UFD) à la
+    // place des trois choix de filière.
+    $doctorale = ueb_est_ecole_doctorale( $d['faculte_code'] );
     $pdf->AddPage();
     ueb_pdf_entete_bilingue( $pdf, 6 );
     /* --- Cadre PHOTO --- */
@@ -672,8 +693,10 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
         . 'Sexe : ' . $d['sexe'] . "\n"
         . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
-        . 'Choix 1 : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
-        . 'Choix 2 : ' . ueb_pdf_sans_accents( $d['filiere_2'] ) . "\n"
+        . ( $doctorale
+            ? 'UFD : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
+            : 'Choix 1 : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
+              . 'Choix 2 : ' . ueb_pdf_sans_accents( $d['filiere_2'] ) . "\n" )
         . 'Email : ' . $d['email'] . "\n"
         . 'Tel : ' . str_replace( ' ', '', $d['telephone'] );
     ueb_pdf_qr_stylise( $pdf, $qr_fiche, 178, 27, 20 );
@@ -682,18 +705,25 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     /* ── SECTIONS ── */
     $y = 57;
     $y = ueb_pdf_section_fiche( $pdf, 'FORMATION CHOISIE', array(
-        array( 'Faculté', 'Faculty', $d['faculte'],
+        array( 'Faculté / École', 'Faculty / School', $d['faculte'],
                "Diplôme d'admission", 'Admission diploma', $d['diplome_admission'] ),
         array( 'Type de formation', 'Training type', $d['type_formation'],
                'Série / Spécialité', 'Series / Specialty', $d['serie_diplome'] ),
         array( 'Niveau LMD', 'LMD level', $d['niveau_lmd'],
                'Moyenne obtenue', 'Average obtained', $d['moyenne_diplome'] ),
-        array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
-               'Mention', 'Mention / Honors', $d['mention'] ),
-        array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
-               "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
-        array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
-               'Statut', 'Student status', $d['statut_etudiant'] ),
+        $doctorale
+            ? array( 'Unité de formation doctorale', 'Doctoral training unit', $d['filiere_1'],
+                     'Mention', 'Mention / Honors', $d['mention'] )
+            : array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
+                     'Mention', 'Mention / Honors', $d['mention'] ),
+        $doctorale
+            ? array( '', '', '', "Année d'obtention", 'Year obtained', $d['annee_obtention'] )
+            : array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
+                     "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
+        $doctorale
+            ? array( '', '', '', 'Statut', 'Student status', $d['statut_etudiant'] )
+            : array( '3e choix de filière', '3rd choice of program', $d['filiere_3'],
+                     'Statut', 'Student status', $d['statut_etudiant'] ),
     ), $y );
     $y += 2;
     $date_lieu = trim( ueb_pdf_date_fr( $d['date_naissance'] ) . ( $d['lieu_naissance'] !== '' ? ' à ' . $d['lieu_naissance'] : '' ) );
@@ -767,8 +797,9 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     ueb_pdf_txt( $pdf, 21.5, $ct + 7, $d['numero_dossier'], 8, 'B', $c['orange'] );
     ueb_pdf_txt( $pdf, 10, $ct + 11.5, 'Nom(s) et Prénom(s) :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 46.5, $ct + 11.5, strtoupper( $d['nom'] ) . ' ' . $d['prenom'], 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 10, $ct + 16, 'Filière :', 8, 'B', $c['noir'] );
-    ueb_pdf_txt( $pdf, 23, $ct + 16, $d['filiere_1'] !== '' ? $d['filiere_1'] . ' (1er choix)' : '—', 8, 'B', $c['noir'] );
+    ueb_pdf_txt( $pdf, 10, $ct + 16, $doctorale ? 'UFD :' : 'Filière :', 8, 'B', $c['noir'] );
+    // Jusqu'au cadre de signature (x = 138).
+    ueb_pdf_txt_borne( $pdf, 23, $ct + 16, $d['filiere_1'] !== '' ? $d['filiere_1'] . ( $doctorale ? '' : ' (1er choix)' ) : '—', 8, 'B', $c['noir'], 113 );
     ueb_pdf_txt( $pdf, 10, $ct + 20.5, 'Établissement :', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 36.5, $ct + 20.5, $d['faculte'] !== '' ? $d['faculte'] : '—', 8, 'B', $c['noir'] );
     ueb_pdf_txt( $pdf, 126, $ct + 7, 'Niveau :', 8, 'B', $c['noir'] );
@@ -778,7 +809,7 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
     $pdf->Rect( 138, $ct + 14.5, 44, 9 );
     $qr_coupon = 'Code : ' . $d['numero_dossier'] . "\n"
         . 'Nom : ' . ueb_pdf_sans_accents( strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ) . "\n"
-        . 'Fil : ' . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
+        . ( $doctorale ? 'UFD : ' : 'Fil : ' ) . ueb_pdf_sans_accents( $d['filiere_1'] ) . "\n"
         . 'Etab : ' . $etab . "\n"
         . 'Niveau : ' . ueb_pdf_sans_accents( $d['niveau_lmd'] ) . "\n"
         . "Bq : CCABANK\n"

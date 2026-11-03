@@ -375,7 +375,9 @@ function ueb_quitus_coupon( TCPDF $pdf, array $d, array $etab, array $c, $libell
     // l'emblème de l'Université, centré, si celui de l'établissement manque.
     $yLogo     = $y + ( $hEntete - $logo ) / 2;
     $logo_ueb  = ueb_quitus_logo( 'UEB' );
-    $logo_etab = $etab['sigle'] !== '' ? ueb_quitus_logo( $etab['sigle'] ) : null;
+    // L'École doctorale relève du Rectorat : son quitus ne porte que le logo
+    // de l'Université, même si un fichier logo-ed.* venait à être déposé.
+    $logo_etab = $etab['sigle'] !== '' && ! ueb_est_ecole_doctorale( $etab['sigle'] ) ? ueb_quitus_logo( $etab['sigle'] ) : null;
     if ( $logo_etab ) {
         if ( $logo_ueb ) {
             $pdf->Image( $logo_ueb[0], $xEmb, $yLogo, $logo, $logo, $logo_ueb[1], '', '', true, 300, '', false, false, 0, 'CM' );
@@ -505,7 +507,7 @@ function ueb_quitus_registre( TCPDF $pdf, array $d, array $c, $x, $y, $w, $h ) {
         array( 'N° de dossier', $d['numero_dossier'], 'Sexe', $d['sexe'] ),
         array( 'Nom(s) et prénom(s)', trim( mb_strtoupper( $d['nom'] ) . ' ' . $d['prenom'] ), null, null ),
         array( 'Né(e) le', array( ueb_pdf_date_fr( $d['date_naissance'] ), $d['lieu_naissance'] ), 'Nationalité', $d['nationalite'] ),
-        array( 'Filière', $d['filiere_1'], 'Cycle / niveau / parcours', $d['niveau_lmd'] ),
+        array( ueb_est_ecole_doctorale( $d['faculte_code'] ?? '' ) ? 'UFD' : 'Filière', $d['filiere_1'], 'Cycle / niveau / parcours', $d['niveau_lmd'] ),
         array( 'Montant', 'montant', null, 'unique' ),
     );
 
@@ -566,7 +568,12 @@ function ueb_quitus_registre( TCPDF $pdf, array $d, array $c, $x, $y, $w, $h ) {
         } else {
             $place = ( null === $l[2] ? $w - $wLib1 : $wVal1 ) - 2 * $pad;
             ueb_quitus_ajuster( $pdf, $l[1], 'uebsansb', '', 8.8, $place );
-            ueb_quitus_texte( $pdf, $xv, $yl, $hL, $l[1], $c['encre'] );
+            // Encore trop long à la taille minimale (intitulé complet d'une
+            // Unité de Formation Doctorale) : resserré dans sa cellule
+            // plutôt que de déborder sur la colonne voisine.
+            $pdf->SetTextColorArray( $c['encre'] );
+            $pdf->SetXY( $xv, $yl );
+            $pdf->Cell( $place, $hL, $l[1], 0, 0, 'L', false, '', 1, false, 'T', 'M' );
         }
 
         if ( 'unique' === $l[3] ) {

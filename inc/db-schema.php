@@ -148,9 +148,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         elle remplace, sans les supprimer, les colonnes
  *         ueb_niveaux_lmd.droits_preinscription et
  *         ueb_facultes.frais_medicaux, qui ne sont plus lues.
+ * - 2.14 : École doctorale (communiqué du Recteur du 19 octobre 2026). Elle
+ *         rejoint ueb_facultes sous le code ED, avec pour « filières » ses
+ *         9 Unités de Formation Doctorale et un tarif de 30 000 FCFA en
+ *         doctorat, sans frais médicaux. Données uniquement, posées une
+ *         fois par base, cf. ueb_poser_ecole_doctorale().
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.13' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.14' );
+}
+
+/**
+ * Code de l'École doctorale dans ueb_facultes. Le formulaire, la fiche et
+ * le quitus la traitent à part : un seul choix d'Unité de Formation
+ * Doctorale au lieu de trois filières, candidature au doctorat sur Master
+ * uniquement, et documents au seul logo de l'Université.
+ */
+if ( ! defined( 'UEB_CODE_ECOLE_DOCTORALE' ) ) {
+    define( 'UEB_CODE_ECOLE_DOCTORALE', 'ED' );
  }
 
 /**
@@ -724,6 +739,8 @@ function ueb_poser_valeurs_initiales() {
         }
     }
 
+    ueb_poser_ecole_doctorale();
+
     if ( ! get_option( 'ueb_init_paiement_falsh' ) ) {
         $ok = $wpdb->query(
             "UPDATE ueb_facultes SET compte_bancaire = '10039-10012-00272772501-77', frais_medicaux = 5000
@@ -758,6 +775,80 @@ function ueb_poser_tarifs_initiaux() {
     );
     if ( false !== $ok ) {
         update_option( 'ueb_init_tarifs', 1, false );
+    }
+}
+
+/**
+ * L'établissement (code de ueb_facultes) est-il l'École doctorale ?
+ *
+ * @param string $code Code de ueb_facultes.
+ * @return bool
+ */
+function ueb_est_ecole_doctorale( $code ) {
+    return UEB_CODE_ECOLE_DOCTORALE === strtoupper( trim( (string) $code ) );
+}
+
+/**
+ * École doctorale, ses Unités de Formation Doctorale (UFD) et son tarif,
+ * posés une fois par base comme les autres valeurs de départ. Ensuite tout
+ * se gère depuis « Gestion des références » : renommer une UFD, la
+ * désactiver, changer le montant.
+ *
+ * Sur une installation neuve, ueb_facultes est encore vide à la migration :
+ * ueb_seed_reference_data() la rappelle après le seed, pour que l'École
+ * doctorale ne passe pas avant les facultés dans les identifiants.
+ */
+function ueb_poser_ecole_doctorale() {
+    global $wpdb;
+
+    if ( get_option( 'ueb_init_ecole_doctorale' ) || ! $wpdb->get_var( 'SELECT COUNT(*) FROM ueb_facultes' ) ) {
+        return;
+    }
+
+    $ok = $wpdb->query( $wpdb->prepare(
+        "INSERT IGNORE INTO ueb_facultes (code, nom_fr, nom_en, logo, slug, actif, compte_bancaire, frais_medicaux)
+         VALUES (%s, 'École doctorale', 'Postgraduate School', NULL, 'ecole-doctorale', 1, NULL, 0)",
+        UEB_CODE_ECOLE_DOCTORALE
+    ) );
+    $ed = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_facultes WHERE code = %s', UEB_CODE_ECOLE_DOCTORALE ) );
+    if ( false === $ok || ! $ed ) {
+        return;
+    }
+
+    $ufd = array(
+        'UFD_DSP'  => 'Droit et Sciences Politiques (DSP)',
+        'UFD_SATI' => 'Sciences Appliquées et Technologies Industrielles (SATI)',
+        'UFD_SMAP' => "Sciences de la Matière, de l'Agroenvironnement et des Procédés (SMAP)",
+        'UFD_SS'   => 'Sciences de la Santé (SS)',
+        'UFD_SIGD' => 'Sciences des Ingénieries Globales et Durables (SIGD)',
+        'UFD_SEG'  => 'Sciences Économiques et de Gestion (SEG)',
+        'UFD_STML' => 'Sciences et Technologies de la Mer et du Littoral (STML)',
+        'UFD_2SAD' => 'Sciences Humaines, Société, Arts et Développement (2SAD)',
+        'UFD_TSI'  => "Technologie et Sciences de l'Innovation (TSI)",
+    );
+    foreach ( $ufd as $code => $libelle ) {
+        $ok = $ok && false !== $wpdb->query( $wpdb->prepare(
+            "INSERT IGNORE INTO ueb_filieres (code, libelle, faculte_id, type_formation, cycle) VALUES (%s, %s, %d, 'classique', 'tous')",
+            $code,
+            $libelle,
+            $ed
+        ) );
+    }
+
+    // Seul le doctorat se prépare à l'École doctorale ; les lignes de
+    // licence et de master reprennent les défauts pour que la grille
+    // publique des tarifs ne la cite pas à part.
+    $ok = $ok && false !== $wpdb->query( $wpdb->prepare(
+        "INSERT INTO ueb_tarifs (faculte_id, cycle, droits_preinscription, frais_medicaux)
+         VALUES (%d, 'licence', 11000, 3000), (%d, 'master', 11000, 3000), (%d, 'doctorat', 30000, 0)
+         ON DUPLICATE KEY UPDATE droits_preinscription = VALUES(droits_preinscription), frais_medicaux = VALUES(frais_medicaux)",
+        $ed,
+        $ed,
+        $ed
+    ) );
+
+    if ( $ok ) {
+        update_option( 'ueb_init_ecole_doctorale', 1, false );
     }
 }
 

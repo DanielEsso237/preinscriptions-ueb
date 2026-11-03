@@ -472,7 +472,13 @@ function ueb_guide_grille( $champ ) {
 
         $regle = true;
         foreach ( $par_montant as $montant => $codes ) {
-            $suffixe = $regle ? '' : ' à la ' . implode( ', ', $codes );
+            if ( $regle ) {
+                $suffixe = '';
+            } elseif ( 1 === count( $codes ) && ueb_est_ecole_doctorale( $codes[0] ) ) {
+                $suffixe = " à l'École doctorale";
+            } else {
+                $suffixe = ' à la ' . implode( ', ', $codes );
+            }
             $regle   = false;
 
             $lignes[] = array(
