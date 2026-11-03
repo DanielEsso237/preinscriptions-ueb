@@ -76,6 +76,14 @@
         return f ? f.code : '';
     }
 
+    /* École doctorale : un seul choix, d'Unité de Formation Doctorale
+       (UFD), et candidature sur Master uniquement. Le drapeau arrive avec
+       chaque établissement (cf. ueb_ajax_get_facultes()). */
+    function estEcoleDoctorale(faculteId) {
+        const f = facultesCache.find(function (x) { return String(x.id) === String(faculteId); });
+        return !!(f && f.ecole_doctorale);
+    }
+
     function getDiplome(diplomeId) {
         return diplomesCache.find(function (x) { return String(x.id) === String(diplomeId); }) || null;
     }
@@ -341,7 +349,12 @@
         const faculteId = selectFaculte.value;
         const choixPrecedent = selectDiplome.value;
 
+        const doctorale = estEcoleDoctorale(faculteId);
+
         const options = diplomesCache.filter(function (d) {
+            // L'École doctorale ne recrute qu'au doctorat : seuls les
+            // diplômes qui y donnent accès (le Master) restent proposés.
+            if (doctorale && (d.niveaux || []).indexOf('DOC') === -1) return false;
             if (!d.faculte_id) return true; // proposé par toutes les facultés
             return String(d.faculte_id) === String(faculteId);
         });
@@ -454,7 +467,8 @@
        L1/L2, la FSJP en a trois.
        ================================================================ */
     function updateVisibiliteChoixFilieres() {
-        const dispo = filiere23Data.length;
+        // École doctorale : une seule Unité de Formation Doctorale.
+        const dispo = estEcoleDoctorale(selectFaculte.value) ? 1 : filiere23Data.length;
 
         [
             { select: selectFiliere2, seuil: 2, obligatoire: true },
@@ -481,7 +495,7 @@
        ================================================================ */
     function refreshFiliereCrossFilter() {
         const configs = [
-            { select: selectFiliere1, base: filiere1Data,  placeholder: '— Choisir une filière —' },
+            { select: selectFiliere1, base: filiere1Data,  placeholder: estEcoleDoctorale(selectFaculte.value) ? '— Choisir une unité doctorale —' : '— Choisir une filière —' },
             { select: selectFiliere2, base: filiere23Data, placeholder: '— Aucun deuxième choix (optionnel) —' },
             { select: selectFiliere3, base: filiere23Data, placeholder: '— Aucun troisième choix (optionnel) —' }
         ];
@@ -511,12 +525,33 @@
     });
 
     /* ================================================================
+       LIBELLÉ DU 1er CHOIX — « Unité de formation doctorale » à l'École
+       doctorale, « 1er choix de filière » ailleurs, dans le formulaire
+       comme dans le récapitulatif.
+       ================================================================ */
+    const filiere1Libelle = document.getElementById('filiere-1-libelle');
+    const filiere1Trans   = document.getElementById('filiere-1-trans');
+
+    function updateLibelleFiliere1() {
+        const doctorale = estEcoleDoctorale(selectFaculte.value);
+        const fr = doctorale ? 'Unité de formation doctorale' : '1er choix de filière';
+        const en = doctorale ? 'Doctoral training unit' : '1st choice of program';
+
+        if (filiere1Libelle) filiere1Libelle.textContent = fr;
+        if (filiere1Trans) filiere1Trans.textContent = en;
+        LABELS.filiere_1    = fr;
+        LABELS_EN.filiere_1 = en;
+    }
+
+    /* ================================================================
        FILIÈRES — dépend de faculté + type de formation
        ================================================================ */
     function updateFilieres() {
         const faculteId = selectFaculte.value;
         const type      = selectType.value || 'classique';
         const code      = getFaculteCode(faculteId);
+
+        updateLibelleFiliere1();
 
         if (proNotice) proNotice.style.display = 'none';
 

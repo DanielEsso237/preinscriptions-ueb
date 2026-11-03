@@ -305,7 +305,7 @@ get_header();
 
                         <!-- 1er choix de filière -->
                         <div class="form-group full">
-                            <label for="filiere_1">1er choix de filière <span class="required">*</span><span class="field-trans">1st choice of program</span></label>
+                            <label for="filiere_1"><span id="filiere-1-libelle">1er choix de filière</span> <span class="required">*</span><span class="field-trans" id="filiere-1-trans">1st choice of program</span></label>
                             <select id="filiere_1" name="filiere_1" required disabled>
                                 <option value="">— Choisir d'abord une faculté —</option>
                             </select>
