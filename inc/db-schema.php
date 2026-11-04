@@ -153,9 +153,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         9 Unités de Formation Doctorale et un tarif de 30 000 FCFA en
  *         doctorat, sans frais médicaux. Données uniquement, posées une
  *         fois par base, cf. ueb_poser_ecole_doctorale().
+ * - 2.15 : UFD rattachées à leur faculté, d'après la liste officielle de
+ *         l'École doctorale. Colonne ueb_filieres.faculte_rattachement_id
+ *         (NULL hors École doctorale), création de la FMSP (fermée aux
+ *         candidatures, faute de filières), intitulés officiels des UFD,
+ *         et Master réservé à l'École doctorale : le doctorat ne se
+ *         demande plus dans les facultés. Cf. ueb_rattacher_ufd().
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.14' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.15' );
 }
 
 /**
@@ -273,10 +279,12 @@ CREATE TABLE IF NOT EXISTS ueb_filieres (
     type_formation ENUM('classique','pro') NOT NULL DEFAULT 'classique',
     actif TINYINT(1) NOT NULL DEFAULT 1,
     cycle ENUM('tous','tronc_commun','licence_3','master') NOT NULL DEFAULT 'tous',
+    faculte_rattachement_id INT UNSIGNED DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_filiere (code, faculte_id, type_formation),
     KEY idx_faculte (faculte_id),
-    CONSTRAINT fk_filiere_faculte FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE CASCADE
+    CONSTRAINT fk_filiere_faculte FOREIGN KEY (faculte_id) REFERENCES ueb_facultes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_filiere_rattachement FOREIGN KEY (faculte_rattachement_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL,
         'ueb_situations_matrimoniales' => <<<SQL
@@ -740,6 +748,7 @@ function ueb_poser_valeurs_initiales() {
     }
 
     ueb_poser_ecole_doctorale();
+    ueb_rattacher_ufd();
 
     if ( ! get_option( 'ueb_init_paiement_falsh' ) ) {
         $ok = $wpdb->query(
@@ -815,18 +824,8 @@ function ueb_poser_ecole_doctorale() {
         return;
     }
 
-    $ufd = array(
-        'UFD_DSP'  => 'Droit et Sciences Politiques (DSP)',
-        'UFD_SATI' => 'Sciences Appliquées et Technologies Industrielles (SATI)',
-        'UFD_SMAP' => "Sciences de la Matière, de l'Agroenvironnement et des Procédés (SMAP)",
-        'UFD_SS'   => 'Sciences de la Santé (SS)',
-        'UFD_SIGD' => 'Sciences des Ingénieries Globales et Durables (SIGD)',
-        'UFD_SEG'  => 'Sciences Économiques et de Gestion (SEG)',
-        'UFD_STML' => 'Sciences et Technologies de la Mer et du Littoral (STML)',
-        'UFD_2SAD' => 'Sciences Humaines, Société, Arts et Développement (2SAD)',
-        'UFD_TSI'  => "Technologie et Sciences de l'Innovation (TSI)",
-    );
-    foreach ( $ufd as $code => $libelle ) {
+    foreach ( ueb_ufd_officielles() as $code => $ufd ) {
+        $libelle = $ufd['libelle'];
         $ok = $ok && false !== $wpdb->query( $wpdb->prepare(
             "INSERT IGNORE INTO ueb_filieres (code, libelle, faculte_id, type_formation, cycle) VALUES (%s, %s, %d, 'classique', 'tous')",
             $code,
@@ -849,6 +848,74 @@ function ueb_poser_ecole_doctorale() {
 
     if ( $ok ) {
         update_option( 'ueb_init_ecole_doctorale', 1, false );
+    }
+}
+
+/**
+ * Liste officielle des Unités de Formation Doctorale de l'École doctorale
+ * (« Liste des UFD », Rectorat), avec la faculté de rattachement de
+ * chacune. L'établissement qui porte l'UFD, quand ce n'est pas la faculté,
+ * figure entre parenthèses dans l'intitulé.
+ *
+ * @return array[] code => { libelle, faculte }
+ */
+function ueb_ufd_officielles() {
+    return array(
+        'UFD_2SAD' => array( 'faculte' => 'FALSH', 'libelle' => '2SAD — Sciences Humaines, Société, Arts et Développement' ),
+        'UFD_SS'   => array( 'faculte' => 'FMSP',  'libelle' => 'SS — Sciences de la Santé' ),
+        'UFD_SATI' => array( 'faculte' => 'FS',    'libelle' => 'SATI — Sciences Appliquées et Technologies Industrielles' ),
+        'UFD_SMAP' => array( 'faculte' => 'FS',    'libelle' => "SMAP — Sciences de la Matière, de l'Agroenvironnement et des Procédés (ISABEE)" ),
+        'UFD_SIGD' => array( 'faculte' => 'FS',    'libelle' => "SIGD — Sciences d'Ingénieries Globales et Durables (ENSET)" ),
+        'UFD_STML' => array( 'faculte' => 'FS',    'libelle' => 'STML — Sciences et Technologies de la Mer et du Littoral (ENSTMO)' ),
+        'UFD_SEG'  => array( 'faculte' => 'FSEG',  'libelle' => 'SEG — Sciences Économiques et de Gestion' ),
+        'UFD_TSI'  => array( 'faculte' => 'FSEG',  'libelle' => "TSI — Technologies et Sciences de l'Innovation (ESTLC)" ),
+        'UFD_DSP'  => array( 'faculte' => 'FSJP',  'libelle' => 'DSP — Droit et Science Politique' ),
+    );
+}
+
+/**
+ * Rattache chaque UFD à sa faculté, une fois par base, après
+ * ueb_poser_ecole_doctorale() :
+ *   - crée la FMSP, fermée aux candidatures (actif = 0) tant qu'elle n'a
+ *     pas de filières : elle n'existe que pour porter l'UFD Sciences de la
+ *     Santé ;
+ *   - pose les intitulés officiels et la faculté de rattachement des UFD ;
+ *   - réserve le Master à l'École doctorale : le doctorat ne se demande
+ *     plus dans les facultés. Les dossiers déjà déposés n'en changent pas.
+ */
+function ueb_rattacher_ufd() {
+    global $wpdb;
+
+    $ed = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_facultes WHERE code = %s', UEB_CODE_ECOLE_DOCTORALE ) );
+    if ( get_option( 'ueb_init_ufd_rattachement' ) || ! $ed ) {
+        return;
+    }
+
+    $ok = false !== $wpdb->query(
+        "INSERT IGNORE INTO ueb_facultes (code, nom_fr, nom_en, logo, slug, actif, compte_bancaire, frais_medicaux)
+         VALUES ('FMSP', 'Faculté de Médecine et des Sciences Pharmaceutiques', 'Faculty of Medicine and Pharmaceutical Sciences', 'logo-fmsp.jpg', 'fmsp', 0, NULL, 0)"
+    );
+
+    foreach ( ueb_ufd_officielles() as $code => $ufd ) {
+        $ok = $ok && false !== $wpdb->query( $wpdb->prepare(
+            'UPDATE ueb_filieres
+             SET libelle = %s,
+                 faculte_rattachement_id = ( SELECT id FROM ueb_facultes WHERE code = %s )
+             WHERE code = %s AND faculte_id = %d',
+            $ufd['libelle'],
+            $ufd['faculte'],
+            $code,
+            $ed
+        ) );
+    }
+
+    $ok = $ok && false !== $wpdb->query( $wpdb->prepare(
+        "UPDATE ueb_diplomes_admission SET faculte_id = %d WHERE code = 'master'",
+        $ed
+    ) );
+
+    if ( $ok ) {
+        update_option( 'ueb_init_ufd_rattachement', 1, false );
     }
 }
 
@@ -895,6 +962,15 @@ function ueb_run_schema_migrations() {
     // 2.10 — compte bancaire et frais médicaux propres à un établissement.
     ueb_add_column_if_missing( 'ueb_facultes', 'compte_bancaire', 'VARCHAR(40) DEFAULT NULL' );
     ueb_add_column_if_missing( 'ueb_facultes', 'frais_medicaux', 'INT UNSIGNED NOT NULL DEFAULT 0' );
+
+    // 2.15 — faculté de rattachement d'une UFD. La clé étrangère est posée
+    // à part : ueb_sync_colonnes_manquantes() a pu créer la colonne avant.
+    ueb_add_column_if_missing( 'ueb_filieres', 'faculte_rattachement_id', 'INT UNSIGNED DEFAULT NULL' );
+    ueb_add_foreign_key_if_missing(
+        'ueb_filieres',
+        'fk_filiere_rattachement',
+        'FOREIGN KEY (faculte_rattachement_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL'
+    );
 
     ueb_poser_valeurs_initiales();
 }
