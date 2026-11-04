@@ -274,6 +274,11 @@ function ueb_handle_pdf_generation() {
         'statut_etudiant'        => ueb_pdf_lookup( 'ueb_statuts_etudiants', $statut_etudiant_id, 'libelle' ),
         'type_formation'         => ueb_translate_type_formation( $type_formation ),
         'filiere_1'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_1_id, 'libelle' ),
+        // Faculté de rattachement de l'UFD (École doctorale), '' sinon.
+        'ufd_faculte'            => $filiere_1_id ? (string) $wpdb->get_var( $wpdb->prepare(
+            'SELECT r.nom_fr FROM ueb_filieres f JOIN ueb_facultes r ON r.id = f.faculte_rattachement_id WHERE f.id = %d',
+            $filiere_1_id
+        ) ) : '',
         'filiere_2'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_2_id, 'libelle' ),
         'filiere_3'              => ueb_pdf_lookup( 'ueb_filieres', $filiere_3_id, 'libelle' ),
         'nom'                    => $nom,
@@ -570,6 +575,20 @@ function ueb_pdf_section_icone( $titre ) {
  *
  * Retourne le y bas du cadre.
  */
+/**
+ * Pose la police des valeurs de la fiche (6,5 pt), réduite au besoin pour
+ * que le texte tienne sur les deux lignes d'une rangée : au-delà, il
+ * chevaucherait la rangée suivante (intitulés longs des UFD).
+ */
+function ueb_pdf_police_deux_lignes( $pdf, $txt, $largeur ) {
+    $taille = 6.5;
+    $pdf->SetFont( 'dejavusans', '', $taille );
+    while ( $taille > 5 && $pdf->getNumLines( $txt, $largeur ) > 2 ) {
+        $taille -= 0.25;
+        $pdf->SetFont( 'dejavusans', '', $taille );
+    }
+}
+
 function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
     $c = ueb_pdf_couleurs();
 
@@ -622,7 +641,7 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
 
             // Valeur
             if ( $vG !== '' ) {
-                $pdf->SetFont( 'dejavusans', '', 6.5 );
+                ueb_pdf_police_deux_lignes( $pdf, $vG, 53 );
                 $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
                 $pdf->SetXY( 50, $ry + 0.5 );
                 $pdf->MultiCell( 53, 2.5, $vG, 0, 'L' );
@@ -645,7 +664,7 @@ function ueb_pdf_section_fiche( $pdf, $titre, $lignes, $y ) {
             }
 
             if ( $vD !== '' ) {
-                $pdf->SetFont( 'dejavusans', '', 6.5 );
+                ueb_pdf_police_deux_lignes( $pdf, $vD, 51 );
                 $pdf->SetTextColor( $c['noir'][0], $c['noir'][1], $c['noir'][2] );
                 $pdf->SetXY( 150, $ry + 0.5 );
                 $pdf->MultiCell( 51, 2.5, $vD, 0, 'L' );
@@ -717,7 +736,8 @@ function ueb_pdf_page_fiche( $pdf, $d ) {
             : array( '1er choix de filière', '1st choice of program', $d['filiere_1'],
                      'Mention', 'Mention / Honors', $d['mention'] ),
         $doctorale
-            ? array( '', '', '', "Année d'obtention", 'Year obtained', $d['annee_obtention'] )
+            ? array( 'Faculté de rattachement', 'Parent faculty', $d['ufd_faculte'] ?? '',
+                     "Année d'obtention", 'Year obtained', $d['annee_obtention'] )
             : array( '2e choix de filière', '2nd choice of program', $d['filiere_2'],
                      "Année d'obtention", 'Year obtained', $d['annee_obtention'] ),
         $doctorale

@@ -180,8 +180,13 @@ function ueb_ajax_get_filieres() {
     // (les dossiers déjà déposés la référencent) mais n'est plus proposée
     // au candidat. L'admin, les exports et les stats ne filtrent pas, eux,
     // pour garder l'historique lisible.
-    $sql    = "SELECT id, code, libelle FROM ueb_filieres
-               WHERE faculte_id = %d AND type_formation = %s AND actif = 1";
+    // groupe : faculté de rattachement d'une Unité de Formation Doctorale,
+    // sous laquelle le formulaire la range (<optgroup>). NULL ailleurs.
+    $sql    = "SELECT f.id, f.code, f.libelle,
+                      IF( r.id IS NULL, NULL, CONCAT( r.nom_fr, ' (', r.code, ')' ) ) AS groupe
+               FROM ueb_filieres f
+               LEFT JOIN ueb_facultes r ON r.id = f.faculte_rattachement_id
+               WHERE f.faculte_id = %d AND f.type_formation = %s AND f.actif = 1";
     $params = array( $faculte_id, $type_formation );
 
     // Niveau connu : on ne garde que les filières de son cycle, plus
@@ -196,12 +201,12 @@ function ueb_ajax_get_filieres() {
         $cycle = ueb_cycle_pour_niveau( (string) $code_niveau );
 
         if ( $cycle ) {
-            $sql     .= " AND cycle IN ('tous', %s)";
+            $sql     .= " AND f.cycle IN ('tous', %s)";
             $params[] = $cycle;
         }
     }
 
-    $sql .= ' ORDER BY libelle ASC';
+    $sql .= ' ORDER BY r.code IS NULL, r.code ASC, f.libelle ASC';
 
     $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
 

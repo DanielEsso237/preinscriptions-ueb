@@ -127,11 +127,25 @@
         opt0.textContent = placeholder;
         select.appendChild(opt0);
 
+        // Les Unités de Formation Doctorale arrivent avec leur faculté de
+        // rattachement (champ "groupe", déjà trié) : on les range sous un
+        // <optgroup> par faculté. Sans groupe, liste simple comme avant.
+        let groupeCourant = null;
+        let parent = select;
         items.forEach(function (item) {
+            if (!item.groupe) {
+                groupeCourant = null;
+                parent = select;
+            } else if (item.groupe !== groupeCourant) {
+                groupeCourant = item.groupe;
+                parent = document.createElement('optgroup');
+                parent.label = item.groupe;
+                select.appendChild(parent);
+            }
             const opt = document.createElement('option');
             opt.value = item.id;
             opt.textContent = item.libelle;
-            select.appendChild(opt);
+            parent.appendChild(opt);
         });
 
         select.disabled = !enable || items.length === 0;

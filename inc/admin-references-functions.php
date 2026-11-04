@@ -141,6 +141,10 @@ function ueb_admin_ref_registry() {
                     'required' => true,
                     'options'  => array( '1' => 'Oui', '0' => 'Non' ),
                 ),
+                // Unités de Formation Doctorale : faculté sous laquelle le
+                // formulaire range l'UFD et que la fiche imprime. Vide pour
+                // les filières ordinaires.
+                'faculte_rattachement_id' => array( 'label' => 'Faculté de rattachement (UFD)', 'type' => 'select', 'required' => false, 'fk' => 'facultes' ),
             ),
             'label_col' => 'libelle',
         ),

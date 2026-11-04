@@ -449,10 +449,20 @@ function ueb_guide_grille( $champ ) {
         }
     }
 
+    // Une École doctorale ouverte prend en charge tout le doctorat : les
+    // facultés n'en annoncent plus, et elle n'annonce rien d'autre.
+    $ed_ouverte = false;
+    foreach ( $actifs as $etablissement ) {
+        $ed_ouverte = $ed_ouverte || ueb_est_ecole_doctorale( $etablissement['code'] );
+    }
+
     $lignes = array();
     foreach ( ueb_tarifs_cycles() as $cycle => $nom ) {
         $par_montant = array();
         foreach ( $actifs as $etablissement ) {
+            if ( $ed_ouverte && ( 'doctorat' === $cycle ) !== ueb_est_ecole_doctorale( $etablissement['code'] ) ) {
+                continue;
+            }
             $tarif = ueb_tarif( $etablissement['id'], $cycle );
             $par_montant[ $tarif[ $champ ] ][] = $etablissement['code'];
         }
