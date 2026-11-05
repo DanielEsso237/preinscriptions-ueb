@@ -407,6 +407,7 @@ require_once get_template_directory() . '/inc/access-control.php';
 require_once get_template_directory() . '/inc/duplicates-functions.php';
 require_once get_template_directory() . '/inc/duplicates-ajax.php';
 require_once get_template_directory() . '/inc/access-portal.php';
+require_once get_template_directory() . '/inc/connexion-wp.php';
 
 /* =========================================================
    SEO DU SITE

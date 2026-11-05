@@ -77,6 +77,8 @@ add_filter( 'nonce_user_logged_out', function( $id, $action ) {
 // Les liens WordPress de connexion et de récupération restent dans le front.
 add_action( 'login_init', function() {
     $action = sanitize_key( $_REQUEST['action'] ?? 'login' );
+    // /pw-ueb : connexion WordPress des administrateurs (inc/connexion-wp.php).
+    if ( 'login' === $action && ueb_est_connexion_wp() ) return;
     if ( in_array( $action, array( 'login', 'lostpassword', 'retrievepassword', 'rp', 'resetpass' ), true ) ) {
         $view = in_array( $action, array( 'rp', 'resetpass' ), true ) ? 'reset' : ( 'login' === $action ? 'login' : 'forgot' );
         $args = 'reset' === $view ? array( 'key' => sanitize_text_field( wp_unslash( $_GET['key'] ?? '' ) ), 'login' => sanitize_text_field( wp_unslash( $_GET['login'] ?? '' ) ) ) : array();
@@ -107,9 +109,12 @@ add_filter( 'login_redirect', function( $redirect, $requested, $user ) {
     return $redirect;
 }, 10, 3 );
 
+// Barre d'outils WordPress : administrateurs seulement, quel que soit le
+// réglage « show_admin_bar_front » du compte. Priorité maximale : aucune
+// extension ne peut la rendre au personnel ou aux visiteurs.
 add_filter( 'show_admin_bar', function( $show ) {
-    return current_user_can( 'manage_options' ) && ! ueb_portal_route() ? $show : false;
-} );
+    return is_user_logged_in() && current_user_can( 'manage_options' ) && ! ueb_portal_route() ? $show : false;
+}, PHP_INT_MAX );
 add_action( 'admin_init', function() {
     if ( ! wp_doing_ajax() && is_user_logged_in() && ! current_user_can( 'manage_options' ) ) {
         wp_safe_redirect( ueb_portal_home() ); exit;
