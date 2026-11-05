@@ -673,6 +673,17 @@ input.date-field-input.error ~ .date-field-icon {
     letter-spacing: 0.5px;
 }
 
+.dossier-banner-code-valeur {
+    font-size: 16px;
+    color: #1a4a2e;
+    letter-spacing: 1px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.dossier-banner-code[hidden] {
+    display: none;
+}
+
 .dossier-banner-hint {
     font-size: 12.5px;
     color: #6b7280;
@@ -943,6 +954,16 @@ input.date-field-input.error ~ .date-field-icon {
     border: 1px solid #d1d1cb;
     border-radius: 6px;
     font-size: 14px;
+}
+
+.reprise-panel-row + label {
+    margin-top: 12px;
+}
+
+.reprise-aide {
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    color: #6b7280;
 }
 
 .reprise-panel-row input:focus {

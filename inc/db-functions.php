@@ -130,6 +130,17 @@ function ueb_handle_db_save() {
         wp_die( 'Numéro de dossier manquant. Merci de recharger la page.' );
     }
 
+    // Seul l'appareil qui a ouvert ou repris ce dossier peut le soumettre :
+    // sans ce contrôle, n'importe qui remplacerait un dossier déjà soumis
+    // en envoyant son numéro.
+    if ( ! ueb_dossier_autorise( $numero_dossier ) ) {
+        wp_die(
+            'Ce dossier n’est pas ouvert sur cet appareil. Reviens au formulaire et reprends-le avec ton numéro de dossier et ton code de reprise.',
+            'Dossier non ouvert',
+            array( 'response' => 403, 'back_link' => true )
+        );
+    }
+
     /* Champs texte simples */
     $champs_texte = array(
         'nom'                    => 'sanitize_text_field',
@@ -319,16 +330,7 @@ function ueb_handle_db_save() {
     /* Nettoyage session + cookie, pour qu'un futur candidat sur le même
        appareil reparte sur un numéro de dossier neuf (voir échanges avec
        Esso Dictator sur la gestion session/cookie). */
-    unset( $_SESSION['ueb_numero_dossier_en_cours'] );
-    setcookie(
-        'ueb_numero_dossier',
-        '',
-        time() - 3600,
-        COOKIEPATH,
-        COOKIE_DOMAIN,
-        is_ssl(),
-        true
-    );
+    ueb_oublier_dossier();
 
     $_SESSION['preinscription_id'] = $preinscription_id;
 }
