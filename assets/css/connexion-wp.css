@@ -1,0 +1,283 @@
+/* Page de connexion WordPress (/pw-ueb) aux couleurs de l'Université :
+   bandeau « Administration » en haut, carte de connexion au centre, à la
+   manière de l'administration de Django. Chargée après la feuille « login »
+   de WordPress, qu'elle remplace visuellement. */
+
+:root {
+	--pw-bandeau: #13351a;
+	--pw-bandeau-texte: #f4f7f3;
+	--pw-or: #e3a822;
+	--pw-fond: #f4f7f3;
+	--pw-carte: #ffffff;
+	--pw-encre: #15231b;
+	--pw-gris: #4f5d55;
+	--pw-filet: #d9e2da;
+	--pw-vert: #2e7d32;
+	--pw-vert-fonce: #1d5a38;
+	--pw-danger: #b3261e;
+	--pw-danger-fond: #fdecea;
+	--pw-info-fond: #e7f2f8;
+	--pw-ciel: #1f6f94;
+	--pw-f-titre: "Sora", system-ui, sans-serif;
+	--pw-f-texte: "Inter", system-ui, sans-serif;
+}
+
+html,
+body.login {
+	background: var(--pw-fond);
+}
+
+body.login {
+	font-family: var(--pw-f-texte);
+	color: var(--pw-encre);
+	font-size: 15px;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+/* ---------- Bandeau ---------- */
+
+.ueb-pw-bandeau {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	padding: 14px 24px;
+	background: var(--pw-bandeau);
+	border-bottom: 3px solid var(--pw-or);
+	color: var(--pw-bandeau-texte);
+}
+
+.ueb-pw-bandeau a {
+	font-family: var(--pw-f-titre);
+	font-size: 22px;
+	font-weight: 600;
+	color: var(--pw-or);
+	text-decoration: none;
+}
+
+.ueb-pw-bandeau a:hover,
+.ueb-pw-bandeau a:focus {
+	color: #f2c75c;
+	box-shadow: none;
+}
+
+.ueb-pw-bandeau span {
+	font-size: 14px;
+	opacity: .8;
+}
+
+/* ---------- Carte ---------- */
+
+#login {
+	width: 100%;
+	max-width: 400px;
+	padding: 48px 16px 32px;
+	margin: 0 auto;
+	box-sizing: border-box;
+}
+
+.login h1 {
+	margin-bottom: 20px;
+}
+
+.login h1 a {
+	background-image: url("../images/logo-ueb.png");
+	background-size: contain;
+	background-position: center;
+	width: 84px;
+	height: 80px;
+	margin: 0 auto;
+}
+
+.login form {
+	margin: 0;
+	padding: 24px 24px 20px;
+	background: var(--pw-carte);
+	border: 1px solid var(--pw-filet);
+	border-top: 4px solid var(--pw-vert);
+	border-radius: 0 0 12px 12px;
+	box-shadow: 0 12px 32px -12px rgba(15, 44, 31, .22);
+}
+
+.login form::before {
+	display: block;
+	margin: 0 0 18px;
+	font-family: var(--pw-f-titre);
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--pw-encre);
+}
+
+.login #loginform::before {
+	content: "Connexion";
+}
+
+.login #lostpasswordform::before {
+	content: "Mot de passe oublié";
+}
+
+.login #resetpassform::before {
+	content: "Nouveau mot de passe";
+}
+
+.login label {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--pw-gris);
+}
+
+.login form .input,
+.login input[type="text"],
+.login input[type="password"],
+.login input[type="email"] {
+	font-family: var(--pw-f-texte);
+	font-size: 16px;
+	min-height: 44px;
+	margin: 4px 0 16px;
+	padding: 6px 12px;
+	border: 1px solid #bfccc2;
+	border-radius: 8px;
+	background: #fff;
+	color: var(--pw-encre);
+	box-shadow: none;
+}
+
+.login form .input:focus,
+.login input[type="text"]:focus,
+.login input[type="password"]:focus,
+.login input[type="email"]:focus {
+	border-color: var(--pw-vert);
+	box-shadow: 0 0 0 3px rgba(46, 125, 50, .18);
+	outline: none;
+}
+
+/* Bouton « afficher le mot de passe » : dans le champ, à droite. */
+.login .wp-pwd {
+	position: relative;
+}
+
+.login .button.wp-hide-pw {
+	color: var(--pw-gris);
+	min-height: 44px;
+	height: 44px;
+	top: 4px;
+}
+
+.login .button.wp-hide-pw:focus {
+	border-color: var(--pw-vert);
+	box-shadow: 0 0 0 2px rgba(46, 125, 50, .3);
+}
+
+.login .forgetmenot {
+	margin-top: 2px;
+}
+
+.login .forgetmenot label {
+	font-weight: 400;
+	color: var(--pw-encre);
+}
+
+.login input[type="checkbox"]:checked::before {
+	filter: hue-rotate(-80deg) saturate(.8);
+}
+
+.login .button-primary,
+.wp-core-ui .button-primary {
+	float: none;
+	display: block;
+	width: 100%;
+	margin-top: 18px;
+	min-height: 44px;
+	font-family: var(--pw-f-texte);
+	font-size: 16px;
+	font-weight: 600;
+	background: var(--pw-vert);
+	border: 1px solid var(--pw-vert-fonce);
+	border-radius: 8px;
+	color: #fff;
+	text-shadow: none;
+	box-shadow: none;
+}
+
+.wp-core-ui .button-primary:hover,
+.wp-core-ui .button-primary:focus {
+	background: var(--pw-vert-fonce);
+	border-color: var(--pw-vert-fonce);
+	color: #fff;
+}
+
+.wp-core-ui .button-primary:focus {
+	box-shadow: 0 0 0 3px rgba(46, 125, 50, .3);
+}
+
+.login .submit {
+	clear: both;
+}
+
+/* ---------- Messages ---------- */
+
+.login .message,
+.login .notice,
+.login .success,
+.login #login_error {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	border: 0;
+	border-left: 4px solid var(--pw-ciel);
+	border-radius: 8px;
+	background: var(--pw-info-fond);
+	box-shadow: none;
+	color: var(--pw-encre);
+}
+
+.login #login_error,
+.login .notice-error {
+	border-left-color: var(--pw-danger);
+	background: var(--pw-danger-fond);
+}
+
+/* ---------- Liens sous la carte ---------- */
+
+.login #nav,
+.login #backtoblog {
+	margin: 16px 0 0;
+	padding: 0 4px;
+	font-size: 14px;
+	text-align: center;
+}
+
+.login #nav a,
+.login #backtoblog a,
+.login .privacy-policy-page-link a {
+	color: var(--pw-vert-fonce);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.login #nav a:hover,
+.login #backtoblog a:hover {
+	color: var(--pw-vert);
+}
+
+.login a:focus {
+	box-shadow: 0 0 0 2px rgba(46, 125, 50, .4);
+	border-radius: 2px;
+	outline: none;
+}
+
+@media (max-width: 480px) {
+	.ueb-pw-bandeau {
+		padding: 12px 16px;
+	}
+
+	.ueb-pw-bandeau a {
+		font-size: 19px;
+	}
+
+	#login {
+		padding-top: 32px;
+	}
+}

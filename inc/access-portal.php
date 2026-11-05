@@ -77,6 +77,8 @@ add_filter( 'nonce_user_logged_out', function( $id, $action ) {
 // Les liens WordPress de connexion et de récupération restent dans le front.
 add_action( 'login_init', function() {
     $action = sanitize_key( $_REQUEST['action'] ?? 'login' );
+    // /pw-ueb : connexion WordPress des administrateurs (inc/connexion-wp.php).
+    if ( 'login' === $action && ueb_est_connexion_wp() ) return;
     if ( in_array( $action, array( 'login', 'lostpassword', 'retrievepassword', 'rp', 'resetpass' ), true ) ) {
         $view = in_array( $action, array( 'rp', 'resetpass' ), true ) ? 'reset' : ( 'login' === $action ? 'login' : 'forgot' );
         $args = 'reset' === $view ? array( 'key' => sanitize_text_field( wp_unslash( $_GET['key'] ?? '' ) ), 'login' => sanitize_text_field( wp_unslash( $_GET['login'] ?? '' ) ) ) : array();
