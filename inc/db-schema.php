@@ -159,9 +159,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         candidatures, faute de filières), intitulés officiels des UFD,
  *         et Master réservé à l'École doctorale : le doctorat ne se
  *         demande plus dans les facultés. Cf. ueb_rattacher_ufd().
+ * - 2.16 : code de reprise des dossiers. Colonne
+ *         ueb_preinscriptions_progression.code_reprise_hash (empreinte du
+ *         code, NULL pour un dossier commencé avant), cf.
+ *         inc/dossier-functions.php. La mise à jour du schéma passe aussi
+ *         par le site public : le formulaire en a besoin dès le déploiement.
  */
 if ( ! defined( 'UEB_DB_SCHEMA_VERSION' ) ) {
-    define( 'UEB_DB_SCHEMA_VERSION', '2.15' );
+    define( 'UEB_DB_SCHEMA_VERSION', '2.16' );
 }
 
 /**
@@ -508,6 +513,7 @@ CREATE TABLE IF NOT EXISTS ueb_preinscriptions_progression (
     numero_dossier VARCHAR(20) NOT NULL,
     etape_atteinte TINYINT UNSIGNED NOT NULL DEFAULT 1,
     donnees_json LONGTEXT DEFAULT NULL,
+    code_reprise_hash CHAR(64) DEFAULT NULL,
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_derniere_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -972,7 +978,15 @@ function ueb_run_schema_migrations() {
         'FOREIGN KEY (faculte_rattachement_id) REFERENCES ueb_facultes(id) ON DELETE SET NULL'
     );
 
+    // 2.16 — empreinte du code de reprise d'un dossier (NULL : dossier
+    // commencé avant le code, repris avec la date de naissance).
+    ueb_add_column_if_missing( 'ueb_preinscriptions_progression', 'code_reprise_hash', 'CHAR(64) DEFAULT NULL' );
+
     ueb_poser_valeurs_initiales();
 }
 add_action( 'after_switch_theme', 'ueb_maybe_upgrade_db' );
 add_action( 'admin_init', 'ueb_maybe_upgrade_db' );
+/* Site public aussi : le formulaire écrit dans les colonnes récentes dès le
+   déploiement, sans attendre qu'un administrateur ouvre wp-admin. Sur une
+   base à jour, ce n'est qu'une lecture d'option (mise en cache). */
+add_action( 'init', 'ueb_maybe_upgrade_db', 5 );

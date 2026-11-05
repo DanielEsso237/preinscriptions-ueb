@@ -1639,8 +1639,18 @@
     const btnToggleReprise   = document.getElementById('btn-toggle-reprise');
     const reprisePanel       = document.getElementById('reprise-panel');
     const repriseInput       = document.getElementById('reprise-numero');
+    const repriseCodeInput   = document.getElementById('reprise-code');
     const btnRepriseValider  = document.getElementById('btn-reprise-valider');
     const repriseMessage     = document.getElementById('reprise-message');
+
+    /* Code de reprise du dossier ouvert, sous le numéro dans le bandeau. */
+    function afficherCodeReprise(code) {
+        const bloc   = document.querySelector('.dossier-banner-code');
+        const valeur = document.querySelector('.dossier-banner-code-valeur');
+        if (!bloc || !valeur || !code) return;
+        valeur.textContent = code;
+        bloc.hidden = false;
+    }
 
     function showRepriseMessage(msg, isError) {
         if (!repriseMessage) return;
@@ -1657,16 +1667,17 @@
 
     if (btnRepriseValider) {
         btnRepriseValider.addEventListener('click', function () {
-            const numero = (repriseInput.value || '').trim();
-            if (!numero) {
-                showRepriseMessage('Merci de saisir un numéro de dossier.', true);
+            const numero = (repriseInput.value || '').trim().toUpperCase();
+            const code   = repriseCodeInput ? (repriseCodeInput.value || '').trim() : '';
+            if (!numero || !code) {
+                showRepriseMessage('Merci de saisir ton numéro de dossier et ton code de reprise.', true);
                 return;
             }
 
             btnRepriseValider.disabled = true;
             btnRepriseValider.textContent = 'Recherche...';
 
-            uebFetchRaw('ueb_get_progression', { numero_dossier: numero }).then(function (json) {
+            uebFetchRaw('ueb_get_progression', { numero_dossier: numero, code_reprise: code }).then(function (json) {
                 btnRepriseValider.disabled = false;
                 btnRepriseValider.textContent = 'Reprendre';
 
@@ -1676,10 +1687,17 @@
                 }
 
                 showRepriseMessage('Dossier retrouvé, chargement en cours...', false);
+                afficherCodeReprise(json.data.code_reprise);
                 applyResumeData(json.data.numero_dossier, json.data.etape_atteinte, json.data.donnees || {}).then(function () {
                     reprisePanel.style.display = 'none';
                     btnToggleReprise.style.display = 'none';
-                    repriseMessage.style.display = 'none';
+                    if (json.data.nouveau_code) {
+                        // Dossier d'avant le code : il vient d'en recevoir un.
+                        showRepriseMessage('Ton dossier a désormais un code de reprise : ' + json.data.nouveau_code
+                            + '. Note-le avec ton numéro, il remplace ta date de naissance pour reprendre ton dossier.', false);
+                    } else {
+                        repriseMessage.style.display = 'none';
+                    }
                 });
             });
         });

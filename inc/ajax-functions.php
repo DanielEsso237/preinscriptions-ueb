@@ -326,6 +326,11 @@ function ueb_ajax_save_progression() {
         wp_send_json_error( array( 'message' => 'Paramètres manquants.' ) );
     }
 
+    // Seul l'appareil qui a ouvert ou repris ce dossier peut l'écrire.
+    if ( ! ueb_dossier_autorise( $numero_dossier ) ) {
+        wp_send_json_error( array( 'message' => 'Ce dossier n’est pas ouvert sur cet appareil. Reprends-le avec ton numéro et ton code de reprise.' ), 403 );
+    }
+
     $donnees = json_decode( $donnees_json, true );
 
     if ( ! is_array( $donnees ) ) {
@@ -350,33 +355,42 @@ add_action( 'wp_ajax_nopriv_ueb_save_progression', 'ueb_ajax_save_progression' )
 function ueb_ajax_get_progression() {
     ueb_ajax_check_nonce();
 
-    $numero_dossier = isset( $_POST['numero_dossier'] ) ? sanitize_text_field( wp_unslash( $_POST['numero_dossier'] ) ) : '';
+    $numero_dossier = isset( $_POST['numero_dossier'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_POST['numero_dossier'] ) ) ) : '';
+    $code_reprise   = isset( $_POST['code_reprise'] ) ? sanitize_text_field( wp_unslash( $_POST['code_reprise'] ) ) : '';
 
     if ( ! $numero_dossier ) {
         wp_send_json_error( array( 'message' => 'Numéro de dossier manquant.' ) );
     }
 
+    // Dossier déjà ouvert sur cet appareil (reprise automatique) : rien à
+    // prouver. Sinon, reprise manuelle : numéro ET code de reprise (ou date
+    // de naissance pour un dossier commencé avant le code), essais limités.
+    $nouveau_code = '';
+    if ( ueb_dossier_autorise( $numero_dossier ) ) {
+        $dossier = ueb_dossier_de_cet_appareil();
+        $code    = $dossier['code'];
+    } else {
+        if ( '' === $code_reprise ) {
+            wp_send_json_error( array( 'message' => 'Saisis ton numéro de dossier et ton code de reprise.' ) );
+        }
+        $reprise = ueb_reprendre_dossier( $numero_dossier, $code_reprise );
+        if ( is_wp_error( $reprise ) ) {
+            wp_send_json_error( array( 'message' => $reprise->get_error_message() ) );
+        }
+        $code         = $reprise['code'];
+        $nouveau_code = $reprise['nouveau_code'] ? $code : '';
+    }
+
     $progression = ueb_recuperer_progression( $numero_dossier );
 
     if ( null === $progression ) {
-        wp_send_json_error( array( 'message' => 'Numéro introuvable.' ) );
+        wp_send_json_error( array( 'message' => 'Numéro de dossier ou code de reprise incorrect.' ) );
     }
-
-    // Reprise manuelle : ce numéro devient le dossier "en cours" pour cet
-    // appareil, la session/le cookie précédents (auto-générés) sont écrasés.
-    $_SESSION['ueb_numero_dossier_en_cours'] = $numero_dossier;
-    setcookie(
-        'ueb_numero_dossier',
-        $numero_dossier,
-        time() + 30 * DAY_IN_SECONDS,
-        COOKIEPATH,
-        COOKIE_DOMAIN,
-        is_ssl(),
-        true
-    );
 
     wp_send_json_success( array(
         'numero_dossier' => $numero_dossier,
+        'code_reprise'   => $code,
+        'nouveau_code'   => $nouveau_code,
         'etape_atteinte' => $progression['etape_atteinte'],
         'donnees'        => $progression['donnees'],
     ) );

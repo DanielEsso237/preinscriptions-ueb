@@ -75,36 +75,27 @@ if ( preinscriptions_cloture_atteinte() ) {
 }
 
 /*
- * Numéro de dossier : priorité session > cookie persistant > génération.
+ * Dossier de cet appareil : session, puis cookie « numéro.code » vérifié
+ * (inc/dossier-functions.php) ; à défaut, nouveau dossier avec son code de
+ * reprise. Un cookie qui ne porte qu'un numéro ne donne droit à rien.
  */
-$ueb_numero_dossier = null;
+$ueb_dossier = ueb_dossier_de_cet_appareil();
 
-if ( ! empty( $_SESSION['ueb_numero_dossier_en_cours'] ) ) {
-    $ueb_numero_dossier = $_SESSION['ueb_numero_dossier_en_cours'];
-} elseif ( ! empty( $_COOKIE['ueb_numero_dossier'] ) ) {
-    $numero_candidat = sanitize_text_field( wp_unslash( $_COOKIE['ueb_numero_dossier'] ) );
-    if ( null !== ueb_recuperer_progression( $numero_candidat ) ) {
-        $ueb_numero_dossier = $numero_candidat;
-    }
+if ( null !== $ueb_dossier && null === ueb_recuperer_progression( $ueb_dossier['numero'] ) ) {
+    ueb_oublier_dossier();
+    $ueb_dossier = null;
 }
 
-if ( null === $ueb_numero_dossier ) {
-    $ueb_numero_dossier = ueb_initialiser_dossier();
+if ( null === $ueb_dossier ) {
+    $ueb_numero_cree = ueb_initialiser_dossier();
+    $ueb_dossier     = $ueb_numero_cree ? ueb_dossier_de_cet_appareil() : null;
 }
+
+$ueb_numero_dossier = $ueb_dossier ? $ueb_dossier['numero'] : false;
+$ueb_code_reprise   = $ueb_dossier ? $ueb_dossier['code'] : '';
 
 if ( false === $ueb_numero_dossier ) {
     error_log( '[UEB Préinscription] Échec d\'initialisation du dossier sur page-preinscription.php' );
-} else {
-    $_SESSION['ueb_numero_dossier_en_cours'] = $ueb_numero_dossier;
-    setcookie(
-        'ueb_numero_dossier',
-        $ueb_numero_dossier,
-        time() + 30 * DAY_IN_SECONDS,
-        COOKIEPATH,
-        COOKIE_DOMAIN,
-        is_ssl(),
-        true
-    );
 }
 
 get_header();
@@ -126,7 +117,11 @@ get_header();
                 <span class="dossier-banner-label">Ton numéro de dossier :</span>
                 <strong class="dossier-banner-numero"><?php echo esc_html( $ueb_numero_dossier ); ?></strong>
             </div>
-            <p class="dossier-banner-hint">Note-le bien : il te permettra de reprendre ta préinscription si tu es interrompu(e).</p>
+            <div class="dossier-banner-text dossier-banner-code"<?php echo $ueb_code_reprise ? '' : ' hidden'; ?>>
+                <span class="dossier-banner-label">Ton code de reprise :</span>
+                <strong class="dossier-banner-code-valeur"><?php echo esc_html( $ueb_code_reprise ); ?></strong>
+            </div>
+            <p class="dossier-banner-hint">Note bien les deux : ils te permettront de reprendre ou de corriger ta préinscription depuis n'importe quel appareil. Ne communique ton code à personne.</p>
         </div>
         <?php else : ?>
         <div class="dossier-banner dossier-banner--error" role="alert">
@@ -174,9 +169,14 @@ get_header();
             <div id="reprise-panel" class="reprise-panel" style="display:none;">
                 <label for="reprise-numero">Numéro de dossier</label>
                 <div class="reprise-panel-row">
-                    <input type="text" id="reprise-numero" placeholder="Ex : UEB-2026-000123">
+                    <input type="text" id="reprise-numero" placeholder="Ex : UEB-2026-000123" autocomplete="off" autocapitalize="characters">
+                </div>
+                <label for="reprise-code">Code de reprise</label>
+                <div class="reprise-panel-row">
+                    <input type="text" id="reprise-code" placeholder="Ex : K7MQ-4XRA" autocomplete="off" autocapitalize="characters" spellcheck="false">
                     <button type="button" id="btn-reprise-valider" class="btn-secondary">Reprendre</button>
                 </div>
+                <p class="reprise-aide">Dossier commencé avant le 6 novembre 2026, sans code ? Saisis ta date de naissance (JJ/MM/AAAA) à la place du code.</p>
                 <p id="reprise-message" class="reprise-message" style="display:none;"></p>
             </div>
         </div>
