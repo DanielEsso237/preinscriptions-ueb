@@ -109,9 +109,12 @@ add_filter( 'login_redirect', function( $redirect, $requested, $user ) {
     return $redirect;
 }, 10, 3 );
 
+// Barre d'outils WordPress : administrateurs seulement, quel que soit le
+// réglage « show_admin_bar_front » du compte. Priorité maximale : aucune
+// extension ne peut la rendre au personnel ou aux visiteurs.
 add_filter( 'show_admin_bar', function( $show ) {
-    return current_user_can( 'manage_options' ) && ! ueb_portal_route() ? $show : false;
-} );
+    return is_user_logged_in() && current_user_can( 'manage_options' ) && ! ueb_portal_route() ? $show : false;
+}, PHP_INT_MAX );
 add_action( 'admin_init', function() {
     if ( ! wp_doing_ajax() && is_user_logged_in() && ! current_user_can( 'manage_options' ) ) {
         wp_safe_redirect( ueb_portal_home() ); exit;
