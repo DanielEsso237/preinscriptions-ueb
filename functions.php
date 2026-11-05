@@ -9,6 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/* Discrétion (adresses neutres du thème, traces de WordPress, durcissement) :
+   en premier, avant tout calcul d'adresse du thème. */
+require_once get_template_directory() . '/inc/discretion.php';
+
 /**
  * EXCLUSION DES PAGES NON PUBLIQUES DU SITEMAP ET DE L'INDEXATION
  *
@@ -101,9 +105,9 @@ function preinscriptions_theme_assets() {
 
     wp_enqueue_style(
         'preinscriptions-style',
-        get_stylesheet_uri(),
+        get_template_directory_uri() . '/assets/css/theme.css',
         array( 'preinscriptions-fonts' ),
-        PREINSCRIPTIONS_VERSION
+        filemtime( get_template_directory() . '/assets/css/theme.css' )
     );
 
     $hf_css = get_template_directory() . '/assets/css/header-footer.css';
@@ -212,7 +216,8 @@ function preinscriptions_admin_assets() {
 function preinscriptions_countdown_assets() {
     if ( ! is_page_template( 'page-compte-rebours.php' )
         && ! is_page_template( 'page-preinscription.php' )
-        && ! is_page_template( 'page-maintenance.php' ) ) {
+        && ! is_page_template( 'page-maintenance.php' )
+        && ! is_404() ) {
         return;
     }
     $countdown_css = get_template_directory() . '/assets/css/compte-rebours.css';

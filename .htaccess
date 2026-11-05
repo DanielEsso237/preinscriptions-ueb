@@ -1,0 +1,33 @@
+# Le navigateur n'a besoin que des feuilles de style, scripts, images, polices
+# et PDF du thème (assets/). Tout le reste est lu par PHP sur le disque.
+
+# Pas de liste du contenu des dossiers (inc/, assets/, lib/…).
+Options -Indexes
+
+# Fichiers de travail et de documentation : jamais servis au navigateur.
+<FilesMatch "(?i)(\.(csv|md|py|pyc|txt|json|z|icc|sql|log|sh|html?|lock|dist|xml)|^\.git.*|^5\.5mm)$">
+	<IfModule mod_authz_core.c>
+		Require all denied
+	</IfModule>
+	<IfModule !mod_authz_core.c>
+		Order Deny,Allow
+		Deny from all
+	</IfModule>
+</FilesMatch>
+
+# style.css ne sert qu'à WordPress (en-tête du thème) ; les règles sont dans
+# assets/css/theme.css.
+<Files "style.css">
+	<IfModule mod_authz_core.c>
+		Require all denied
+	</IfModule>
+	<IfModule !mod_authz_core.c>
+		Order Deny,Allow
+		Deny from all
+	</IfModule>
+</Files>
+
+# Tests, outils, documentation, exemples et outils de TCPDF : jamais servis
+# par le web (les exemples de TCPDF sont des scripts PHP exécutables).
+RedirectMatch 404 "/(tests|tools|docs)(/|$)"
+RedirectMatch 404 "/lib/tcpdf/(examples|tools)(/|$)"
